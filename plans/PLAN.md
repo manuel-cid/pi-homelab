@@ -24,8 +24,8 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | Doc | Contenido |
 |-----|-----------|
 | `docs/01-sistema/01-instalacion-os.md` | Flash de Raspberry Pi OS Lite 64-bit con Raspberry Pi Imager, configuración headless (SSH, usuario, WiFi de emergencia) |
-| `docs/01-sistema/02-configuracion-inicial.md` | Primer arranque, actualización del sistema, hostname, zona horaria, locale, deshabilitar swap en microSD, configurar swap en disco externo |
-| `docs/01-sistema/03-seguridad-base.md` | Cambio de contraseña, claves SSH, deshabilitar login con password, firewall (`ufw`/`nftables`), `fail2ban` a nivel de host, actualizaciones automáticas (`unattended-upgrades`) |
+| `docs/01-sistema/02-configuracion-inicial.md` | Primer arranque, actualización del sistema, hostname, zona horaria, locale, deshabilitar swap en microSD, configurar swap en hd2t |
+| `docs/01-sistema/03-seguridad-base.md` | Cambio de contraseña, claves SSH, deshabilitar login con password, firewall (`ufw`/`nftables`), `fail2ban` básico a nivel de host (solo jail SSH), actualizaciones automáticas (`unattended-upgrades`) |
 | `docs/01-sistema/04-estructura-directorios.md` | Estructura de carpetas en los discos externos: `/mnt/hd5t` (multimedia Stash), `/mnt/hd2t` (datos de servicios, volúmenes Docker, backups), permisos, ownership, directorios por servicio |
 
 ---
@@ -48,9 +48,9 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | Doc | Contenido |
 |-----|-----------|
 | `docs/03-red/01-macvlan.md` | Creación de la red Docker macvlan: rango de IPs, subnet, gateway, interfaz padre (`eth0`), reserva de IP en el DHCP del router, interfaz macvlan-shim en el host para comunicación host↔contenedor macvlan |
-| `docs/03-red/02-pihole.md` | Despliegue de Pi-hole en red macvlan con IP dedicada, configuración del router para usar esa IP como DNS, listas de bloqueo recomendadas, DNS local para servicios internos (ej. `jellyfin.lan`) |
+| `docs/03-red/02-pihole.md` | Despliegue de Pi-hole en red macvlan con IP dedicada, configuración del router para usar esa IP como DNS, listas de bloqueo recomendadas, DNS local para servicios internos (ej. `jellyfin.lan`), DNS fallback en el host (`/etc/resolv.conf`) para evitar pérdida de resolución si Pi-hole cae |
 | `docs/03-red/03-unbound.md` | Despliegue de Unbound como resolver recursivo en la misma red macvlan, integración con Pi-hole (upstream DNS) |
-| `docs/03-red/04-caddy.md` | Despliegue de Caddy como reverse proxy interno, `Caddyfile` con bloques por servicio, HTTPS local automático (CA interna), integración con Tailscale (`tailscale cert`), configuración versionable en git |
+| `docs/03-red/04-caddy.md` | Despliegue de Caddy como reverse proxy interno, `Caddyfile` con bloques por servicio, HTTPS con CA interna para acceso LAN (ej. `jellyfin.lan`) y `tailscale cert` para acceso remoto vía Tailscale (ej. `pi.tailnet.ts.net`), configuración versionable en git |
 | `docs/03-red/05-tailscale.md` | Instalación de Tailscale (host o contenedor), MagicDNS, acceso remoto a servicios vía VPN sin abrir puertos |
 
 ---
@@ -60,7 +60,7 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | Doc | Contenido |
 |-----|-----------|
 | `docs/04-seguridad/01-authelia.md` | Despliegue de Authelia, configuración SSO/2FA, integración como middleware en Caddy (forward_auth) |
-| `docs/04-seguridad/02-fail2ban.md` | Configuración de Fail2ban (host y/o contenedor), jails para SSH, Nextcloud, Vaultwarden |
+| `docs/04-seguridad/02-fail2ban.md` | Configuración avanzada de Fail2ban: jails adicionales para servicios (Nextcloud, Vaultwarden, Authelia), integración con logs de contenedores |
 
 ---
 
@@ -82,8 +82,8 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | Doc | Contenido |
 |-----|-----------|
 | `docs/06-almacenamiento/01-nextcloud.md` | Despliegue de Nextcloud (con MariaDB/PostgreSQL + Redis), datos en hd2t, configuración de dominio, apps recomendadas |
-| `docs/06-almacenamiento/02-samba.md` | Despliegue de Samba, shares por carpeta en disco externo, permisos, acceso desde Windows/Mac/Linux |
-| `docs/06-almacenamiento/03-syncthing.md` | Despliegue de Syncthing, carpetas compartidas, dispositivos pareados |
+| `docs/06-almacenamiento/02-samba.md` | Despliegue de Samba, shares por carpeta en hd2t (y opcionalmente hd5t para multimedia), permisos, acceso desde Windows/Mac/Linux |
+| `docs/06-almacenamiento/03-syncthing.md` | Despliegue de Syncthing, carpetas compartidas en hd2t, dispositivos pareados |
 | `docs/06-almacenamiento/04-minio.md` | Despliegue de MinIO, buckets, credenciales, uso como destino de backups |
 
 ---
@@ -93,10 +93,8 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | Doc | Contenido |
 |-----|-----------|
 | `docs/07-backups/01-estrategia-backup.md` | Estrategia 3-2-1: partición de backups en hd2t como destino local, nube como destino offsite, programación, retención, verificación de restauración |
-| `docs/07-backups/02-duplicati.md` | Despliegue de Duplicati, jobs de backup para cada servicio, destino hd2t + nube (S3/B2) |
-| `docs/07-backups/03-restic.md` | Instalación de Restic, scripts de backup, cron jobs, verificación |
-| `docs/07-backups/04-borgmatic.md` | Despliegue de Borgmatic, configuración YAML, programación, notificaciones |
-| `docs/07-backups/05-backup-docker-volumes.md` | Procedimiento para backup/restore de volúmenes Docker y bases de datos (dumps de MariaDB/PostgreSQL) |
+| `docs/07-backups/02-borgmatic.md` | Despliegue de Borgmatic, configuración YAML, repos en hd2t, programación, hooks pre/post-backup (dumps de BD), notificaciones |
+| `docs/07-backups/03-backup-docker-volumes.md` | Procedimiento para backup/restore de volúmenes Docker y bases de datos (dumps de MariaDB/PostgreSQL) |
 
 ---
 
@@ -116,9 +114,9 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | Doc | Contenido |
 |-----|-----------|
 | `docs/09-multimedia/01-jellyfin.md` | Despliegue de Jellyfin, bibliotecas en hd2t, transcodificación por hardware (limitaciones ARM), acceso vía Caddy/Tailscale |
-| `docs/09-multimedia/02-navidrome.md` | Despliegue de Navidrome, biblioteca de música, clientes compatibles (DSub, Symfonium) |
-| `docs/09-multimedia/03-audiobookshelf.md` | Despliegue de Audiobookshelf, biblioteca de audiolibros/podcasts |
-| `docs/09-multimedia/04-calibre-web.md` | Despliegue de Calibre-Web, biblioteca de ebooks, importación de Calibre |
+| `docs/09-multimedia/02-navidrome.md` | Despliegue de Navidrome, biblioteca de música en hd2t, clientes compatibles (DSub, Symfonium) |
+| `docs/09-multimedia/03-audiobookshelf.md` | Despliegue de Audiobookshelf, biblioteca de audiolibros/podcasts en hd2t |
+| `docs/09-multimedia/04-calibre-web.md` | Despliegue de Calibre-Web, biblioteca de ebooks en hd2t, importación de Calibre |
 | `docs/09-multimedia/05-stash.md` | Despliegue de Stash, bibliotecas en **hd5t** (disco dedicado), scrapers de metadatos, configuración de rutas |
 
 ---
@@ -139,12 +137,12 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | Doc | Contenido |
 |-----|-----------|
 | `docs/11-productividad/01-vaultwarden.md` | Despliegue de Vaultwarden, HTTPS vía Caddy (CA local), backup de la base de datos, clientes Bitwarden |
-| `docs/11-productividad/02-bookstack.md` | Despliegue de Bookstack, base de datos, organización de documentación del propio homelab |
-| `docs/11-productividad/03-linkding.md` | Despliegue de Linkding, extensión de navegador |
+| `docs/11-productividad/02-bookstack.md` | Despliegue de Bookstack, base de datos en hd2t, organización de documentación del propio homelab |
+| `docs/11-productividad/03-linkding.md` | Despliegue de Linkding, datos en hd2t, extensión de navegador |
 | `docs/11-productividad/04-paperless-ngx.md` | Despliegue de Paperless-ngx, OCR, carpeta de consumo en hd2t, etiquetado |
-| `docs/11-productividad/05-mealie.md` | Despliegue de Mealie, importación de recetas |
-| `docs/11-productividad/06-stirling-pdf.md` | Despliegue de Stirling PDF |
-| `docs/11-productividad/07-freshrss.md` | Despliegue de FreshRSS, importación de feeds OPML |
+| `docs/11-productividad/05-mealie.md` | Despliegue de Mealie, datos en hd2t, importación de recetas |
+| `docs/11-productividad/06-stirling-pdf.md` | Despliegue de Stirling PDF (stateless, sin datos persistentes) |
+| `docs/11-productividad/07-freshrss.md` | Despliegue de FreshRSS, datos en hd2t, importación de feeds OPML |
 
 ---
 
@@ -249,10 +247,8 @@ Enlaces a documentación oficial e imágenes Docker.
 
 ### Fase 7 — Copias de Seguridad
 - [ ] `docs/07-backups/01-estrategia-backup.md`
-- [ ] `docs/07-backups/02-duplicati.md`
-- [ ] `docs/07-backups/03-restic.md`
-- [ ] `docs/07-backups/04-borgmatic.md`
-- [ ] `docs/07-backups/05-backup-docker-volumes.md`
+- [ ] `docs/07-backups/02-borgmatic.md`
+- [ ] `docs/07-backups/03-backup-docker-volumes.md`
 
 ### Fase 8 — Domótica e IoT
 - [ ] `docs/08-domotica/01-home-assistant.md`
