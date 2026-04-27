@@ -151,7 +151,6 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | Doc | Contenido |
 |-----|-----------|
 | `docs/12-dashboards/01-homepage.md` | Despliegue de Homepage, configuración de servicios, widgets, personalización |
-| `docs/12-dashboards/02-homarr.md` | Despliegue de Homarr, integraciones, layout |
 
 ---
 
@@ -280,7 +279,6 @@ Enlaces a documentación oficial e imágenes Docker.
 
 ### Fase 12 — Dashboards
 - [x] `docs/12-dashboards/01-homepage.md`
-- [x] `docs/12-dashboards/02-homarr.md`
 
 ### Fase 13 — Operaciones y Mantenimiento
 - [x] `docs/13-operaciones/01-mantenimiento-periodico.md`

@@ -110,7 +110,6 @@ Catálogo de servicios recomendados para un homelab doméstico corriendo sobre *
 | Servicio | Descripción |
 |---|---|
 | **Homepage** | Dashboard configurable con integraciones de servicios y widgets |
-| **Homarr** | Panel de inicio con widgets, integraciones y drag-and-drop |
 
 ---
 
