@@ -16,6 +16,7 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | `docs/00-hardware/01-material-necesario.md` | Lista de materiales: Raspberry Pi 5 8 GB, fuente 27 W, microSD 64 GB, disco duro externo **hd5t** (5 TB, USB 3.0), disco duro externo **hd2t** (2 TB, USB 3.0), carcasa con ventilador, cable Ethernet, adaptador Zigbee (opcional) |
 | `docs/00-hardware/02-esquema-conexiones.md` | Diagrama físico de conexiones: Pi → discos duros, Pi → router, Pi → adaptador Zigbee |
 | `docs/00-hardware/03-preparacion-discos.md` | Particionado, formato (ext4), montaje automático (`fstab`), etiquetas (`hd5t`, `hd2t`), pruebas SMART, estrategia de uso (hd5t: multimedia Stash, hd2t: resto de servicios + backups) |
+| `docs/00-hardware/04-discos-con-datos.md` | Instalación de discos externos **sin formatear** (con datos existentes): identificación, SMART, comprobación de integridad, montaje automático (`fstab`), soporte para ext4/NTFS/exFAT, ajuste de permisos |
 
 ---
 
@@ -203,6 +204,7 @@ Enlaces a documentación oficial e imágenes Docker.
 - [x] `docs/00-hardware/01-material-necesario.md`
 - [x] `docs/00-hardware/02-esquema-conexiones.md`
 - [x] `docs/00-hardware/03-preparacion-discos.md`
+- [x] `docs/00-hardware/04-discos-con-datos.md`
 
 ### Fase 1 — Sistema Operativo Base
 - [x] `docs/01-sistema/01-instalacion-os.md`
