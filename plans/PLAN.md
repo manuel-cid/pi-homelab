@@ -191,9 +191,6 @@ Volúmenes utilizados, rutas en disco externo, permisos.
 ## Backup
 Qué respaldar (volúmenes, bases de datos, configuración).
 
-## Troubleshooting
-Problemas comunes y soluciones.
-
 ## Referencias
 Enlaces a documentación oficial e imágenes Docker.
 ```
