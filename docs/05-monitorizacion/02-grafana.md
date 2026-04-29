@@ -426,6 +426,8 @@ sudo install -d -o 472 -g 472 -m 0750 /mnt/hd2t/apps/grafana/logs
 
 # Materializar provisioning desde la versión en git
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 install -o homelab -g homelab -m 0644 \
     stacks/grafana/provisioning/datasources/prometheus.yml \
     /mnt/hd2t/apps/grafana/etc/provisioning/datasources/prometheus.yml
@@ -458,7 +460,7 @@ docker logs authelia --tail 20 | grep -i 'reloaded'
 # Levantar Grafana
 docker compose \
     -f stacks/grafana/docker-compose.yml \
-    --env-file .env --env-file stacks/grafana/.env \
+    --env-file stacks/grafana/.env \
     up -d
 
 # Recargar Caddy para que tome el nuevo drop-in

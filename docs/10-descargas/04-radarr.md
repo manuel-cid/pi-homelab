@@ -402,6 +402,10 @@ radarr.{$DOMAIN_TS} {
 ### Crear directorios y desplegar
 
 ```bash
+# Cargar variables globales en el shell (ver quirk Compose v2 en 02-estructura-compose.md)
+cd /home/homelab/homelab
+set -a; source .env; set +a
+
 # 1) Verificar prerequisitos.
 docker network inspect homelab >/dev/null 2>&1 \
     || { echo "ERROR: red Docker 'homelab' no existe (Fase 2)."; exit 1; }
@@ -439,7 +443,7 @@ install -o homelab -g homelab -m 0644 \
 # 7) Levantar el stack.
 docker compose \
     -f stacks/radarr/docker-compose.yml \
-    --env-file .env --env-file stacks/radarr/.env \
+    --env-file stacks/radarr/.env \
     up -d
 
 # 8) Recargar Caddy para que aplique el nuevo drop-in.

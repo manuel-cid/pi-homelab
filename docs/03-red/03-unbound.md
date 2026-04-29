@@ -362,6 +362,8 @@ sudo chmod 0644 /mnt/hd2t/apps/unbound/etc/root.key
 
 # Materializar la conf desde la plantilla versionada
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 install -o homelab -g homelab -m 0644 \
     stacks/unbound/etc/unbound.conf.d/00-homelab.conf.example \
     /mnt/hd2t/apps/unbound/etc/unbound.conf.d/00-homelab.conf
@@ -372,13 +374,13 @@ docker network inspect dns_lan >/dev/null
 # Validar el compose con interpolación
 docker compose \
     -f stacks/unbound/docker-compose.yml \
-    --env-file .env --env-file stacks/unbound/.env \
+    --env-file stacks/unbound/.env \
     config >/dev/null && echo "compose OK"
 
 # Levantar
 docker compose \
     -f stacks/unbound/docker-compose.yml \
-    --env-file .env --env-file stacks/unbound/.env \
+    --env-file stacks/unbound/.env \
     up -d
 ```
 
@@ -461,9 +463,10 @@ Y aplicar:
 
 ```bash
 cd /home/homelab/homelab
+set -a; source .env; set +a
 docker compose \
     -f stacks/pihole/docker-compose.yml \
-    --env-file .env --env-file stacks/pihole/.env \
+    --env-file stacks/pihole/.env \
     up -d --force-recreate
 ```
 

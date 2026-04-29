@@ -377,13 +377,15 @@ cAdvisor no necesita directorios en `hd2t`/`hd5t` (todo el estado vive en memori
 ```bash
 # .env del stack (vacío en esta fase)
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 cp stacks/cadvisor/.env.example stacks/cadvisor/.env
 chmod 0600 stacks/cadvisor/.env
 
 # Levantar cAdvisor
 docker compose \
     -f stacks/cadvisor/docker-compose.yml \
-    --env-file .env --env-file stacks/cadvisor/.env \
+    --env-file stacks/cadvisor/.env \
     up -d
 ```
 

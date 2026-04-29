@@ -381,6 +381,8 @@ rm -f /tmp/users-admin.yml /tmp/users-viewer.yml
 
 # Drop-in de Caddy
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 install -o homelab -g homelab -m 0644 \
     stacks/caddy/conf.d/06-dozzle.caddy \
     /mnt/hd2t/apps/caddy/etc/conf.d/06-dozzle.caddy
@@ -400,7 +402,7 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # Levantar Dozzle
 docker compose \
     -f stacks/dozzle/docker-compose.yml \
-    --env-file .env --env-file stacks/dozzle/.env \
+    --env-file stacks/dozzle/.env \
     up -d
 
 # Recargar Caddy

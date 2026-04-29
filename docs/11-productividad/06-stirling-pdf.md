@@ -373,6 +373,8 @@ sudo install -d -o homelab -g homelab -m 0755 \
 
 # 1) Materializar stacks/stirling-pdf/.env (idéntico a .env.example, sin secretos)
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 cp stacks/stirling-pdf/.env.example stacks/stirling-pdf/.env
 chmod 0600 stacks/stirling-pdf/.env
 
@@ -388,13 +390,13 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # 4) Validar el compose
 docker compose \
     -f stacks/stirling-pdf/docker-compose.yml \
-    --env-file .env --env-file stacks/stirling-pdf/.env \
+    --env-file stacks/stirling-pdf/.env \
     config >/dev/null && echo "compose OK"
 
 # 5) Levantar el stack
 docker compose \
     -f stacks/stirling-pdf/docker-compose.yml \
-    --env-file .env --env-file stacks/stirling-pdf/.env \
+    --env-file stacks/stirling-pdf/.env \
     up -d
 
 # 6) Recargar Caddy
@@ -655,7 +657,7 @@ Procedimiento tras pérdida total (reflasheo + restauración Borg):
    ```bash
    cd /home/homelab/homelab
    docker compose -f stacks/stirling-pdf/docker-compose.yml \
-       --env-file .env --env-file stacks/stirling-pdf/.env \
+       --env-file stacks/stirling-pdf/.env \
        up -d
    ```
 4. Verificar `https://stirling.lan/` (302 a Authelia sin sesión, 200 con sesión válida).

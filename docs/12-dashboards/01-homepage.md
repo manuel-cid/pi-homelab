@@ -1089,6 +1089,8 @@ sudo install -d -o homelab -g homelab -m 0750 /mnt/hd2t/apps/homepage/data
 
 # 2) Materializar stacks/homepage/.env (RELLENAR los tokens)
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 cp stacks/homepage/.env.example stacks/homepage/.env
 chmod 0600 stacks/homepage/.env
 ${EDITOR:-vim} stacks/homepage/.env
@@ -1109,19 +1111,18 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # 6) Levantar primero el socket proxy (Homepage depende de él, soft)
 docker compose \
     -f stacks/docker-socket-proxy/docker-compose.yml \
-    --env-file .env \
     up -d
 
 # 7) Validar el compose de Homepage
 docker compose \
     -f stacks/homepage/docker-compose.yml \
-    --env-file .env --env-file stacks/homepage/.env \
+    --env-file stacks/homepage/.env \
     config >/dev/null && echo "compose OK"
 
 # 8) Levantar Homepage
 docker compose \
     -f stacks/homepage/docker-compose.yml \
-    --env-file .env --env-file stacks/homepage/.env \
+    --env-file stacks/homepage/.env \
     up -d
 
 # 9) Recargar Caddy
@@ -1332,7 +1333,7 @@ chmod 0600 stacks/homepage/.env
 
 # Recreate para que la nueva variable se cargue
 docker compose -f stacks/homepage/docker-compose.yml \
-    --env-file .env --env-file stacks/homepage/.env \
+    --env-file stacks/homepage/.env \
     up -d --force-recreate
 
 # Commit del .env.example actualizado
@@ -1397,14 +1398,15 @@ exclude_patterns:
 Procedimiento de restore tras pérdida del contenedor (datos intactos en repo):
 
 ```bash
+cd /home/homelab/homelab
+set -a; source .env; set +a
+
 docker compose \
-    -f /home/homelab/homelab/stacks/docker-socket-proxy/docker-compose.yml \
-    --env-file /home/homelab/homelab/.env \
+    -f stacks/docker-socket-proxy/docker-compose.yml \
     up -d
 docker compose \
-    -f /home/homelab/homelab/stacks/homepage/docker-compose.yml \
-    --env-file /home/homelab/homelab/.env \
-    --env-file /home/homelab/homelab/stacks/homepage/.env \
+    -f stacks/homepage/docker-compose.yml \
+    --env-file stacks/homepage/.env \
     up -d --force-recreate
 # Sin estado que recuperar: el dashboard arranca idéntico al instante.
 ```
@@ -1413,8 +1415,8 @@ Procedimiento de restore tras pérdida total (reflasheo + restauración Borg):
 
 1. Recrear sistema base (Fase 1), Docker (Fase 2.1), red `homelab` (Fase 2.2), Pi-hole (`02-pihole.md`), Caddy (`04-caddy.md`), Authelia (`01-authelia.md`).
 2. Restaurar el repo `/home/homelab/homelab/` desde Borg (incluye `stacks/homepage/.env` con los tokens).
-3. `cd /home/homelab/homelab && docker compose -f stacks/docker-socket-proxy/docker-compose.yml up -d`.
-4. `docker compose -f stacks/homepage/docker-compose.yml --env-file .env --env-file stacks/homepage/.env up -d`.
+3. `cd /home/homelab/homelab && set -a && source .env && set +a && docker compose -f stacks/docker-socket-proxy/docker-compose.yml up -d`.
+4. `docker compose -f stacks/homepage/docker-compose.yml --env-file stacks/homepage/.env up -d`.
 5. Verificar `https://home.lan/` → dashboard idéntico al que existía antes de la pérdida.
 
 > **Punto de no retorno**: si los **tokens de los servicios** son inválidos tras restore (porque el operador, durante el desastre, regeneró tokens), Homepage muestra widgets en error pero el resto del dashboard funciona. Procedimiento: regenerar token en el servicio, actualizar `.env`, `up -d --force-recreate`. El dashboard no es crítico; un widget caído no compromete ningún servicio destino.

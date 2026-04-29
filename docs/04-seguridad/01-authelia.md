@@ -519,6 +519,8 @@ docker run --rm authelia/authelia:4.38 \
 
 # Materializar configuración y users_database desde las plantillas versionadas
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 install -o homelab -g homelab -m 0640 \
     stacks/authelia/configuration.yml \
     /mnt/hd2t/apps/authelia/config/configuration.yml
@@ -556,7 +558,7 @@ docker run --rm \
 # Levantar Authelia
 docker compose \
     -f stacks/authelia/docker-compose.yml \
-    --env-file .env --env-file stacks/authelia/.env \
+    --env-file stacks/authelia/.env \
     up -d
 
 # Recargar Caddy para que tome el drop-in nuevo

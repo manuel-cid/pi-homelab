@@ -573,6 +573,8 @@ openssl rand -base64 30
 
 # 3) Materializar stacks/paperless/.env
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 cp stacks/paperless/.env.example stacks/paperless/.env
 chmod 0600 stacks/paperless/.env
 # Editar: pegar PAPERLESS_SECRET_KEY, PAPERLESS_DBPASS, dejar
@@ -590,13 +592,13 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # 6) Validar el compose
 docker compose \
     -f stacks/paperless/docker-compose.yml \
-    --env-file .env --env-file stacks/paperless/.env \
+    --env-file stacks/paperless/.env \
     config >/dev/null && echo "compose OK"
 
 # 7) Levantar el stack (Postgres + Redis + Tika + Gotenberg + Paperless)
 docker compose \
     -f stacks/paperless/docker-compose.yml \
-    --env-file .env --env-file stacks/paperless/.env \
+    --env-file stacks/paperless/.env \
     up -d
 
 # 8) Recargar Caddy
@@ -710,7 +712,7 @@ sed -i 's|^PAPERLESS_OIDC_CLIENT_SECRET=.*|PAPERLESS_OIDC_CLIENT_SECRET=PEGA_EL_
     stacks/paperless/.env
 
 docker compose -f stacks/paperless/docker-compose.yml \
-    --env-file .env --env-file stacks/paperless/.env \
+    --env-file stacks/paperless/.env \
     up -d --force-recreate paperless
 ```
 
@@ -751,7 +753,7 @@ sed -i 's/^PAPERLESS_REDIRECT_LOGIN_TO_SSO=.*/PAPERLESS_REDIRECT_LOGIN_TO_SSO=tr
     stacks/paperless/.env
 
 docker compose -f stacks/paperless/docker-compose.yml \
-    --env-file .env --env-file stacks/paperless/.env \
+    --env-file stacks/paperless/.env \
     up -d --force-recreate paperless
 ```
 
@@ -1039,7 +1041,7 @@ Procedimiento de restore tras pérdida total (reflasheo + restauración Borg):
    ```bash
    cd /home/homelab/homelab
    docker compose -f stacks/paperless/docker-compose.yml \
-       --env-file .env --env-file stacks/paperless/.env \
+       --env-file stacks/paperless/.env \
        up -d paperless-db
 
    sleep 15
@@ -1051,7 +1053,7 @@ Procedimiento de restore tras pérdida total (reflasheo + restauración Borg):
 5. Levantar el resto del stack:
    ```bash
    docker compose -f stacks/paperless/docker-compose.yml \
-       --env-file .env --env-file stacks/paperless/.env \
+       --env-file stacks/paperless/.env \
        up -d
    ```
 6. Reindex (el Whoosh estaba excluido del backup):

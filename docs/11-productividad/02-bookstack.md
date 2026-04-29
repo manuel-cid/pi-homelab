@@ -418,6 +418,8 @@ docker run --rm lscr.io/linuxserver/bookstack:24.05.4 \
 
 # 2) Materializar secrets/db/bookstack-db.env
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 mkdir -p secrets/db && chmod 0700 secrets/db
 cat > secrets/db/bookstack-db.env <<'EOF'
 MARIADB_ROOT_PASSWORD=PEGA_AQUI_ROOT_PASSWORD
@@ -443,13 +445,13 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # 6) Validar el compose
 docker compose \
     -f stacks/bookstack/docker-compose.yml \
-    --env-file .env --env-file stacks/bookstack/.env \
+    --env-file stacks/bookstack/.env \
     config >/dev/null && echo "compose OK"
 
 # 7) Levantar el stack (BBDD primero por depends_on)
 docker compose \
     -f stacks/bookstack/docker-compose.yml \
-    --env-file .env --env-file stacks/bookstack/.env \
+    --env-file stacks/bookstack/.env \
     up -d
 
 # 8) Recargar Caddy
@@ -564,7 +566,7 @@ sed -i 's/^OIDC_CLIENT_SECRET=.*/OIDC_CLIENT_SECRET=PEGA_EL_PASSWORD_RANDOM_DEL_
     stacks/bookstack/.env
 
 docker compose -f stacks/bookstack/docker-compose.yml \
-    --env-file .env --env-file stacks/bookstack/.env \
+    --env-file stacks/bookstack/.env \
     up -d --force-recreate bookstack
 ```
 
@@ -799,7 +801,7 @@ Procedimiento de restore tras pérdida total (reflasheo + restauración Borg):
    ```bash
    cd /home/homelab/homelab
    docker compose -f stacks/bookstack/docker-compose.yml \
-       --env-file .env --env-file stacks/bookstack/.env \
+       --env-file stacks/bookstack/.env \
        up -d bookstack-db
    ```
 5. Restaurar el dump SQL al sidecar:
@@ -817,7 +819,7 @@ Procedimiento de restore tras pérdida total (reflasheo + restauración Borg):
 6. Levantar Bookstack:
    ```bash
    docker compose -f stacks/bookstack/docker-compose.yml \
-       --env-file .env --env-file stacks/bookstack/.env \
+       --env-file stacks/bookstack/.env \
        up -d
    ```
 7. Verificar `https://bookstack.lan/status` (200 con `database: true`), login OIDC.

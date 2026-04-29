@@ -250,6 +250,10 @@ PUID=1000
 PGID=1000
 PGID_MEDIA=1100
 
+# IP LAN fija de la Pi (reserva DHCP o IP estática en 01-sistema/)
+# La usan los stacks con patrón C (bind a IP LAN): Portainer, Pi-hole, Samba…
+LAN_IP=192.168.1.10
+
 # Dominio interno del homelab (LAN + Tailscale, no público)
 DOMAIN_LAN=home.lan
 DOMAIN_TAILSCALE=  # se rellena en Fase 3 (Tailscale magicDNS)
@@ -380,8 +384,9 @@ networks:
 ### Validación previa al commit
 
 ```bash
-cd /home/homelab/homelab/stacks/_template
-docker compose --env-file ../../.env config >/dev/null
+cd /home/homelab/homelab
+set -a; source .env; set +a
+docker compose -f stacks/_template/docker-compose.yml config >/dev/null
 echo $?    # 0 = sintaxis y referencias OK
 ```
 
@@ -405,16 +410,19 @@ echo $?    # 0 = sintaxis y referencias OK
 
 ## Ciclo de vida operativo
 
+> **Quirk de Compose v2 y `--env-file`**: al usar `-f stacks/<svc>/docker-compose.yml`, el *project directory* pasa a ser `stacks/<svc>/` y Compose busca el `.env` **ahí**. El flag `--env-file .env` sí inyecta las variables para la interpolación, pero Compose v2 puede emitir warnings `WARN The "VAR" variable is not set` **antes** de aplicar el fichero (bug conocido: [docker/compose#8515](https://github.com/docker/compose/issues/8515)). La solución fiable es cargar el `.env` global en el entorno del shell con `set -a; source .env; set +a` antes de invocar Compose. Los comandos de abajo ya incluyen este patrón.
+
 Comandos que el operador ejecuta a diario sobre un stack `<svc>`:
 
 ```bash
 cd /home/homelab/homelab
+set -a; source .env; set +a
 
 # Validar antes de aplicar
-docker compose -f stacks/<svc>/docker-compose.yml --env-file .env config >/dev/null
+docker compose -f stacks/<svc>/docker-compose.yml config >/dev/null
 
 # Levantar
-docker compose -f stacks/<svc>/docker-compose.yml --env-file .env up -d
+docker compose -f stacks/<svc>/docker-compose.yml up -d
 
 # Estado
 docker compose -f stacks/<svc>/docker-compose.yml ps
@@ -431,15 +439,15 @@ docker compose -f stacks/<svc>/docker-compose.yml down
 docker compose -f stacks/<svc>/docker-compose.yml down --rmi all
 ```
 
-Para no escribir `-f stacks/<svc>/docker-compose.yml --env-file .env` cada vez, se añade un alias mínimo en `~/.bashrc` del usuario `homelab`:
+Para no escribir `-f stacks/<svc>/docker-compose.yml` ni el `source` cada vez, se añade un alias mínimo en `~/.bashrc` del usuario `homelab`:
 
 ```bash
 hl() {
     local svc="$1"; shift
+    set -a; source /home/homelab/homelab/.env; set +a
     docker compose \
         --project-directory /home/homelab/homelab \
         -f "/home/homelab/homelab/stacks/${svc}/docker-compose.yml" \
-        --env-file /home/homelab/homelab/.env \
         "$@"
 }
 # Uso:
@@ -524,7 +532,7 @@ Antes de pasar a `03-portainer.md`:
 | `.env.example` versionable | `git status` | `.env.example` aparece como tracked, `.env` ignorado |
 | Red Docker creada | `docker network inspect homelab --format '{{.IPAM.Config}}'` | `[{172.30.10.0/24 ...}]` |
 | Bridge nombrado | `ip -br link show br-homelab` | `br-homelab UNKNOWN ...` |
-| Plantilla valida | `docker compose -f stacks/_template/docker-compose.yml --env-file .env config >/dev/null` | exit 0 |
+| Plantilla valida | `set -a; source .env; set +a && docker compose -f stacks/_template/docker-compose.yml config >/dev/null` | exit 0 |
 | Sin colisiones de pool | `docker network ls --format '{{.Name}} {{.Driver}}'` | `homelab` presente, no hay otra red en `172.30.10.0/24` |
 | Idempotencia del script | `bash scripts/10-create-docker-network.sh` (segunda vez) | `Red 'homelab' ya existe. OK.` |
 | `.gitignore` aplica | `git check-ignore -v .env` | reporta la regla activa |

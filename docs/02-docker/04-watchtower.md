@@ -309,22 +309,24 @@ cd /home/homelab/homelab/stacks/watchtower
 cp -n .env.example .env
 chmod 0600 .env
 
-# Validar el compose con interpolación de variables
+# Cargar variables globales en el shell (ver quirk Compose v2 en 02-estructura-compose.md)
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
+# Validar el compose con interpolación de variables
 docker compose \
     -f stacks/watchtower/docker-compose.yml \
-    --env-file .env \
     --env-file stacks/watchtower/.env \
     config >/dev/null && echo "compose OK"
 
 # Levantar
 docker compose \
     -f stacks/watchtower/docker-compose.yml \
-    --env-file .env \
+    --env-file stacks/watchtower/.env \
     up -d
 ```
 
-> **Doble `--env-file`**: el `.env` global del repo aporta `TZ`, el `.env` del stack aporta `WATCHTOWER_NOTIFICATION_*`. Compose los acepta en cadena, el último gana en caso de colisión.
+> **`--env-file` del stack**: el `.env` global del repo (cargado con `source`) aporta `TZ`; el `--env-file stacks/watchtower/.env` aporta `WATCHTOWER_NOTIFICATION_*`. Si hay colisión, la variable del entorno del shell gana sobre la del `--env-file`.
 
 Tras `up -d`:
 

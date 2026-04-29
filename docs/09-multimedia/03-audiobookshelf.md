@@ -364,6 +364,10 @@ audiobookshelf.{$DOMAIN_TS} {
 ### Crear directorios y desplegar
 
 ```bash
+# Cargar variables globales en el shell (ver quirk Compose v2 en 02-estructura-compose.md)
+cd /home/homelab/homelab
+set -a; source .env; set +a
+
 # 1) Verificar prerequisitos de estructura (Fase 1).
 getent group media | grep -q '^media:x:1100:' || {
     echo "ERROR: grupo media (GID 1100) no existe. Aplicar 01-sistema/04-estructura-directorios.md."
@@ -399,7 +403,7 @@ chmod 0600 stacks/audiobookshelf/.env
 # 6) Levantar el stack.
 docker compose \
     -f stacks/audiobookshelf/docker-compose.yml \
-    --env-file .env --env-file stacks/audiobookshelf/.env \
+    --env-file stacks/audiobookshelf/.env \
     up -d
 
 # 7) Recargar Caddy y Authelia para tomar drop-ins.

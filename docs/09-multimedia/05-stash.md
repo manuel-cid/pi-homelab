@@ -479,6 +479,10 @@ stash.{$DOMAIN_TS} {
 ### Crear directorios y desplegar
 
 ```bash
+# Cargar variables globales en el shell (ver quirk Compose v2 en 02-estructura-compose.md)
+cd /home/homelab/homelab
+set -a; source .env; set +a
+
 # 1) Verificar prerequisitos de discos (Fase 0/1).
 findmnt /mnt/hd5t >/dev/null || {
     echo "ERROR: /mnt/hd5t no está montado. Aplicar 00-hardware/03-preparacion-discos.md."
@@ -517,7 +521,7 @@ chmod 0600 stacks/stash/.env
 # 6) Levantar el stack.
 docker compose \
     -f stacks/stash/docker-compose.yml \
-    --env-file .env --env-file stacks/stash/.env \
+    --env-file stacks/stash/.env \
     up -d
 
 # 7) Recargar Caddy y Authelia para tomar drop-ins.

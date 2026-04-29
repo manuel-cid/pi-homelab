@@ -455,6 +455,8 @@ docker run --rm -it vaultwarden/server:1.32.5 /vaultwarden hash
 
 # 2) Editar stacks/vaultwarden/.env y pegar el hash escapando `$` como `$$`:
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 cp stacks/vaultwarden/.env.example stacks/vaultwarden/.env
 chmod 0600 stacks/vaultwarden/.env
 # El hash original es `$argon2id$v=19$m=65540,t=3,p=4$<...>` y debe quedar
@@ -484,13 +486,13 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # 7) Validar el compose con interpolación
 docker compose \
     -f stacks/vaultwarden/docker-compose.yml \
-    --env-file .env --env-file stacks/vaultwarden/.env \
+    --env-file stacks/vaultwarden/.env \
     config >/dev/null && echo "compose OK"
 
 # 8) Levantar Vaultwarden
 docker compose \
     -f stacks/vaultwarden/docker-compose.yml \
-    --env-file .env --env-file stacks/vaultwarden/.env \
+    --env-file stacks/vaultwarden/.env \
     up -d
 
 # 9) Recargar Caddy para que aplique el drop-in
@@ -554,7 +556,7 @@ sed -i 's/^SIGNUPS_ALLOWED=.*/SIGNUPS_ALLOWED=false/' stacks/vaultwarden/.env
 
 docker compose \
     -f stacks/vaultwarden/docker-compose.yml \
-    --env-file .env --env-file stacks/vaultwarden/.env \
+    --env-file stacks/vaultwarden/.env \
     up -d --force-recreate
 ```
 

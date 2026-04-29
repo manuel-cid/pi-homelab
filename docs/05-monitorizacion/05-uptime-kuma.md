@@ -375,6 +375,8 @@ ls -l /mnt/hd2t/apps/caddy/etc/pki/root.crt
 
 # Drop-in de Caddy
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 install -o homelab -g homelab -m 0644 \
     stacks/caddy/conf.d/05-uptime-kuma.caddy \
     /mnt/hd2t/apps/caddy/etc/conf.d/05-uptime-kuma.caddy
@@ -394,7 +396,7 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # Levantar Uptime Kuma
 docker compose \
     -f stacks/uptime-kuma/docker-compose.yml \
-    --env-file .env --env-file stacks/uptime-kuma/.env \
+    --env-file stacks/uptime-kuma/.env \
     up -d
 
 # Recargar Caddy para que tome el nuevo drop-in

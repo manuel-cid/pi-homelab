@@ -310,13 +310,15 @@ sudo install -d -o 65534 -g 65534 -m 0750 /mnt/hd2t/apps/node-exporter/textfile
 
 # .env del stack (vacío en esta fase)
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 cp stacks/node-exporter/.env.example stacks/node-exporter/.env
 chmod 0600 stacks/node-exporter/.env
 
 # Levantar Node Exporter
 docker compose \
     -f stacks/node-exporter/docker-compose.yml \
-    --env-file .env --env-file stacks/node-exporter/.env \
+    --env-file stacks/node-exporter/.env \
     up -d
 ```
 

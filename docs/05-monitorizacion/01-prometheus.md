@@ -339,6 +339,8 @@ sudo install -d -o 65534 -g 65534 -m 0750 /mnt/hd2t/apps/prometheus/data
 
 # Materializar configuración desde la versión en git
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 install -o homelab -g homelab -m 0644 \
     stacks/prometheus/prometheus.yml \
     /mnt/hd2t/apps/prometheus/config/prometheus.yml
@@ -370,7 +372,7 @@ docker logs authelia --tail 20 | grep -i 'reloaded'
 # Levantar Prometheus
 docker compose \
     -f stacks/prometheus/docker-compose.yml \
-    --env-file .env --env-file stacks/prometheus/.env \
+    --env-file stacks/prometheus/.env \
     up -d
 
 # Recargar Caddy para que tome el nuevo drop-in

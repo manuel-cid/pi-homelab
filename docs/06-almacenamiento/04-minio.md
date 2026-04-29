@@ -398,6 +398,8 @@ install -o homelab -g homelab -m 0644 \
 
 # 3) .env del stack.
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 cp stacks/minio/.env.example stacks/minio/.env
 chmod 0600 stacks/minio/.env
 $EDITOR stacks/minio/.env   # rellenar MINIO_ROOT_PASSWORD con `openssl rand -base64 32`
@@ -414,7 +416,7 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # 6) Levantar el stack.
 docker compose \
     -f stacks/minio/docker-compose.yml \
-    --env-file .env --env-file stacks/minio/.env \
+    --env-file stacks/minio/.env \
     up -d
 
 # 7) Recargar Caddy para tomar el nuevo drop-in.

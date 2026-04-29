@@ -479,6 +479,7 @@ curl -fsSL -X POST -d "body=${MSG}" "${URL}" \
 
 ```bash
 cd /home/homelab/homelab
+set -a; source .env; set +a
 
 # 1. Estructura
 mkdir -p stacks/borgmatic/config/hooks
@@ -498,18 +499,18 @@ cp stacks/borgmatic/.env.example stacks/borgmatic/.env
 $EDITOR stacks/borgmatic/.env
 
 # 4. Validar compose
-docker compose -f stacks/borgmatic/docker-compose.yml --env-file .env config >/dev/null
+docker compose -f stacks/borgmatic/docker-compose.yml config >/dev/null
 
 # 5. Inicializar el repo Borg (UNA sola vez en la vida del homelab)
-docker compose -f stacks/borgmatic/docker-compose.yml --env-file .env run --rm borgmatic \
+docker compose -f stacks/borgmatic/docker-compose.yml run --rm borgmatic \
   borg init --encryption=repokey-blake2 /mnt/borg-repo
 
 # 6. Smoke test: un run completo SIN entrar en cron, en primer plano
-docker compose -f stacks/borgmatic/docker-compose.yml --env-file .env run --rm borgmatic \
+docker compose -f stacks/borgmatic/docker-compose.yml run --rm borgmatic \
   borgmatic --verbosity 2 create prune check
 
 # 7. Levantar el stack en daemon (cron interno tomará a las 03:45)
-docker compose -f stacks/borgmatic/docker-compose.yml --env-file .env up -d
+docker compose -f stacks/borgmatic/docker-compose.yml up -d
 
 # 8. Verificar
 docker ps --filter name=borgmatic --format '{{.Status}}'

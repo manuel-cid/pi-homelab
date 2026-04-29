@@ -422,6 +422,8 @@ openssl rand -base64 30
 
 # 2) Materializar stacks/mealie/.env
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 cp stacks/mealie/.env.example stacks/mealie/.env
 chmod 0600 stacks/mealie/.env
 # Editar y pegar MEALIE_BOOTSTRAP_PASSWORD generado en (1).
@@ -438,13 +440,13 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # 5) Validar el compose
 docker compose \
     -f stacks/mealie/docker-compose.yml \
-    --env-file .env --env-file stacks/mealie/.env \
+    --env-file stacks/mealie/.env \
     config >/dev/null && echo "compose OK"
 
 # 6) Levantar el stack
 docker compose \
     -f stacks/mealie/docker-compose.yml \
-    --env-file .env --env-file stacks/mealie/.env \
+    --env-file stacks/mealie/.env \
     up -d
 
 # 7) Recargar Caddy
@@ -589,7 +591,7 @@ Tras validar que la familia entra sin fricción vía Authelia, redirigir `/login
 sed -i 's|^OIDC_AUTO_REDIRECT: .*|OIDC_AUTO_REDIRECT: "true"|' \
     stacks/mealie/docker-compose.yml
 docker compose -f stacks/mealie/docker-compose.yml \
-    --env-file .env --env-file stacks/mealie/.env \
+    --env-file stacks/mealie/.env \
     up -d --force-recreate
 ```
 
@@ -873,7 +875,7 @@ Procedimiento de restore tras pérdida total (reflasheo + restauración Borg):
    ```bash
    cd /home/homelab/homelab
    docker compose -f stacks/mealie/docker-compose.yml \
-       --env-file .env --env-file stacks/mealie/.env \
+       --env-file stacks/mealie/.env \
        up -d
    ```
 6. Verificar `https://mealie.lan/api/app/about` (200), login OIDC, count de recetas en `/api/app/about/statistics` coincide con el del archive.

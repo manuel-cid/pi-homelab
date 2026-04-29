@@ -417,6 +417,8 @@ docker run --rm sissbruecker/linkding:1.36.0 \
 
 # 2) Materializar stacks/linkding/.env
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 cp stacks/linkding/.env.example stacks/linkding/.env
 chmod 0600 stacks/linkding/.env
 # Editar: pegar LD_SECRET_KEY, dejar LD_ENABLE_OIDC=False,
@@ -434,13 +436,13 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # 5) Validar el compose
 docker compose \
     -f stacks/linkding/docker-compose.yml \
-    --env-file .env --env-file stacks/linkding/.env \
+    --env-file stacks/linkding/.env \
     config >/dev/null && echo "compose OK"
 
 # 6) Levantar el stack
 docker compose \
     -f stacks/linkding/docker-compose.yml \
-    --env-file .env --env-file stacks/linkding/.env \
+    --env-file stacks/linkding/.env \
     up -d
 
 # 7) Recargar Caddy
@@ -550,7 +552,7 @@ sed -i 's/^OIDC_RP_CLIENT_SECRET=.*/OIDC_RP_CLIENT_SECRET=PEGA_EL_PASSWORD_RANDO
     stacks/linkding/.env
 
 docker compose -f stacks/linkding/docker-compose.yml \
-    --env-file .env --env-file stacks/linkding/.env \
+    --env-file stacks/linkding/.env \
     up -d --force-recreate linkding
 ```
 
@@ -824,7 +826,7 @@ Procedimiento de restore tras pérdida total (reflasheo + restauración Borg):
    ```bash
    cd /home/homelab/homelab
    docker compose -f stacks/linkding/docker-compose.yml \
-       --env-file .env --env-file stacks/linkding/.env \
+       --env-file stacks/linkding/.env \
        up -d
    ```
 6. Verificar `https://linkding.lan/health` (200 con `OK`), login OIDC, count de bookmarks en la UI coincide con el del archive.

@@ -463,6 +463,8 @@ sudo setfacl -d -m u:homelab:rx /mnt/hd2t/apps/mosquitto
 
 # Materializar config y ACL desde el repo.
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 sudo install -o 1883 -g 1883 -m 0644 \
     stacks/mosquitto/mosquitto.conf \
     /mnt/hd2t/apps/mosquitto/config/mosquitto.conf
@@ -519,7 +521,7 @@ chmod 0600 stacks/mosquitto/.env
 # Levantar Mosquitto.
 docker compose \
     -f stacks/mosquitto/docker-compose.yml \
-    --env-file .env --env-file stacks/mosquitto/.env \
+    --env-file stacks/mosquitto/.env \
     up -d
 ```
 

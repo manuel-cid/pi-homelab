@@ -460,6 +460,8 @@ install -o homelab -g homelab -m 0644 \
 
 # .env del stack
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 cp stacks/nextcloud/.env.example stacks/nextcloud/.env
 chmod 0600 stacks/nextcloud/.env
 $EDITOR stacks/nextcloud/.env   # rellenar con `openssl rand -base64 32`
@@ -475,7 +477,7 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # Levantar el stack (primer arranque tarda ~90s: setup de Postgres + occ install)
 docker compose \
     -f stacks/nextcloud/docker-compose.yml \
-    --env-file .env --env-file stacks/nextcloud/.env \
+    --env-file stacks/nextcloud/.env \
     up -d
 
 # Recargar Caddy para que tome el nuevo drop-in

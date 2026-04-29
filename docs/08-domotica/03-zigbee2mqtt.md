@@ -559,6 +559,8 @@ sudo setfacl -d -m u:homelab:rx /mnt/hd2t/apps/zigbee2mqtt/data
 
 # Materializar configuración inicial (skel) y secret vacío.
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 sudo install -o root -g root -m 0640 \
     stacks/zigbee2mqtt/configuration.yaml.skel \
     /mnt/hd2t/apps/zigbee2mqtt/data/configuration.yaml
@@ -601,7 +603,7 @@ chmod 0600 stacks/zigbee2mqtt/.env
 # Levantar Zigbee2MQTT.
 docker compose \
     -f stacks/zigbee2mqtt/docker-compose.yml \
-    --env-file .env --env-file stacks/zigbee2mqtt/.env \
+    --env-file stacks/zigbee2mqtt/.env \
     up -d
 
 # Recargar Caddy para que tome el nuevo drop-in.

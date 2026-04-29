@@ -482,6 +482,8 @@ sudo install -d -o root -g root -m 0750 /mnt/hd2t/apps/samba/log
 
 # 6) Copiar smb.conf y .env.
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 mkdir -p stacks/samba/conf
 cp stacks/samba/.env.example stacks/samba/.env   # vacío por ahora
 chmod 0644 stacks/samba/conf/smb.conf
@@ -497,7 +499,7 @@ docker run --rm \
 # 8) Arrancar.
 docker compose \
     -f stacks/samba/docker-compose.yml \
-    --env-file .env --env-file stacks/samba/.env \
+    --env-file stacks/samba/.env \
     up -d
 
 # 9) Crear los usuarios Samba (uno por humano).

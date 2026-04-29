@@ -283,17 +283,20 @@ sudo install -d -o homelab -g homelab -m 0750 /mnt/hd2t/apps/pihole/dnsmasq.d
 docker network inspect dns_lan  >/dev/null
 docker network inspect homelab  >/dev/null
 
-# Validar el compose con interpolación
+# Cargar variables globales en el shell (ver quirk Compose v2 en 02-estructura-compose.md)
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
+# Validar el compose con interpolación
 docker compose \
     -f stacks/pihole/docker-compose.yml \
-    --env-file .env --env-file stacks/pihole/.env \
+    --env-file stacks/pihole/.env \
     config >/dev/null && echo "compose OK"
 
 # Levantar
 docker compose \
     -f stacks/pihole/docker-compose.yml \
-    --env-file .env --env-file stacks/pihole/.env \
+    --env-file stacks/pihole/.env \
     up -d
 ```
 

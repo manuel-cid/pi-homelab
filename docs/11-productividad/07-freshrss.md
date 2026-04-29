@@ -464,6 +464,8 @@ openssl rand -hex 32      # → OIDC_CRYPTO_PASSPHRASE
 
 # 2) Materializar stacks/freshrss/.env
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 cp stacks/freshrss/.env.example stacks/freshrss/.env
 chmod 0600 stacks/freshrss/.env
 # Editar y pegar los cuatro secretos. Dejar FRESHRSS_AUTH=form para bootstrap.
@@ -480,13 +482,13 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # 5) Validar el compose
 docker compose \
     -f stacks/freshrss/docker-compose.yml \
-    --env-file .env --env-file stacks/freshrss/.env \
+    --env-file stacks/freshrss/.env \
     config >/dev/null && echo "compose OK"
 
 # 6) Levantar el stack en bootstrap (FRESHRSS_AUTH=form)
 docker compose \
     -f stacks/freshrss/docker-compose.yml \
-    --env-file .env --env-file stacks/freshrss/.env \
+    --env-file stacks/freshrss/.env \
     up -d
 
 # 7) Recargar Caddy
@@ -654,7 +656,7 @@ Acceso *one-shot* con la cuenta admin local para promover al operador:
 # (a) Cambiar temporalmente a auth_type=form
 sed -i 's/^FRESHRSS_AUTH=http_auth/FRESHRSS_AUTH=form/' stacks/freshrss/.env
 docker compose -f stacks/freshrss/docker-compose.yml \
-    --env-file .env --env-file stacks/freshrss/.env \
+    --env-file stacks/freshrss/.env \
     up -d --force-recreate freshrss
 
 # (b) Login como admin-local en https://freshrss.lan/i/?c=auth&a=login
@@ -664,7 +666,7 @@ docker compose -f stacks/freshrss/docker-compose.yml \
 # (e) Volver a auth_type=http_auth
 sed -i 's/^FRESHRSS_AUTH=form/FRESHRSS_AUTH=http_auth/' stacks/freshrss/.env
 docker compose -f stacks/freshrss/docker-compose.yml \
-    --env-file .env --env-file stacks/freshrss/.env \
+    --env-file stacks/freshrss/.env \
     up -d --force-recreate freshrss
 ```
 
@@ -1007,7 +1009,7 @@ Procedimiento de restore tras pérdida total (reflasheo + restauración Borg):
    ```bash
    cd /home/homelab/homelab
    docker compose -f stacks/freshrss/docker-compose.yml \
-       --env-file .env --env-file stacks/freshrss/.env \
+       --env-file stacks/freshrss/.env \
        up -d
    ```
 6. Verificar `https://freshrss.lan/i/?c=auth` (200 o 302), login OIDC, count de feeds en la UI coincide con el del archive.

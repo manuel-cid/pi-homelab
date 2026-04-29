@@ -359,6 +359,8 @@ install -o homelab -g homelab -m 0644 \
 
 # 3) .env del stack.
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 cp stacks/syncthing/.env.example stacks/syncthing/.env
 chmod 0600 stacks/syncthing/.env
 $EDITOR stacks/syncthing/.env   # generar SYNCTHING_API_KEY con `openssl rand -hex 32`
@@ -373,7 +375,7 @@ docker exec caddy caddy validate --config /etc/caddy/Caddyfile
 # 6) Levantar el stack.
 docker compose \
     -f stacks/syncthing/docker-compose.yml \
-    --env-file .env --env-file stacks/syncthing/.env \
+    --env-file stacks/syncthing/.env \
     up -d
 
 # 7) Recargar Caddy para tomar el nuevo drop-in.

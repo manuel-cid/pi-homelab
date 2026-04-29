@@ -208,17 +208,18 @@ sudo install -d -o homelab -g homelab -m 0750 /mnt/hd2t/apps/portainer/data
 # Verificar la red
 docker network inspect homelab >/dev/null
 
-# Validar el compose con interpolación de variables
+# Cargar variables globales en el shell (ver quirk Compose v2 en 02-estructura-compose.md)
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
+# Validar el compose con interpolación de variables
 docker compose \
     -f stacks/portainer/docker-compose.yml \
-    --env-file .env \
     config >/dev/null && echo "compose OK"
 
 # Levantar
 docker compose \
     -f stacks/portainer/docker-compose.yml \
-    --env-file .env \
     up -d
 ```
 

@@ -561,6 +561,8 @@ sudo install -d -o 1000 -g 1000 -m 0750 /mnt/hd2t/apps/nodered/data
 
 # Materializar settings.js y package.json iniciales.
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 sudo install -o 1000 -g 1000 -m 0600 \
     stacks/nodered/settings.js.skel \
     /mnt/hd2t/apps/nodered/data/settings.js
@@ -598,7 +600,7 @@ chmod 0600 stacks/nodered/.env
 # ~60–80s en la Pi 5; ver logs en vivo para confirmar.
 docker compose \
     -f stacks/nodered/docker-compose.yml \
-    --env-file .env --env-file stacks/nodered/.env \
+    --env-file stacks/nodered/.env \
     up -d
 
 docker logs nodered -f

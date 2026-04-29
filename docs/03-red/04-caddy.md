@@ -450,6 +450,8 @@ sudo install -d -o homelab -g homelab -m 0750 /mnt/hd2t/apps/caddy/logs
 
 # Materializar Caddyfile y drop-ins desde la plantilla versionada
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 install -o homelab -g homelab -m 0644 \
     stacks/caddy/Caddyfile  /mnt/hd2t/apps/caddy/etc/Caddyfile
 install -o homelab -g homelab -m 0644 \
@@ -476,13 +478,13 @@ docker run --rm \
 # Validar el compose con interpolación
 docker compose \
     -f stacks/caddy/docker-compose.yml \
-    --env-file .env --env-file stacks/caddy/.env \
+    --env-file stacks/caddy/.env \
     config >/dev/null && echo "compose OK"
 
 # Levantar
 docker compose \
     -f stacks/caddy/docker-compose.yml \
-    --env-file .env --env-file stacks/caddy/.env \
+    --env-file stacks/caddy/.env \
     up -d
 ```
 

@@ -437,6 +437,8 @@ sudo setfacl -d -m u:homelab:rx /mnt/hd2t/apps/home-assistant/config
 
 # Materializar configuración inicial (esqueleto + secrets vacío)
 cd /home/homelab/homelab
+set -a; source .env; set +a
+
 sudo install -o root -g root -m 0640 \
     stacks/home-assistant/configuration.yaml.skel \
     /mnt/hd2t/apps/home-assistant/config/configuration.yaml
@@ -472,7 +474,7 @@ grep -q 'host.docker.internal:host-gateway' stacks/caddy/docker-compose.yml || {
 # Levantar Home Assistant
 docker compose \
     -f stacks/home-assistant/docker-compose.yml \
-    --env-file .env --env-file stacks/home-assistant/.env \
+    --env-file stacks/home-assistant/.env \
     up -d
 
 # Recargar Caddy para que tome el nuevo drop-in
