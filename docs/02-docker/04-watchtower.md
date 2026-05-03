@@ -1,5 +1,9 @@
 # Watchtower
 
+> **⚠️ Deprecación de containrrr/watchtower (diciembre 2025)**
+>
+> El repositorio original `containrrr/watchtower` fue archivado el 17 de diciembre de 2025 ([anuncio](https://github.com/containrrr/watchtower/discussions/2135)). Sus mantenedores dejaron de usar Docker y abandonaron el proyecto. Este homelab migra al fork **nicholas-fedor/watchtower** (`nickfedor/watchtower`), activamente mantenido, con soporte `arm64`, mismos labels y variables de entorno, y compatibilidad total con la configuración existente. La imagen cambia de `containrrr/watchtower:1.7.1` a `nickfedor/watchtower:1.16.1`. **No** se requiere cambiar ningún label en los demás stacks.
+
 ## Descripción
 
 Tras `03-portainer.md` el homelab tiene un panel para **observar y operar** Docker desde un navegador, pero nada se encarga de **mantener al día** las imágenes que esos contenedores usan. Sin una política explícita pasa una de dos cosas: o el operador hace `docker compose pull && up -d` a mano cada cierto tiempo (y entonces el homelab se ancla en versiones cada vez más viejas hasta que duele algo), o se acumulan vulnerabilidades sin parchear durante meses. Ninguna es aceptable para un homelab de larga vida.
@@ -30,7 +34,7 @@ Cuando este documento se haya aplicado, `docker ps` lista un contenedor `watchto
 - `02-docker/03-portainer.md` aplicado:
   - `portainer` corriendo `(healthy)` con su label `com.centurylinklabs.watchtower.enable: "true"` ya puesto.
   - Con esto Watchtower nace con **al menos un objetivo real** que vigilar: él mismo (auto-update) y Portainer.
-- Conectividad a internet desde la Pi para descargar `containrrr/watchtower` y, periódicamente, los digests de Docker Hub / GHCR.
+- Conectividad a internet desde la Pi para descargar `nickfedor/watchtower` (fork de `containrrr/watchtower`) y, periódicamente, los digests de Docker Hub / GHCR.
 - Comprobación rápida antes de empezar:
 
   ```bash
@@ -52,14 +56,18 @@ Cuando este documento se haya aplicado, `docker ps` lista un contenedor `watchto
 |---|---|---|---|---|
 | **Solo manual** (cron del operador) | El operador entra por SSH cada cierto tiempo y ejecuta `docker compose -f stacks/<x>/docker-compose.yml pull && up -d` por stack. | Cero superficie nueva, control total. | No escala con ~30 stacks. La cadencia real es "cuando me acuerde", que se traduce en meses de retraso. Vulnerabilidades parcheadas en upstream tardan semanas en bajar. | Descartado **como única opción**. Sigue siendo el camino para versiones mayores. |
 | **Cron + script per-stack** | Un script que recorre `stacks/*/docker-compose.yml` y ejecuta `pull && up -d` con `--no-recreate`/`--quiet-pull`. | Sin daemon nuevo. Compose ya está. | Hay que escribir y mantener el script (opt-in/opt-out, exclusiones, paralelismo, errores). Reinventar un Watchtower peor. | Descartado: no aporta sobre Watchtower y es código propio que mantener. |
-| **Watchtower** (`containrrr/watchtower`) | Daemon que poll-ea Docker Hub/GHCR, compara digests del tag actual y, si cambia, hace `pull` + `stop` + `rm` + `run` con la misma config. | Maduro, multi-arch (`arm64` oficial), ~15 MB RAM, opt-in/opt-out por label, schedule cron de 6 campos, modo `--monitor-only`, integración nativa con Apprise/SMTP/Slack/MS Teams/Gotify, soporta `--cleanup` para purgar imágenes viejas. | Reemplaza el contenedor (`stop`+`rm`+`run`) en lugar de hacer `compose up -d`: pierde la genealogía de Compose para ese contenedor, aunque lo recrea con la misma config. **Necesita el socket de Docker** (root del host). | **Aceptado**. |
+| **Watchtower** (`containrrr/watchtower` → archivado dic 2025; fork activo: `nicholas-fedor/watchtower`, imagen `nickfedor/watchtower`) | Daemon que poll-ea Docker Hub/GHCR, compara digests del tag actual y, si cambia, hace `pull` + `stop` + `rm` + `run` con la misma config. | Maduro, multi-arch (`arm64` oficial), ~15 MB RAM, opt-in/opt-out por label, schedule cron de 6 campos, modo `--monitor-only`, integración nativa con shoutrrr/SMTP/Slack/MS Teams/Gotify, soporta `--cleanup` para purgar imágenes viejas. El fork mantiene los mismos labels y env vars → **cero cambios en los demás stacks**. | Reemplaza el contenedor (`stop`+`rm`+`run`) en lugar de hacer `compose up -d`: pierde la genealogía de Compose para ese contenedor, aunque lo recrea con la misma config. **Necesita el socket de Docker** (root del host). El proyecto original está archivado; se depende de un fork comunitario. | **Aceptado** (fork `nicholas-fedor/watchtower`). |
 | **Diun** (Docker Image Update Notifier) | Daemon que solo **avisa** cuando hay nuevos digests; no actualiza. | Cero riesgo de update roto. | Convierte cada notificación en trabajo manual del operador. Para un homelab con servicios "estables" (Portainer, Caddy, Pi-hole) eso es ruido y deuda. | Descartado **como mecanismo principal**, reabrible como complemento si se quiere monitor-only sobre un subconjunto crítico. |
 | **Renovate** (Mend) sobre el repo de git | Renovate abre PRs cambiando los tags en los `docker-compose.yml`, el operador hace merge y `up -d`. | El repo sigue siendo fuente de verdad: la actualización **es un commit**. Trazabilidad perfecta. | Requiere infra de PRs (GitHub privado o Gitea local) y un runner. Sobredimensionado para un único operador. Las actualizaciones de **patch** sin cambio de tag (digest puro) **no las ve** Renovate. | Descartado para este homelab; reabrible si en algún momento se introduce CI sobre el repo. |
+| **WUD** (What's Up Docker, `getwud/wud`) | Daemon con UI web, notificaciones y auto-update con **threshold semver** (solo patches, solo minor, etc.). | Dashboard, granularidad semver (`WUD_TRIGGER_DOCKER_LOCAL_THRESHOLD=patch`), notificaciones a Telegram/Gotify/ntfy/Slack. | Paradigma distinto: no usa labels `com.centurylinklabs.watchtower.*` → hay que reescribir labels en ~50 stacks y adaptar toda la documentación. Mayor consumo de recursos que Watchtower. | Descartado por coste de migración. Reabrible si el fork de Watchtower deja de mantenerse. |
+| **Tugtainer** (`ghcr.io/quenary/tugtainer`) | App con UI web para gestionar updates de contenedores. Per-container config, auto/manual. | Dashboard orientado a Compose, notificaciones amplias. | Muy joven (oct 2025), los devs lo declaran **no production-ready**. Labels y config propios → misma barrera de migración que WUD. | Descartado por inmadurez. Vigilar evolución. |
+| **dockcheck** (script bash + `regctl`) | Script que compara digests sin pre-pull, invocado por cron del host. | Ligero, sin daemon, bajo rate-limit (HEAD requests). Permite selección interactiva o `-a` para todo. | No es un daemon: no integra notificaciones nativas, no tiene integración con labels de Compose, hay que mantener un cron externo. | Descartado: reinventa parcialmente Watchtower con menos integración. |
+| **nicholas-fedor/watchtower** (fork comunitario, imagen `nickfedor/watchtower`) | Fork directo de `containrrr/watchtower` que continúa el desarrollo. 43 releases, última v1.16.1 (abr 2026). 3.5k estrellas. | **Drop-in replacement**: mismos labels, mismas env vars, mismos flags. Soporte `arm64v8`. Compatible con Docker API v1.43+. Desarrollo activo con bugfixes y mejoras. | Se depende de un mantenedor comunitario individual. Si abandona, hay que reevaluar. | **Aceptado como sucesor de containrrr/watchtower**. |
 | **Podman auto-update** | Equivalente nativo de Podman para `systemd` units. | Nativo y sin daemon extra. | El homelab no usa Podman; el coste de migrar es altísimo y rompería 10 documentos previos. | Descartado por mismatch de stack. |
 
-Resultado: **Watchtower**, imagen oficial `containrrr/watchtower`, desplegado como stack `stacks/watchtower/` siguiendo la plantilla y operando en modo **opt-in** por label.
+Resultado: **Watchtower** (fork `nicholas-fedor/watchtower`), imagen `nickfedor/watchtower`, desplegado como stack `stacks/watchtower/` siguiendo la plantilla y operando en modo **opt-in** por label. El proyecto original `containrrr/watchtower` fue archivado en diciembre de 2025; el fork es un drop-in replacement que mantiene total compatibilidad con labels y variables de entorno.
 
-> **Imagen exacta**: se usa `containrrr/watchtower:1.7.1` (tag inmovilizado en `mayor.menor.parche`, no `latest`). El propio Watchtower se incluye en su lista de objetivos (auto-update), de modo que cuando salga un patch dentro del tag `1.7` lo recogerá; saltar a `1.8.x` exige editar este compose y commitearlo.
+> **Imagen exacta**: se usa `nickfedor/watchtower:1.16.1` (tag inmovilizado en `mayor.menor.parche`, no `latest`). El propio Watchtower se incluye en su lista de objetivos (auto-update), de modo que cuando salga un patch lo recogerá; saltar a una versión mayor exige editar este compose y commitearlo.
 
 ---
 
@@ -123,7 +131,7 @@ Watchtower puede **arrancar** contenedores que están `Exited` si su imagen tien
 
 ### Modo solo-monitor (`--monitor-only`) por contenedor
 
-Watchtower 1.7+ permite marcar un contenedor con `com.centurylinklabs.watchtower.monitor-only=true`: detecta updates **y notifica**, pero **no** los aplica. Útil para servicios que entran en cobertura pero el operador prefiere "saber, no actualizar". No se activa de forma global; se ofrece como herramienta opcional por servicio:
+Watchtower permite marcar un contenedor con `com.centurylinklabs.watchtower.monitor-only=true`: detecta updates **y notifica**, pero **no** los aplica. Útil para servicios que entran en cobertura pero el operador prefiere "saber, no actualizar". No se activa de forma global; se ofrece como herramienta opcional por servicio:
 
 ```yaml
 labels:
@@ -186,7 +194,7 @@ name: watchtower
 
 services:
   watchtower:
-    image: containrrr/watchtower:1.7.1
+    image: nickfedor/watchtower:1.16.1
     container_name: watchtower
     hostname: watchtower
     restart: unless-stopped
@@ -333,10 +341,10 @@ Tras `up -d`:
 ```bash
 docker ps --filter name=watchtower
 # CONTAINER ID   IMAGE                          ...   STATUS                   PORTS    NAMES
-# ...            containrrr/watchtower:1.7.1          Up 30 seconds (healthy)            watchtower
+# ...            nickfedor/watchtower:1.16.1           Up 30 seconds (healthy)            watchtower
 
 docker compose -f stacks/watchtower/docker-compose.yml logs --tail 30
-# time="..." level=info msg="Watchtower 1.7.1"
+# time="..." level=info msg="Watchtower 1.16.1"
 # time="..." level=info msg="Using no notifications"
 # time="..." level=info msg="Only checking containers with enabled label"
 # time="..." level=info msg="Scheduling first run: ... 04:00:00 +0200"
@@ -347,7 +355,7 @@ Las tres líneas en negrita son las **señales de salud** del despliegue. Si fal
 
 | Señal | Significado | Si falta |
 |---|---|---|
-| `Watchtower <version>` | El binario arrancó. | Imagen rota, comprobar tag. |
+| `Watchtower <version>` | El binario arrancó. | Imagen rota, comprobar tag (`nickfedor/watchtower:1.16.1`). |
 | `Only checking containers with enabled label` | `--label-enable` activo. | Falta `WATCHTOWER_LABEL_ENABLE=true`. Sin esto, **todos los contenedores** entran en cobertura, incluido Postgres. |
 | `Scheduling first run: ...` | El cron se interpretó. | `WATCHTOWER_SCHEDULE` mal formado (recordar: 6 campos, no 5). |
 
@@ -368,7 +376,7 @@ A esta altura del homelab debería listar al menos:
 ```
 NAMES         IMAGE                                  STATUS
 portainer     portainer/portainer-ce:2.21.4-alpine   Up X minutes (healthy)
-watchtower    containrrr/watchtower:1.7.1            Up X minutes (healthy)
+watchtower    nickfedor/watchtower:1.16.1             Up X minutes (healthy)
 ```
 
 Y nada más. Conforme se desplieguen los stacks de fases siguientes, esta lista crece.
@@ -483,7 +491,7 @@ Procedimiento de restore:
 | Watchtower entra en bucle (actualiza, falla healthcheck, recrea, …) | El healthcheck del servicio es demasiado estricto y el contenedor recién recreado no llega a `(healthy)` antes del siguiente intento. | Subir `start_period` del servicio. Watchtower **no** reintenta agresivamente; el bucle suele venir de otro factor. Ver logs combinados. |
 | `Notification template parse error` al primer arranque | El template multi-línea del compose se parseó mal por un copy-paste con tabs. | Reescribir el bloque `WATCHTOWER_NOTIFICATION_TEMPLATE` con espacios. Watchtower acepta el template embebido en YAML literal `|`. |
 | El cron parece **una hora desfasado** (actualiza a las 03:00 en lugar de 04:00) | TZ del contenedor distinta de la del host (típicamente porque `TZ` no se propagó). | `docker exec watchtower date` debe mostrar la hora local correcta. Si no: comprobar `${TZ}` en el `.env` global y recrear. |
-| Tras `up -d` el contenedor se queda `unhealthy` | El healthcheck `--help` falla porque la imagen `1.7.x` cambió flags. | Cambiar el `test` a `["CMD", "ls", "/watchtower"]`. La intención (proceso vivo) se mantiene. |
+| Tras `up -d` el contenedor se queda `unhealthy` | El healthcheck `--help` falla porque la imagen cambió flags entre versiones. | Cambiar el `test` a `["CMD", "ls", "/watchtower"]`. La intención (proceso vivo) se mantiene. |
 | Watchtower se actualizó a sí mismo y desapareció | El proceso de auto-update **se mata** durante el `stop+rm+run`; en algunas builds el contenedor sucesor no llega a quedar `Up`. | `docker compose -f stacks/watchtower/docker-compose.yml up -d --force-recreate`. Documentado en upstream como caso de borde, raro pero posible. |
 
 ---
@@ -507,7 +515,7 @@ Antes de pasar a la Fase 3:
 | Comprobación | Comando | Resultado esperado |
 |---|---|---|
 | Stack desplegado | `docker compose -f stacks/watchtower/docker-compose.yml ps` | `watchtower  ...  Up (healthy)` |
-| Imagen correcta y fija | `docker inspect watchtower --format '{{.Config.Image}}'` | `containrrr/watchtower:1.7.1` |
+| Imagen correcta y fija | `docker inspect watchtower --format '{{.Config.Image}}'` | `nickfedor/watchtower:1.16.1` |
 | Bind del socket presente y único volumen | `docker inspect watchtower --format '{{range .Mounts}}{{.Source}}->{{.Destination}}{{"\n"}}{{end}}'` | una sola línea: `/var/run/docker.sock->/var/run/docker.sock` |
 | Sin puertos publicados | `docker port watchtower` | (vacío) |
 | Conectado a la red `homelab` | `docker network inspect homelab --format '{{range .Containers}}{{.Name}} {{end}}'` | incluye `watchtower` y `portainer` |
@@ -531,11 +539,13 @@ Cumplido el último punto, la Fase 2 está cerrada: el motor de contenedores est
 - [Documento anterior: `docs/02-docker/03-portainer.md`](./03-portainer.md)
 - [Documento siguiente: `docs/03-red-dns/01-pihole.md`](../03-red-dns/01-pihole.md)
 - [Documento relacionado: `docs/02-docker/02-estructura-compose.md`](./02-estructura-compose.md)
-- [Watchtower — Documentación oficial](https://containrrr.dev/watchtower/)
-- [Watchtower — Argumentos y variables de entorno](https://containrrr.dev/watchtower/arguments/)
-- [Watchtower — Notificaciones (Apprise/shoutrrr)](https://containrrr.dev/watchtower/notifications/)
-- [Watchtower — Selección por label (`--label-enable`)](https://containrrr.dev/watchtower/container-selection/)
-- [Watchtower — Imagen oficial en Docker Hub](https://hub.docker.com/r/containrrr/watchtower)
+- [Watchtower (fork) — Repositorio GitHub](https://github.com/nicholas-fedor/watchtower)
+- [Watchtower (fork) — Documentación oficial](https://watchtower.nickfedor.com/)
+- [Watchtower (fork) — Imagen en Docker Hub](https://hub.docker.com/r/nickfedor/watchtower)
+- [Watchtower (original, archivado) — Anuncio de deprecación](https://github.com/containrrr/watchtower/discussions/2135)
+- [Watchtower (original, archivado) — Documentación legacy](https://containrrr.dev/watchtower/)
 - [shoutrrr — URLs de servicio (ntfy, Gotify, Telegram, …)](https://containrrr.dev/shoutrrr/services/overview/)
 - [Diun — Alternativa solo-notificación](https://crazymax.dev/diun/)
+- [WUD — What's Up Docker (alternativa evaluada)](https://github.com/getwud/wud)
+- [Tugtainer — Alternativa con UI (evaluada)](https://github.com/Quenary/tugtainer)
 - [Docker — Política de tags y digests inmutables](https://docs.docker.com/engine/reference/commandline/pull/#pull-an-image-by-digest-immutable-identifier)
