@@ -161,7 +161,17 @@ LAN / Tailscale (VPN mesh)
   - Precio orientativo de la carcasa cerrada: **~35–65 €**
 - **SSD NVMe M.2 2230/2242/2280**:
   - **Kingston NV2 500 GB** (NVMe PCIe Gen4, M.2 2280) — ~35–40 € — punto dulce para SO + Docker + datos de servicios con margen amplio — **verificado en la lista oficial de compatibilidad de Argon ONE V3**
-  - Alternativa compatible: **Samsung 980 500 GB** (~40 €) — también en la lista oficial de compatibilidad de Argon
+  - Alternativas compatibles verificadas (ordenadas por recomendación):
+    - **Samsung 980 500 GB** (Gen3, M.2 2280) — ~40 € — el más testeado por la comunidad, muy fiable — verificado por Argon, Pineberry Pi y SunFounder
+    - **Kingston NV3 500 GB** (Gen4, M.2 2280) — ~35 € — sucesor del NV2, confirmado funcionando en Argon ONE V3 (foro Argon40)
+    - **KIOXIA EXCERIA G2 500 GB** (Gen3, M.2 2280) — ~30–35 € — excelente relación calidad-precio, verificado por SunFounder y Pineberry Pi
+    - **Samsung 970 EVO Plus 500 GB** (Gen3, M.2 2280) — ~45 € — controlador Samsung Phoenix, muy estable
+    - **Samsung 980 PRO 500 GB** (Gen4, M.2 2280) — ~50 € — gama alta con DRAM cache + TLC, mayor durabilidad para escrituras intensivas
+    - **Lexar NM710 500 GB** (Gen4, M.2 2280) — ~35 € — verificado compatible por Pineberry Pi y SunFounder
+    - **ADATA Legend 700 512 GB** (Gen3, M.2 2280) — ~30–35 € — verificado por SunFounder
+    - **TeamGroup MP33 512 GB** (Gen3, M.2 2280) — ~30 € — opción económica, verificado compatible
+    - **PNY CS1030 500 GB** (Gen3, M.2 2280) — ~30 € — opción económica, verificado compatible
+    - **Sabrent Rocket 4.0 500 GB** (Gen4, M.2 2280) — ~45 € — verificado por Pineberry Pi
   - Nota: la Raspberry Pi 5 soporta PCIe Gen2 x1 (velocidad máx. ~450 MB/s), pero cualquier SSD NVMe Gen3/Gen4 es compatible hacia atrás
   - **Ventaja sobre microSD**: velocidad de lectura/escritura ×10, mayor durabilidad, sin problemas de corrupción por escrituras intensivas
 - **Almacenamiento**:
