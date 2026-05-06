@@ -1,6 +1,6 @@
 # Servicios de un Homelab — Raspberry Pi 5
 
-Catálogo de servicios recomendados para un homelab doméstico corriendo sobre **Raspberry Pi 5** (8 GB RAM, ARM64) montada en una **carcasa con soporte NVMe** y un **SSD NVMe de 500 GB como almacenamiento principal** (SO, Docker, datos de servicios), junto con **dos discos duros externos conectados por USB**: **hd2t** (2 TB — contenidos multimedia y backups) y **hd5t** (5 TB — multimedia de Stash). Todos los servicios se despliegan como contenedores Docker gestionados con **Docker Compose**.
+Catálogo de servicios recomendados para un homelab doméstico corriendo sobre **Raspberry Pi 5** (8 GB RAM, ARM64) montada en una **carcasa con soporte NVMe** y un **SSD NVMe de 500 GB como almacenamiento principal** (SO, Docker, datos de servicios), junto con **dos discos duros externos conectados por USB**: **hd2t** (2 TB — contenidos multimedia y backups) y **hd5t** (5 TB — multimedia de Stash). El acceso es exclusivamente **LAN + Tailscale (VPN mesh)** — sin exposición a internet ni puertos abiertos en el router. Todos los servicios se despliegan como contenedores Docker gestionados con **Docker Compose**.
 
 ---
 
@@ -32,9 +32,7 @@ Catálogo de servicios recomendados para un homelab doméstico corriendo sobre *
 | **Prometheus** | Recolección y almacenamiento de métricas de series temporales |
 | **Grafana** | Dashboards y visualización de métricas (CPU, RAM, disco, red, temperatura) |
 | **Node Exporter** | Exportador de métricas del sistema operativo hacia Prometheus |
-| **cAdvisor** | Métricas de rendimiento de contenedores Docker |
 | **Uptime Kuma** | Monitor de disponibilidad de servicios con notificaciones (Telegram, email, etc.) |
-| **Dozzle** | Visor de logs de contenedores en tiempo real vía web |
 
 ---
 
@@ -42,10 +40,8 @@ Catálogo de servicios recomendados para un homelab doméstico corriendo sobre *
 
 | Servicio | Descripción |
 |---|---|
-| **Nextcloud** | Nube privada: sincronización de archivos, calendario, contactos y colaboración |
 | **Samba** | Compartición de archivos en red local (protocolo SMB/CIFS) |
 | **Syncthing** | Sincronización peer-to-peer de carpetas entre dispositivos |
-| **MinIO** | Almacenamiento de objetos compatible con S3 |
 
 ---
 
@@ -96,7 +92,6 @@ Catálogo de servicios recomendados para un homelab doméstico corriendo sobre *
 | Servicio | Descripción |
 |---|---|
 | **Vaultwarden** | Gestor de contraseñas compatible con Bitwarden (servidor ligero en Rust) |
-| **Bookstack** | Wiki interna / base de conocimiento con organización por libros y capítulos |
 | **Linkding** | Gestor de marcadores web ligero |
 | **Paperless-ngx** | Gestión documental: escaneo, OCR, etiquetado y búsqueda de documentos |
 | **Mealie** | Gestor de recetas de cocina con planificación de comidas y lista de compras |
@@ -139,7 +134,6 @@ LAN / Tailscale (VPN mesh)
           ├─► Prometheus + Grafana (monitorización)
           │
           ├─► Caddy ──► Authelia (SSO/2FA)
-          │     ├─► Nextcloud
           │     ├─► Vaultwarden
           │     ├─► Jellyfin
           │     └─► ... (otros servicios)
@@ -217,9 +211,6 @@ SSD NVMe (/home/<user>/homelab/)          ← Configs, composes, envs, datos de 
 │   └── .env
 ├── pihole/
 │   └── docker-compose.yml
-├── nextcloud/
-│   ├── docker-compose.yml
-│   └── .env
 ├── jellyfin/
 │   └── docker-compose.yml
 ├── data/                                ← Datos persistentes de servicios
@@ -227,7 +218,6 @@ SSD NVMe (/home/<user>/homelab/)          ← Configs, composes, envs, datos de 
 │   ├── vaultwarden/
 │   ├── paperless/
 │   ├── pihole/
-│   ├── nextcloud/
 │   └── ...
 └── ...
 
