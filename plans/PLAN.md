@@ -203,87 +203,87 @@ Enlaces a documentación oficial e imágenes Docker.
 ## Lista de Tareas
 
 ### Fase 0 — Hardware y Preparación Física
-- [ ] `docs/00-hardware/01-material-necesario.md`
-- [ ] `docs/00-hardware/02-esquema-conexiones.md`
-- [ ] `docs/00-hardware/03-preparacion-discos.md`
-- [ ] `docs/00-hardware/04-discos-con-datos.md`
-- [ ] `docs/00-hardware/05-arranque-nvme.md`
+- [x] `docs/00-hardware/01-material-necesario.md`
+- [x] `docs/00-hardware/02-esquema-conexiones.md`
+- [x] `docs/00-hardware/03-preparacion-discos.md`
+- [x] `docs/00-hardware/04-discos-con-datos.md`
+- [x] `docs/00-hardware/05-arranque-nvme.md`
 
 ### Fase 1 — Sistema Operativo Base
-- [ ] `docs/01-sistema/01-instalacion-os.md`
-- [ ] `docs/01-sistema/02-configuracion-inicial.md`
-- [ ] `docs/01-sistema/03-seguridad-base.md`
-- [ ] `docs/01-sistema/04-estructura-directorios.md`
+- [x] `docs/01-sistema/01-instalacion-os.md`
+- [x] `docs/01-sistema/02-configuracion-inicial.md`
+- [x] `docs/01-sistema/03-seguridad-base.md`
+- [x] `docs/01-sistema/04-estructura-directorios.md`
 
 ### Fase 2 — Docker y Orquestación
-- [ ] `docs/02-docker/01-instalacion-docker.md`
-- [ ] `docs/02-docker/02-estructura-compose.md`
-- [ ] `docs/02-docker/03-portainer.md`
-- [ ] `docs/02-docker/04-watchtower.md`
+- [x] `docs/02-docker/01-instalacion-docker.md`
+- [x] `docs/02-docker/02-estructura-compose.md`
+- [x] `docs/02-docker/03-portainer.md`
+- [x] `docs/02-docker/04-watchtower.md`
 
 ### Fase 3 — Red y DNS
-- [ ] `docs/03-red/01-macvlan.md`
-- [ ] `docs/03-red/02-pihole.md`
-- [ ] `docs/03-red/03-unbound.md`
-- [ ] `docs/03-red/04-caddy.md`
-- [ ] `docs/03-red/05-tailscale.md`
+- [x] `docs/03-red/01-macvlan.md`
+- [x] `docs/03-red/02-pihole.md`
+- [x] `docs/03-red/03-unbound.md`
+- [x] `docs/03-red/04-caddy.md`
+- [x] `docs/03-red/05-tailscale.md`
 
 ### Fase 4 — Seguridad
-- [ ] `docs/04-seguridad/01-authelia.md`
-- [ ] `docs/04-seguridad/02-fail2ban.md`
+- [x] `docs/04-seguridad/01-authelia.md`
+- [x] `docs/04-seguridad/02-fail2ban.md`
 
 ### Fase 5 — Monitorización y Observabilidad
-- [ ] `docs/05-monitorizacion/01-prometheus.md`
-- [ ] `docs/05-monitorizacion/02-grafana.md`
-- [ ] `docs/05-monitorizacion/03-node-exporter.md`
-- [ ] `docs/05-monitorizacion/04-cadvisor.md`
-- [ ] `docs/05-monitorizacion/05-uptime-kuma.md`
-- [ ] `docs/05-monitorizacion/06-dozzle.md`
+- [x] `docs/05-monitorizacion/01-prometheus.md`
+- [x] `docs/05-monitorizacion/02-grafana.md`
+- [x] `docs/05-monitorizacion/03-node-exporter.md`
+- [x] `docs/05-monitorizacion/04-cadvisor.md`
+- [x] `docs/05-monitorizacion/05-uptime-kuma.md`
+- [x] `docs/05-monitorizacion/06-dozzle.md`
 
 ### Fase 6 — Almacenamiento y Archivos
-- [ ] `docs/06-almacenamiento/01-nextcloud.md`
-- [ ] `docs/06-almacenamiento/02-samba.md`
-- [ ] `docs/06-almacenamiento/03-syncthing.md`
-- [ ] `docs/06-almacenamiento/04-minio.md`
+- [x] `docs/06-almacenamiento/01-nextcloud.md`
+- [x] `docs/06-almacenamiento/02-samba.md`
+- [x] `docs/06-almacenamiento/03-syncthing.md`
+- [x] `docs/06-almacenamiento/04-minio.md`
 
 ### Fase 7 — Copias de Seguridad
-- [ ] `docs/07-backups/01-estrategia-backup.md`
-- [ ] `docs/07-backups/02-borgmatic.md`
-- [ ] `docs/07-backups/03-backup-docker-volumes.md`
+- [x] `docs/07-backups/01-estrategia-backup.md`
+- [x] `docs/07-backups/02-borgmatic.md`
+- [x] `docs/07-backups/03-backup-docker-volumes.md`
 
 ### Fase 8 — Domótica e IoT
-- [ ] `docs/08-domotica/01-home-assistant.md`
-- [ ] `docs/08-domotica/02-mosquitto.md`
-- [ ] `docs/08-domotica/03-zigbee2mqtt.md`
-- [ ] `docs/08-domotica/04-node-red.md`
+- [x] `docs/08-domotica/01-home-assistant.md`
+- [x] `docs/08-domotica/02-mosquitto.md`
+- [x] `docs/08-domotica/03-zigbee2mqtt.md`
+- [x] `docs/08-domotica/04-node-red.md`
 
 ### Fase 9 — Multimedia y Entretenimiento
-- [ ] `docs/09-multimedia/01-jellyfin.md`
-- [ ] `docs/09-multimedia/02-navidrome.md`
-- [ ] `docs/09-multimedia/03-audiobookshelf.md`
-- [ ] `docs/09-multimedia/04-calibre-web.md`
-- [ ] `docs/09-multimedia/05-stash.md`
+- [x] `docs/09-multimedia/01-jellyfin.md`
+- [x] `docs/09-multimedia/02-navidrome.md`
+- [x] `docs/09-multimedia/03-audiobookshelf.md`
+- [x] `docs/09-multimedia/04-calibre-web.md`
+- [x] `docs/09-multimedia/05-stash.md`
 
 ### Fase 10 — Gestión de Descargas
-- [ ] `docs/10-descargas/01-transmission.md`
-- [ ] `docs/10-descargas/02-prowlarr.md`
-- [ ] `docs/10-descargas/03-sonarr.md`
-- [ ] `docs/10-descargas/04-radarr.md`
+- [x] `docs/10-descargas/01-transmission.md`
+- [x] `docs/10-descargas/02-prowlarr.md`
+- [x] `docs/10-descargas/03-sonarr.md`
+- [x] `docs/10-descargas/04-radarr.md`
 
 ### Fase 11 — Productividad y Herramientas Personales
-- [ ] `docs/11-productividad/01-vaultwarden.md`
-- [ ] `docs/11-productividad/02-bookstack.md`
-- [ ] `docs/11-productividad/03-linkding.md`
-- [ ] `docs/11-productividad/04-paperless-ngx.md`
-- [ ] `docs/11-productividad/05-mealie.md`
-- [ ] `docs/11-productividad/06-stirling-pdf.md`
-- [ ] `docs/11-productividad/07-freshrss.md`
+- [x] `docs/11-productividad/01-vaultwarden.md`
+- [x] `docs/11-productividad/02-bookstack.md`
+- [x] `docs/11-productividad/03-linkding.md`
+- [x] `docs/11-productividad/04-paperless-ngx.md`
+- [x] `docs/11-productividad/05-mealie.md`
+- [x] `docs/11-productividad/06-stirling-pdf.md`
+- [x] `docs/11-productividad/07-freshrss.md`
 
 ### Fase 12 — Dashboards
-- [ ] `docs/12-dashboards/01-homepage.md`
+- [x] `docs/12-dashboards/01-homepage.md`
 
 ### Fase 13 — Operaciones y Mantenimiento
-- [ ] `docs/13-operaciones/01-mantenimiento-periodico.md`
-- [ ] `docs/13-operaciones/02-disaster-recovery.md`
-- [ ] `docs/13-operaciones/03-rendimiento-pi5.md`
-- [ ] `docs/13-operaciones/04-red-y-puertos.md`
+- [x] `docs/13-operaciones/01-mantenimiento-periodico.md`
+- [x] `docs/13-operaciones/02-disaster-recovery.md`
+- [x] `docs/13-operaciones/03-rendimiento-pi5.md`
+- [x] `docs/13-operaciones/04-red-y-puertos.md`

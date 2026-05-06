@@ -7,7 +7,7 @@
 # la descripción de la tarea y las convenciones de documentación).
 #
 # Backends soportados:
-#   - codex  (defecto)  — OpenAI Codex CLI (codex --approval-mode full-auto -q)
+#   - codex  (defecto)  — OpenAI Codex CLI (codex exec --dangerously-bypass-approvals-and-sandbox)
 #   - devin  (--devin)  — Devin CLI (devin --permission-mode dangerous -p)
 #
 # v2.0 mejoras sobre v1.0:
@@ -15,9 +15,10 @@
 #     en lugar de pedir a Devin que lea el plan completo (~285 líneas).
 #     Esto evita que Devin lea todos los docs ya creados para "entender el
 #     contexto", reduciendo el tamaño de contexto de ~700KB a ~5KB por tarea.
-#   - Timeout configurable por tarea (--timeout, defecto 20 min) con reintentos
-#     automáticos (--retries, defecto 3). Detecta bloqueos por TLS disconnect
-#     o API sin respuesta.
+#   - Timeout configurable por tarea (--timeout, defecto 20 min). Detecta bloqueos
+#     por TLS disconnect o API sin respuesta.
+#   - Máximo de iteraciones configurable (--max-iter, defecto 200) para evitar
+#     bucles infinitos.
 #   - Todos los logs llevan timestamp (fecha y hora).
 #   - Log estructurado a fichero (ralph-loop.log junto al plan).
 #   - Métricas por tarea: duración, intentos, estado.
@@ -30,14 +31,14 @@
 # Uso:
 #   ./ralph-loop.sh <plan.md>                          # ejecuta el bucle
 #   ./ralph-loop.sh <plan.md> --status                 # muestra progreso
-#   ./ralph-loop.sh <plan.md> --timeout 25 --retries 5 # personalizar
+#   ./ralph-loop.sh <plan.md> --timeout 25 --max-iter 100 # personalizar
 #
 set -euo pipefail
 
 # ── Configuración por defecto ────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TASK_TIMEOUT_MIN=20      # minutos máximos por intento de tarea
-MAX_RETRIES=3            # reintentos por tarea antes de saltar
+MAX_ITERATIONS=200       # máximo de iteraciones del bucle
 LOG_FILE="/dev/null"     # se sobreescribe tras parsear argumentos
 BACKEND="codex"          # backend por defecto (codex | devin)
 
@@ -67,6 +68,39 @@ log_file() {
   echo "$(ts) [${level}] ${clean}" >> "$LOG_FILE" 2>/dev/null || true
 }
 
+# Extraer y registrar métricas de tokens/contexto de la salida del agente
+log_token_usage() {
+  local task="$1"
+  local output_file="${AGENT_OUTPUT_FILE:-}"
+  [[ -f "$output_file" && -s "$output_file" ]] || return 0
+
+  # Limpiar ANSI de la salida para parsear
+  local clean_output
+  clean_output=$(sed 's/\x1b\[[0-9;]*m//g' "$output_file")
+
+  # Buscar líneas que contengan info de tokens (patrones comunes de Codex/Devin)
+  # Codex suele reportar: "Tokens: input=N output=N total=N" o similar
+  local token_lines
+  token_lines=$(echo "$clean_output" | grep -iE 'token|context.*(used|usage|limit|window)' | tail -5)
+
+  if [[ -n "$token_lines" ]]; then
+    log_file "TOKENS" "Uso de tokens para: ${task}"
+    while IFS= read -r _tline; do
+      log_file "TOKENS" "  $_tline"
+    done <<< "$token_lines"
+  else
+    # Estimar tokens a partir del tamaño de la salida (~4 chars por token)
+    local file_size total_chars est_tokens pct_context
+    file_size=$(wc -c < "$output_file" | tr -d ' ')
+    total_chars=$file_size
+    est_tokens=$(( total_chars / 4 ))
+    # Codex context window: 200k tokens (codex); Devin: ~200k
+    local ctx_window=200000
+    pct_context=$(awk "BEGIN {printf \"%.1f\", ($est_tokens / $ctx_window) * 100}")
+    log_file "TOKENS" "Uso de tokens para: ${task} | estimado: ~${est_tokens} tokens (~${pct_context}% del contexto de ${ctx_window} tokens)"
+  fi
+}
+
 usage() {
   cat <<EOF
 Uso: $(basename "$0") <plan.md> [opciones]
@@ -74,18 +108,18 @@ Uso: $(basename "$0") <plan.md> [opciones]
   <plan.md>    Documento markdown con tareas en formato checkbox (- [ ] tarea)
 
 Opciones:
-  --timeout N  Minutos máximos por intento de tarea (defecto: ${TASK_TIMEOUT_MIN})
-  --retries N  Reintentos por tarea antes de saltarla (defecto: ${MAX_RETRIES})
-  --devin      Usar Devin CLI en lugar de Codex (defecto: codex)
-  --status     Muestra resumen de progreso y sale
-  -h, --help   Muestra esta ayuda
+  --timeout N   Minutos máximos por intento de tarea (defecto: ${TASK_TIMEOUT_MIN})
+  --max-iter N  Máximo de iteraciones del bucle (defecto: ${MAX_ITERATIONS})
+  --devin       Usar Devin CLI en lugar de Codex (defecto: codex)
+  --status      Muestra resumen de progreso y sale
+  -h, --help    Muestra esta ayuda
 
 Requisitos:
   Codex CLI (defecto) o Devin CLI (con --devin)
 
 Ejemplo:
   ./$(basename "$0") plans/PLAN.md
-  ./$(basename "$0") plans/PLAN.md --timeout 25 --retries 5
+  ./$(basename "$0") plans/PLAN.md --timeout 25 --max-iter 100
   ./$(basename "$0") plans/PLAN.md --status
 EOF
   exit 0
@@ -131,7 +165,7 @@ show_status() {
 
   echo ""
   echo -e "${BOLD}══════════════════════════════════════${RESET}"
-  echo -e "${BOLD}       Ralph Loop v2.0 — Progreso${RESET}"
+  echo -e "${BOLD}       Ralph Loop v2.1 — Progreso${RESET}"
   echo -e "${BOLD}══════════════════════════════════════${RESET}"
   echo ""
   echo -e "  ${GREEN}Completadas${RESET}: ${done_count}/${total}  (${pct}%)"
@@ -142,11 +176,46 @@ show_status() {
 }
 
 get_next_pending_task() {
-  grep -m1 -E '^\s*- \[ \]' "$PLAN_FILE" | sed 's/^\s*- \[ \] //'
+  # Devuelve la primera tarea pendiente que no esté en la lista de saltadas
+  while IFS= read -r line; do
+    local task_text
+    task_text=$(echo "$line" | sed 's/^\s*- \[ \] //')
+    local is_skipped=false
+    if (( ${#skipped_lines[@]} > 0 )); then
+      for s in "${skipped_lines[@]}"; do
+        if [[ "$s" == "$task_text" ]]; then
+          is_skipped=true
+          break
+        fi
+      done
+    fi
+    if [[ "$is_skipped" == "false" ]]; then
+      echo "$task_text"
+      return
+    fi
+  done < <(grep -E '^\s*- \[ \]' "$PLAN_FILE")
 }
 
 get_next_pending_line() {
-  grep -n -m1 -E '^\s*- \[ \]' "$PLAN_FILE" | cut -d: -f1
+  # Devuelve el número de línea de la primera tarea pendiente no saltada
+  while IFS= read -r match; do
+    local lnum task_text
+    lnum=$(echo "$match" | cut -d: -f1)
+    task_text=$(echo "$match" | sed 's/^[0-9]*:\s*- \[ \] //')
+    local is_skipped=false
+    if (( ${#skipped_lines[@]} > 0 )); then
+      for s in "${skipped_lines[@]}"; do
+        if [[ "$s" == "$task_text" ]]; then
+          is_skipped=true
+          break
+        fi
+      done
+    fi
+    if [[ "$is_skipped" == "false" ]]; then
+      echo "$lnum"
+      return
+    fi
+  done < <(grep -n -E '^\s*- \[ \]' "$PLAN_FILE")
 }
 
 mark_done() {
@@ -195,8 +264,8 @@ extract_phase_section() {
   phase_start=$(grep -n "^## Fase ${phase_num} " "$PLAN_FILE" | head -1 | cut -d: -f1)
 
   if [[ -z "$phase_start" ]]; then
-    echo "(No se encontró la sección de la Fase ${phase_num})"
-    return
+    echo "(No se encontró la sección de la Fase ${phase_num:-?})"
+    return 0
   fi
 
   # 3. Desde phase_start, hasta el siguiente "---"
@@ -287,11 +356,14 @@ run_agent_with_timeout() {
   local timeout_secs=$(( TASK_TIMEOUT_MIN * 60 ))
   local agent_pid exit_code=0
 
-  # Lanzar el agente en background según el backend elegido
+  # Fichero temporal para capturar la salida del agente
+  AGENT_OUTPUT_FILE=$(mktemp /tmp/ralph-agent-XXXXXX.log)
+
+  # Lanzar el agente en background según el backend elegido, capturando stdout+stderr
   if [[ "$BACKEND" == "devin" ]]; then
-    devin --permission-mode dangerous -p "$prompt" &
+    devin --permission-mode dangerous -p "$prompt" > >(tee "$AGENT_OUTPUT_FILE") 2>&1 &
   else
-    codex --approval-mode full-auto -q "$prompt" &
+    codex exec --dangerously-bypass-approvals-and-sandbox "$prompt" > >(tee "$AGENT_OUTPUT_FILE") 2>&1 &
   fi
   agent_pid=$!
 
@@ -324,7 +396,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --status)    ACTION="status"; shift ;;
     --timeout)   TASK_TIMEOUT_MIN="$2"; shift 2 ;;
-    --retries)   MAX_RETRIES="$2"; shift 2 ;;
+    --max-iter)  MAX_ITERATIONS="$2"; shift 2 ;;
     --devin)     BACKEND="devin"; shift ;;
     -h|--help)   usage ;;
     -*)          die "Opción desconocida: $1" ;;
@@ -366,25 +438,26 @@ if (( pending == 0 )); then
   exit 0
 fi
 
-# ── Ralph Loop v2.0 ─────────────────────────────────────────────────────────
+# ── Ralph Loop v2.1 ─────────────────────────────────────────────────────────
 
-info "Inicio del bucle Ralph v2.0"
+info "Inicio del bucle Ralph v2.1"
 info "Plan: ${PLAN_FILE}"
-info "Log:  ${LOG_FILE}"
-info "Backend: ${BACKEND} | Timeout por tarea: ${TASK_TIMEOUT_MIN} min | Reintentos: ${MAX_RETRIES}"
+echo -e "$(ts) ${CYAN}[ralph]${RESET} Log:  ${LOG_FILE}"
+info "Backend: ${BACKEND} | Timeout por tarea: ${TASK_TIMEOUT_MIN} min | Max iteraciones: ${MAX_ITERATIONS}"
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════════╗${RESET}"
-echo -e "${BOLD}║     Ralph Loop v2.1 + ${BACKEND^^} CLI             ║${RESET}"
+echo -e "${BOLD}║     Ralph Loop v2.1 + $(echo "${BACKEND}" | tr '[:lower:]' '[:upper:]') CLI             ║${RESET}"
 echo -e "${BOLD}╠══════════════════════════════════════════════╣${RESET}"
 echo -e "${BOLD}║  ${RESET}${pending}/${total} tareas pendientes${BOLD}                      ║${RESET}"
-echo -e "${BOLD}║  ${RESET}Timeout: ${TASK_TIMEOUT_MIN} min | Retries: ${MAX_RETRIES}${BOLD}              ║${RESET}"
+echo -e "${BOLD}║  ${RESET}Timeout: ${TASK_TIMEOUT_MIN} min | Max iter: ${MAX_ITERATIONS}${BOLD}            ║${RESET}"
 echo -e "${BOLD}╚══════════════════════════════════════════════╝${RESET}"
 echo ""
 
 iteration=0
 skipped=0
 failed_tasks=()
+skipped_lines=()
 
 while true; do
   task=$(get_next_pending_task)
@@ -400,59 +473,65 @@ while true; do
   echo -e "$(ts)   ${BOLD}${task}${RESET}"
   echo -e "$(ts) ${BOLD}──────────────────────────────────────────────${RESET}"
   echo ""
+  log_file "START" "Tarea iniciada: ${task} (iteración ${iteration}, ${remaining} pendientes)"
 
   prompt=$(build_prompt "$task" "$line_num")
   task_start=$(date +%s)
-  attempt=0
-  task_done=false
 
-  while (( attempt < MAX_RETRIES )); do
-    (( attempt++ )) || true
+  info "Ejecutando ${BACKEND} CLI..."
+  echo ""
 
-    if (( attempt > 1 )); then
-      warn "Reintento ${attempt}/${MAX_RETRIES} para: ${task}"
-      sleep 5  # pausa breve entre reintentos
-    fi
-
-    info "Ejecutando ${BACKEND} CLI (intento ${attempt}/${MAX_RETRIES})..."
+  if run_agent_with_timeout "$prompt"; then
     echo ""
+    task_end=$(date +%s)
+    duration=$(( task_end - task_start ))
+    duration_fmt=$(printf '%02d:%02d' $((duration/60)) $((duration%60)))
 
-    if run_agent_with_timeout "$prompt"; then
-      echo ""
-      task_end=$(date +%s)
-      duration=$(( task_end - task_start ))
-      duration_fmt=$(printf '%02d:%02d' $((duration/60)) $((duration%60)))
-
-      # Verificar si el agente marcó la tarea; si no, la marcamos nosotros
-      if grep -qE '^\s*- \[ \]' "$PLAN_FILE" && \
-         [[ "$(sed -n "${line_num}p" "$PLAN_FILE")" == *"- [ ]"* ]]; then
-        mark_done "$line_num"
-        ok "Tarea marcada como completada por ralph-loop [${duration_fmt}] (intento ${attempt})"
-      else
-        ok "Tarea completada (marcada por ${BACKEND}) [${duration_fmt}] (intento ${attempt})"
-      fi
-      task_done=true
-      break
+    # Verificar si el agente marcó la tarea; si no, la marcamos nosotros
+    if grep -qE '^\s*- \[ \]' "$PLAN_FILE" && \
+       [[ "$(sed -n "${line_num}p" "$PLAN_FILE")" == *"- [ ]"* ]]; then
+      mark_done "$line_num"
+      ok "Tarea marcada como completada por ralph-loop [${duration_fmt}]"
     else
-      ec=$?
-      task_end=$(date +%s)
-      duration=$(( task_end - task_start ))
-
-      if [[ "$ec" == "124" ]]; then
-        warn "Timeout tras ${TASK_TIMEOUT_MIN} min (intento ${attempt}/${MAX_RETRIES})"
-      else
-        warn "${BACKEND} salió con error (exit code: ${ec}, intento ${attempt}/${MAX_RETRIES})"
-      fi
+      ok "Tarea completada (marcada por ${BACKEND}) [${duration_fmt}]"
     fi
-  done
+    log_file "DONE" "Tarea completada: ${task} [${duration_fmt}]"
+    # Registrar uso de tokens/contexto
+    log_token_usage "$task"
+  else
+    ec=$?
+    task_end=$(date +%s)
+    duration=$(( task_end - task_start ))
 
-  if [[ "$task_done" == "false" ]]; then
+    if [[ "$ec" == "124" ]]; then
+      warn "Timeout tras ${TASK_TIMEOUT_MIN} min: ${task}"
+    else
+      warn "${BACKEND} salió con error (exit code: ${ec}): ${task}"
+    fi
+    # Registrar las últimas líneas de salida del agente como motivo del fallo
+    if [[ -f "${AGENT_OUTPUT_FILE:-}" && -s "${AGENT_OUTPUT_FILE:-}" ]]; then
+      fail_tail=$(tail -20 "$AGENT_OUTPUT_FILE" | sed 's/\x1b\[[0-9;]*m//g')
+      log_file "FAIL_OUTPUT" "Últimas líneas de salida del agente para: ${task}"
+      while IFS= read -r _line; do
+        log_file "FAIL_OUTPUT" "  $_line"
+      done <<< "$fail_tail"
+    else
+      log_file "FAIL_OUTPUT" "(sin salida capturada del agente para: ${task})"
+    fi
+    # Saltar la tarea fallida (NO se marca, se deja como - [ ])
     (( skipped++ )) || true
     failed_tasks+=("$task")
-    warn "SALTADA tras ${MAX_RETRIES} intentos: ${task}"
-    # Marcar como hecha para no bloquear el bucle, pero registrar el fallo
-    mark_done "$line_num"
-    warn "Marcada como [x] para continuar. Revisar manualmente."
+    skipped_lines+=("$task")
+    warn "SALTADA: ${task} (se deja pendiente para revisión manual)"
+  fi
+
+  # Limpiar fichero temporal de salida del agente
+  [[ -f "${AGENT_OUTPUT_FILE:-}" ]] && rm -f "$AGENT_OUTPUT_FILE"
+
+  # Control de máximo de iteraciones
+  if (( iteration >= MAX_ITERATIONS )); then
+    warn "Alcanzado el máximo de iteraciones (${MAX_ITERATIONS}). Deteniendo bucle."
+    break
   fi
 
   echo ""
@@ -471,5 +550,5 @@ else
   ok "¡Todas las tareas han sido procesadas correctamente!"
 fi
 show_status
-info "Log completo en: ${LOG_FILE}"
+echo -e "$(ts) ${CYAN}[ralph]${RESET} Log completo en: ${LOG_FILE}"
 exit 0
