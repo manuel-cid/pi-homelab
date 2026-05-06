@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 #
-# ralph-loop.sh v2.0 — "Ralph Loop" con Devin CLI
+# ralph-loop.sh v2.1 — "Ralph Loop" con soporte multi-backend
 #
 # Recorre las tareas pendientes (- [ ]) de un documento markdown y para cada
-# una ejecuta `devin -p` con el contexto mínimo necesario (solo la fase,
+# una ejecuta un agente CLI con el contexto mínimo necesario (solo la fase,
 # la descripción de la tarea y las convenciones de documentación).
+#
+# Backends soportados:
+#   - codex  (defecto)  — OpenAI Codex CLI (codex --approval-mode full-auto -q)
+#   - devin  (--devin)  — Devin CLI (devin --permission-mode dangerous -p)
 #
 # v2.0 mejoras sobre v1.0:
 #   - Contexto mínimo por tarea: extrae solo la sección relevante del plan
@@ -20,7 +24,8 @@
 #   - Exit codes: 0 = bucle completado correctamente, 2 = error fatal.
 #
 # Requisitos:
-#   - Devin CLI instalado (https://cli.devin.ai/install.sh)
+#   - Codex CLI instalado (npm install -g @openai/codex) — o —
+#   - Devin CLI instalado (https://cli.devin.ai/install.sh) si se usa --devin
 #
 # Uso:
 #   ./ralph-loop.sh <plan.md>                          # ejecuta el bucle
@@ -34,6 +39,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TASK_TIMEOUT_MIN=20      # minutos máximos por intento de tarea
 MAX_RETRIES=3            # reintentos por tarea antes de saltar
 LOG_FILE="/dev/null"     # se sobreescribe tras parsear argumentos
+BACKEND="codex"          # backend por defecto (codex | devin)
 
 # ── Colores ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -70,11 +76,12 @@ Uso: $(basename "$0") <plan.md> [opciones]
 Opciones:
   --timeout N  Minutos máximos por intento de tarea (defecto: ${TASK_TIMEOUT_MIN})
   --retries N  Reintentos por tarea antes de saltarla (defecto: ${MAX_RETRIES})
+  --devin      Usar Devin CLI en lugar de Codex (defecto: codex)
   --status     Muestra resumen de progreso y sale
   -h, --help   Muestra esta ayuda
 
 Requisitos:
-  Devin CLI instalado y autenticado (devin --version)
+  Codex CLI (defecto) o Devin CLI (con --devin)
 
 Ejemplo:
   ./$(basename "$0") plans/PLAN.md
@@ -275,32 +282,36 @@ PROMPT
 
 # ── Ejecución con timeout ───────────────────────────────────────────────────
 
-run_devin_with_timeout() {
+run_agent_with_timeout() {
   local prompt="$1"
   local timeout_secs=$(( TASK_TIMEOUT_MIN * 60 ))
-  local devin_pid exit_code=0
+  local agent_pid exit_code=0
 
-  # Lanzar devin en background
-  devin --permission-mode dangerous -p "$prompt" &
-  devin_pid=$!
+  # Lanzar el agente en background según el backend elegido
+  if [[ "$BACKEND" == "devin" ]]; then
+    devin --permission-mode dangerous -p "$prompt" &
+  else
+    codex --approval-mode full-auto -q "$prompt" &
+  fi
+  agent_pid=$!
 
   # Esperar con timeout
   local elapsed=0
-  while kill -0 "$devin_pid" 2>/dev/null; do
+  while kill -0 "$agent_pid" 2>/dev/null; do
     if (( elapsed >= timeout_secs )); then
-      warn "Timeout alcanzado (${TASK_TIMEOUT_MIN} min). Matando proceso Devin (PID ${devin_pid})..."
-      kill "$devin_pid" 2>/dev/null || true
+      warn "Timeout alcanzado (${TASK_TIMEOUT_MIN} min). Matando proceso ${BACKEND} (PID ${agent_pid})..."
+      kill "$agent_pid" 2>/dev/null || true
       sleep 2
-      kill -9 "$devin_pid" 2>/dev/null || true
-      wait "$devin_pid" 2>/dev/null || true
+      kill -9 "$agent_pid" 2>/dev/null || true
+      wait "$agent_pid" 2>/dev/null || true
       return 124  # código estándar de timeout
     fi
     sleep 5
     (( elapsed += 5 )) || true
   done
 
-  # Recoger el exit code real de devin
-  wait "$devin_pid" 2>/dev/null && exit_code=0 || exit_code=$?
+  # Recoger el exit code real del agente
+  wait "$agent_pid" 2>/dev/null && exit_code=0 || exit_code=$?
   return "$exit_code"
 }
 
@@ -314,6 +325,7 @@ while [[ $# -gt 0 ]]; do
     --status)    ACTION="status"; shift ;;
     --timeout)   TASK_TIMEOUT_MIN="$2"; shift 2 ;;
     --retries)   MAX_RETRIES="$2"; shift 2 ;;
+    --devin)     BACKEND="devin"; shift ;;
     -h|--help)   usage ;;
     -*)          die "Opción desconocida: $1" ;;
     *)
@@ -337,7 +349,11 @@ if [[ "$ACTION" == "status" ]]; then
   exit 0
 fi
 
-command -v devin >/dev/null || die "Devin CLI no encontrado. Instálalo: curl -fsSL https://cli.devin.ai/install.sh | bash"
+if [[ "$BACKEND" == "devin" ]]; then
+  command -v devin >/dev/null || die "Devin CLI no encontrado. Instálalo: curl -fsSL https://cli.devin.ai/install.sh | bash"
+else
+  command -v codex >/dev/null || die "Codex CLI no encontrado. Instálalo: npm install -g @openai/codex"
+fi
 
 total=$(count_tasks "$PLAN_FILE")
 (( total > 0 )) || die "No se encontraron tareas (- [ ] / - [x]) en ${PLAN_FILE}"
@@ -355,11 +371,11 @@ fi
 info "Inicio del bucle Ralph v2.0"
 info "Plan: ${PLAN_FILE}"
 info "Log:  ${LOG_FILE}"
-info "Timeout por tarea: ${TASK_TIMEOUT_MIN} min | Reintentos: ${MAX_RETRIES}"
+info "Backend: ${BACKEND} | Timeout por tarea: ${TASK_TIMEOUT_MIN} min | Reintentos: ${MAX_RETRIES}"
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════════╗${RESET}"
-echo -e "${BOLD}║        Ralph Loop v2.0 + Devin CLI           ║${RESET}"
+echo -e "${BOLD}║     Ralph Loop v2.1 + ${BACKEND^^} CLI             ║${RESET}"
 echo -e "${BOLD}╠══════════════════════════════════════════════╣${RESET}"
 echo -e "${BOLD}║  ${RESET}${pending}/${total} tareas pendientes${BOLD}                      ║${RESET}"
 echo -e "${BOLD}║  ${RESET}Timeout: ${TASK_TIMEOUT_MIN} min | Retries: ${MAX_RETRIES}${BOLD}              ║${RESET}"
@@ -398,22 +414,22 @@ while true; do
       sleep 5  # pausa breve entre reintentos
     fi
 
-    info "Ejecutando Devin CLI (intento ${attempt}/${MAX_RETRIES})..."
+    info "Ejecutando ${BACKEND} CLI (intento ${attempt}/${MAX_RETRIES})..."
     echo ""
 
-    if run_devin_with_timeout "$prompt"; then
+    if run_agent_with_timeout "$prompt"; then
       echo ""
       task_end=$(date +%s)
       duration=$(( task_end - task_start ))
       duration_fmt=$(printf '%02d:%02d' $((duration/60)) $((duration%60)))
 
-      # Verificar si Devin marcó la tarea; si no, la marcamos nosotros
+      # Verificar si el agente marcó la tarea; si no, la marcamos nosotros
       if grep -qE '^\s*- \[ \]' "$PLAN_FILE" && \
          [[ "$(sed -n "${line_num}p" "$PLAN_FILE")" == *"- [ ]"* ]]; then
         mark_done "$line_num"
         ok "Tarea marcada como completada por ralph-loop [${duration_fmt}] (intento ${attempt})"
       else
-        ok "Tarea completada (marcada por Devin) [${duration_fmt}] (intento ${attempt})"
+        ok "Tarea completada (marcada por ${BACKEND}) [${duration_fmt}] (intento ${attempt})"
       fi
       task_done=true
       break
@@ -425,7 +441,7 @@ while true; do
       if [[ "$ec" == "124" ]]; then
         warn "Timeout tras ${TASK_TIMEOUT_MIN} min (intento ${attempt}/${MAX_RETRIES})"
       else
-        warn "Devin salió con error (exit code: ${ec}, intento ${attempt}/${MAX_RETRIES})"
+        warn "${BACKEND} salió con error (exit code: ${ec}, intento ${attempt}/${MAX_RETRIES})"
       fi
     fi
   done
