@@ -71,33 +71,61 @@ log_file() {
 # Extraer y registrar métricas de tokens/contexto de la salida del agente
 log_token_usage() {
   local task="$1"
+  local json_file="${AGENT_JSON_FILE:-}"
   local output_file="${AGENT_OUTPUT_FILE:-}"
+
+  # ── Codex con --json: parsear eventos JSON para tokens reales ──
+  if [[ "$BACKEND" == "codex" && -f "$json_file" && -s "$json_file" ]]; then
+    # Extraer input_tokens y output_tokens del último evento que los contenga
+    local input_tokens output_tokens total_tokens pct_context
+    input_tokens=$(grep -o '"input_tokens":[0-9]*' "$json_file" | tail -1 | cut -d: -f2)
+    output_tokens=$(grep -o '"output_tokens":[0-9]*' "$json_file" | tail -1 | cut -d: -f2)
+    # Fallback: buscar patrones alternativos de Codex JSON
+    if [[ -z "$input_tokens" ]]; then
+      input_tokens=$(grep -o '"prompt_tokens":[0-9]*' "$json_file" | tail -1 | cut -d: -f2)
+    fi
+    if [[ -z "$output_tokens" ]]; then
+      output_tokens=$(grep -o '"completion_tokens":[0-9]*' "$json_file" | tail -1 | cut -d: -f2)
+    fi
+    if [[ -z "$input_tokens" ]]; then
+      input_tokens=$(grep -o '"total_input_tokens":[0-9]*' "$json_file" | tail -1 | cut -d: -f2)
+    fi
+    if [[ -z "$output_tokens" ]]; then
+      output_tokens=$(grep -o '"total_output_tokens":[0-9]*' "$json_file" | tail -1 | cut -d: -f2)
+    fi
+
+    input_tokens=${input_tokens:-0}
+    output_tokens=${output_tokens:-0}
+    total_tokens=$(( input_tokens + output_tokens ))
+
+    if (( total_tokens > 0 )); then
+      local ctx_window=200000
+      pct_context=$(awk "BEGIN {printf \"%.1f\", ($total_tokens / $ctx_window) * 100}")
+      log_file "TOKENS" "${task} | input=${input_tokens} output=${output_tokens} total=${total_tokens} (~${pct_context}% de ${ctx_window})"
+      return 0
+    fi
+  fi
+
+  # ── Fallback para Devin o si el JSON no tuvo datos ──
   [[ -f "$output_file" && -s "$output_file" ]] || return 0
 
-  # Limpiar ANSI de la salida para parsear
-  local clean_output
-  clean_output=$(sed 's/\x1b\[[0-9;]*m//g' "$output_file")
-
-  # Buscar líneas que contengan info de tokens (patrones comunes de Codex/Devin)
-  # Codex suele reportar: "Tokens: input=N output=N total=N" o similar
-  local token_lines
-  token_lines=$(echo "$clean_output" | grep -iE 'token|context.*(used|usage|limit|window)' | tail -5)
+  local clean_output token_lines
+  clean_output=$(sed $'s/\r/\n/g' "$output_file" | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g')
+  token_lines=$(echo "$clean_output" | grep -oE '[0-9,]+[[:space:]]*tokens?[[:space:]]*(used|input|output|total|consumed)' | tail -5)
 
   if [[ -n "$token_lines" ]]; then
-    log_file "TOKENS" "Uso de tokens para: ${task}"
+    log_file "TOKENS" "${task}"
     while IFS= read -r _tline; do
       log_file "TOKENS" "  $_tline"
     done <<< "$token_lines"
   else
     # Estimar tokens a partir del tamaño de la salida (~4 chars por token)
-    local file_size total_chars est_tokens pct_context
+    local file_size est_tokens pct_context
     file_size=$(wc -c < "$output_file" | tr -d ' ')
-    total_chars=$file_size
-    est_tokens=$(( total_chars / 4 ))
-    # Codex context window: 200k tokens (codex); Devin: ~200k
+    est_tokens=$(( file_size / 4 ))
     local ctx_window=200000
     pct_context=$(awk "BEGIN {printf \"%.1f\", ($est_tokens / $ctx_window) * 100}")
-    log_file "TOKENS" "Uso de tokens para: ${task} | estimado: ~${est_tokens} tokens (~${pct_context}% del contexto de ${ctx_window} tokens)"
+    log_file "TOKENS" "${task} | estimado: ~${est_tokens} tokens (~${pct_context}% de ${ctx_window}) [sin datos reales del agente]"
   fi
 }
 
@@ -358,12 +386,17 @@ run_agent_with_timeout() {
 
   # Fichero temporal para capturar la salida del agente
   AGENT_OUTPUT_FILE=$(mktemp /tmp/ralph-agent-XXXXXX.log)
+  AGENT_JSON_FILE=$(mktemp /tmp/ralph-agent-XXXXXX.json)
 
   # Lanzar el agente en background según el backend elegido, capturando stdout+stderr
   if [[ "$BACKEND" == "devin" ]]; then
     devin --permission-mode dangerous -p "$prompt" > >(tee "$AGENT_OUTPUT_FILE") 2>&1 &
   else
-    codex exec --dangerously-bypass-approvals-and-sandbox "$prompt" > >(tee "$AGENT_OUTPUT_FILE") 2>&1 &
+    # Ejecutamos codex con --json para obtener eventos estructurados (incluyen tokens).
+    # La salida JSON se guarda en AGENT_JSON_FILE para parsear tokens después.
+    # También se copia a AGENT_OUTPUT_FILE y se muestra en consola.
+    codex exec --json --dangerously-bypass-approvals-and-sandbox "$prompt" \
+      > >(tee "$AGENT_JSON_FILE" "$AGENT_OUTPUT_FILE") 2>&1 &
   fi
   agent_pid=$!
 
@@ -525,8 +558,9 @@ while true; do
     warn "SALTADA: ${task} (se deja pendiente para revisión manual)"
   fi
 
-  # Limpiar fichero temporal de salida del agente
+  # Limpiar ficheros temporales de salida del agente
   [[ -f "${AGENT_OUTPUT_FILE:-}" ]] && rm -f "$AGENT_OUTPUT_FILE"
+  [[ -f "${AGENT_JSON_FILE:-}" ]] && rm -f "$AGENT_JSON_FILE"
 
   # Control de máximo de iteraciones
   if (( iteration >= MAX_ITERATIONS )); then
