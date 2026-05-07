@@ -1,0 +1,288 @@
+# Mosquitto
+
+## Descripción
+
+**Mosquitto** es el broker MQTT del bloque de domótica del homelab. Su función es servir como bus de mensajería ligero entre **Home Assistant**, **Zigbee2MQTT**, **Node-RED** y cualquier otro cliente IoT que publique estados, eventos o comandos.
+
+En este proyecto se despliega en Docker sobre la **Raspberry Pi 5**, con persistencia en el **SSD NVMe** y acceso restringido a la **LAN** y a **Tailscale**. El despliegue base evita complejidad innecesaria:
+
+- listener MQTT clásico en `1883/tcp`
+- sin acceso anónimo
+- usuarios separados por servicio
+- ACLs para limitar qué topics puede usar cada cliente
+- sin WebSockets ni TLS en la base inicial, porque no hay exposición pública a Internet
+
+## Requisitos Previos
+
+- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
+- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
+- Haber revisado [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para registrar el puerto del broker.
+- Recomendable haber completado [01-home-assistant.md](/Users/x441425/workspace2/homelab/docs/08-domotica/01-home-assistant.md) si Mosquitto se va a integrar inmediatamente con Home Assistant.
+- Si se quiere acceso remoto desde fuera de la LAN, tener operativa la VPN de [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md).
+- Puertos necesarios en esta fase:
+  - **`1883/tcp`** para MQTT
+  - no publicar **WebSockets** (`9001`) salvo que exista un caso real de uso
+
+## Docker Compose
+
+Archivo: `/home/<user>/homelab/compose/iot-mosquitto/docker-compose.yml`
+
+```yaml
+name: iot-mosquitto
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: Europe/Madrid
+    ports:
+      - "1883:1883"
+    volumes:
+      - /home/<user>/homelab/data/mosquitto/config:/mosquitto/config
+      - /home/<user>/homelab/data/mosquitto/data:/mosquitto/data
+      - /home/<user>/homelab/data/mosquitto/log:/mosquitto/log
+    labels:
+      - com.centurylinklabs.watchtower.enable=false
+```
+
+Este stack sigue la convención general del proyecto:
+
+- `docker-compose.yml` dentro de `compose/`
+- persistencia en `data/`
+- sin secretos embebidos en el Compose
+- servicio accesible por el puerto del host para que clientes dentro y fuera de Docker puedan conectarse igual
+
+## Configuración
+
+### 1. Preparar directorios
+
+```bash
+mkdir -p /home/<user>/homelab/compose/iot-mosquitto
+mkdir -p /home/<user>/homelab/data/mosquitto/{config,data,log}
+chmod 700 /home/<user>/homelab/data/mosquitto/config
+```
+
+### 2. Crear la configuración principal
+
+Archivo: `/home/<user>/homelab/data/mosquitto/config/mosquitto.conf`
+
+```conf
+persistence true
+persistence_location /mosquitto/data/
+autosave_interval 180
+
+log_dest stdout
+log_dest file /mosquitto/log/mosquitto.log
+log_timestamp true
+
+listener 1883
+allow_anonymous false
+password_file /mosquitto/config/passwd
+acl_file /mosquitto/config/acl
+```
+
+Esta configuración establece un despliegue base simple y suficiente para el homelab:
+
+- persistencia de sesiones y estado en disco
+- logs visibles por `docker compose logs` y además en fichero
+- autenticación obligatoria
+- control de acceso por topics mediante ACLs
+
+### 3. Crear los usuarios MQTT
+
+Archivo de credenciales: `/home/<user>/homelab/data/mosquitto/config/passwd`
+
+La recomendación es usar **un usuario distinto por servicio**. Un conjunto razonable para esta fase es:
+
+- `mqtt-homeassistant`
+- `mqtt-zigbee2mqtt`
+- `mqtt-nodered`
+
+Crea el fichero y añade usuarios usando la propia imagen oficial:
+
+```bash
+touch /home/<user>/homelab/data/mosquitto/config/passwd
+chmod 600 /home/<user>/homelab/data/mosquitto/config/passwd
+
+docker run --rm \
+  -v /home/<user>/homelab/data/mosquitto/config:/mosquitto/config \
+  eclipse-mosquitto:2 \
+  mosquitto_passwd -c /mosquitto/config/passwd mqtt-homeassistant
+
+docker run --rm \
+  -v /home/<user>/homelab/data/mosquitto/config:/mosquitto/config \
+  eclipse-mosquitto:2 \
+  mosquitto_passwd /mosquitto/config/passwd mqtt-zigbee2mqtt
+
+docker run --rm \
+  -v /home/<user>/homelab/data/mosquitto/config:/mosquitto/config \
+  eclipse-mosquitto:2 \
+  mosquitto_passwd /mosquitto/config/passwd mqtt-nodered
+```
+
+Notas:
+
+- usa `-c` solo en la primera creación del fichero
+- no reutilices la misma cuenta para varios servicios
+- evita pasar contraseñas por línea de comandos para no dejarlas en el historial del shell
+
+### 4. Definir ACLs
+
+Archivo: `/home/<user>/homelab/data/mosquitto/config/acl`
+
+```conf
+user mqtt-homeassistant
+topic readwrite homeassistant/#
+topic readwrite zigbee2mqtt/#
+topic read $SYS/#
+
+user mqtt-zigbee2mqtt
+topic readwrite zigbee2mqtt/#
+topic write homeassistant/#
+topic read $SYS/#
+
+user mqtt-nodered
+topic readwrite nodered/#
+topic readwrite homeassistant/#
+topic readwrite zigbee2mqtt/#
+topic read $SYS/#
+```
+
+Este punto es importante:
+
+- **Home Assistant** necesita al menos acceso a `homeassistant/#` y, en la práctica, conviene permitirle también `zigbee2mqtt/#`
+- **Zigbee2MQTT** debe poder publicar su propio árbol `zigbee2mqtt/#` y escribir en `homeassistant/#` si vas a usar MQTT Discovery
+- **Node-RED** suele necesitar más flexibilidad para sus flujos, pero aun así conviene no darle `topic readwrite #` salvo necesidad real
+
+Si más adelante añades sensores, ESPHome alternativo, scripts o clientes externos, crea **usuarios nuevos** y dales solo los topics que realmente necesiten.
+
+### 5. Desplegar el stack
+
+Guarda el `docker-compose.yml` del apartado anterior y despliega:
+
+```bash
+cd /home/<user>/homelab/compose/iot-mosquitto
+docker compose config
+docker compose up -d
+docker compose ps
+```
+
+Validaciones básicas tras el arranque:
+
+```bash
+docker compose logs --tail=100 mosquitto
+ss -ltnp | grep 1883
+```
+
+El resultado esperado es este:
+
+- el contenedor queda en estado `Up`
+- Mosquitto escucha en `0.0.0.0:1883`
+- no aparecen errores de lectura sobre `mosquitto.conf`, `passwd` o `acl`
+- no aparecen errores de escritura en `/mosquitto/data` o `/mosquitto/log`
+
+### 6. Integración básica con Home Assistant
+
+En [01-home-assistant.md](/Users/x441425/workspace2/homelab/docs/08-domotica/01-home-assistant.md) ya quedó preparada la referencia a MQTT. Ahora completa la integración desde **Settings → Devices & services → Add integration → MQTT**.
+
+Valores típicos:
+
+- Broker: `IP_DE_LA_PI`
+- Puerto: `1883`
+- Usuario: `mqtt-homeassistant`
+- Contraseña: la definida en el paso anterior
+
+Si todo va bien, Home Assistant detectará el broker y podrás usarlo como base para discovery y automatizaciones posteriores.
+
+### 7. Integración prevista con Zigbee2MQTT
+
+Cuando despliegues [03-zigbee2mqtt.md](/Users/x441425/workspace2/homelab/docs/08-domotica/03-zigbee2mqtt.md), configura su acceso a MQTT con:
+
+- servidor: `mqtt://IP_DE_LA_PI:1883`
+- usuario: `mqtt-zigbee2mqtt`
+- contraseña: la correspondiente
+
+Si activas `homeassistant: true` en Zigbee2MQTT, este publicará mensajes de discovery en `homeassistant/#`, por eso la ACL propuesta le permite escribir en ese prefijo.
+
+### 8. Integración prevista con Node-RED
+
+Cuando despliegues [04-node-red.md](/Users/x441425/workspace2/homelab/docs/08-domotica/04-node-red.md), crea el servidor MQTT en Node-RED usando:
+
+- host: `IP_DE_LA_PI`
+- puerto: `1883`
+- usuario: `mqtt-nodered`
+- contraseña: la definida en Mosquitto
+
+Antes de empezar a crear flujos complejos, prueba primero:
+
+- una suscripción a `zigbee2mqtt/#`
+- una publicación de prueba en `nodered/test`
+- una automatización simple que reaccione a un mensaje MQTT
+
+## Almacenamiento
+
+Todo el estado de Mosquitto debe quedar en el **SSD NVMe** bajo `/home/<user>/homelab/data/mosquitto/`.
+
+Rutas principales:
+
+- `/home/<user>/homelab/data/mosquitto/config/`
+- `/home/<user>/homelab/data/mosquitto/data/`
+- `/home/<user>/homelab/data/mosquitto/log/`
+
+Contenido esperado:
+
+- `config/mosquitto.conf`
+- `config/passwd`
+- `config/acl`
+- `data/mosquitto.db`
+- `log/mosquitto.log`
+
+No uses `hd2t` ni `hd5t` para estos datos. Esos discos quedan reservados para multimedia y copias de seguridad.
+
+### Permisos
+
+- `config/passwd` debe quedar con permisos restrictivos, por ejemplo `600`
+- `config/` conviene mantenerlo al menos en `700`
+- `data/` y `log/` deben ser escribibles por el contenedor
+
+Si ves errores de permisos al arrancar, revisa el propietario real de las rutas bind-mounted y ajústalo según el UID/GID que use la imagen dentro del contenedor.
+
+## Backup
+
+Respaldar:
+
+- `/home/<user>/homelab/compose/iot-mosquitto/docker-compose.yml`
+- `/home/<user>/homelab/data/mosquitto/config/`
+- `/home/<user>/homelab/data/mosquitto/data/`
+- `/home/<user>/homelab/data/mosquitto/log/` si quieres conservar histórico de eventos
+
+Especialmente importantes:
+
+- `mosquitto.conf`
+- `passwd`
+- `acl`
+- `mosquitto.db`
+
+Para una copia consistente del estado persistente, lo más prudente es detener brevemente el broker:
+
+```bash
+cd /home/<user>/homelab/compose/iot-mosquitto
+docker compose stop mosquitto
+# ejecutar backup
+docker compose start mosquitto
+```
+
+Este servicio debe integrarse más adelante con la estrategia de [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md).
+
+## Referencias
+
+- Documentación oficial de Mosquitto: https://mosquitto.org/
+- Manual oficial de `mosquitto.conf`: https://mosquitto.org/man/mosquitto-conf-5.html
+- Manual oficial de `mosquitto_passwd`: https://mosquitto.org/man/mosquitto_passwd-1.html
+- Documentación oficial de ACLs y seguridad: https://mosquitto.org/documentation/authentication-methods/
+- Imagen oficial Docker: https://hub.docker.com/_/eclipse-mosquitto

@@ -69,6 +69,12 @@ log_file() {
 }
 
 # Extraer y registrar métricas de tokens/contexto de la salida del agente
+#
+# NOTA: Codex CLI --json reporta tokens ACUMULADOS en cada turn.completed,
+# no por turno individual (ver https://github.com/openai/codex/issues/17539).
+# Para obtener el uso real de la ventana de contexto, calculamos el delta
+# de input_tokens entre los dos últimos turnos: eso refleja cuánto contexto
+# ocupó la última llamada al modelo.
 log_token_usage() {
   local task="$1"
   local json_file="${AGENT_JSON_FILE:-}"
@@ -76,32 +82,50 @@ log_token_usage() {
 
   # ── Codex con --json: parsear eventos JSON para tokens reales ──
   if [[ "$BACKEND" == "codex" && -f "$json_file" && -s "$json_file" ]]; then
-    # Extraer input_tokens y output_tokens del último evento que los contenga
-    local input_tokens output_tokens total_tokens pct_context
-    input_tokens=$(grep -o '"input_tokens":[0-9]*' "$json_file" | tail -1 | cut -d: -f2)
-    output_tokens=$(grep -o '"output_tokens":[0-9]*' "$json_file" | tail -1 | cut -d: -f2)
-    # Fallback: buscar patrones alternativos de Codex JSON
-    if [[ -z "$input_tokens" ]]; then
-      input_tokens=$(grep -o '"prompt_tokens":[0-9]*' "$json_file" | tail -1 | cut -d: -f2)
+    local ctx_window=200000
+
+    # Extraer todos los valores de input_tokens (acumulativos por turno)
+    local all_input all_output
+    all_input=$(grep -o '"input_tokens":[0-9]*' "$json_file" | cut -d: -f2)
+    all_output=$(grep -o '"output_tokens":[0-9]*' "$json_file" | cut -d: -f2)
+    # Fallback: patrones alternativos de Codex JSON
+    if [[ -z "$all_input" ]]; then
+      all_input=$(grep -o '"prompt_tokens":[0-9]*' "$json_file" | cut -d: -f2)
     fi
-    if [[ -z "$output_tokens" ]]; then
-      output_tokens=$(grep -o '"completion_tokens":[0-9]*' "$json_file" | tail -1 | cut -d: -f2)
+    if [[ -z "$all_output" ]]; then
+      all_output=$(grep -o '"completion_tokens":[0-9]*' "$json_file" | cut -d: -f2)
     fi
-    if [[ -z "$input_tokens" ]]; then
-      input_tokens=$(grep -o '"total_input_tokens":[0-9]*' "$json_file" | tail -1 | cut -d: -f2)
+    if [[ -z "$all_input" ]]; then
+      all_input=$(grep -o '"total_input_tokens":[0-9]*' "$json_file" | cut -d: -f2)
     fi
-    if [[ -z "$output_tokens" ]]; then
-      output_tokens=$(grep -o '"total_output_tokens":[0-9]*' "$json_file" | tail -1 | cut -d: -f2)
+    if [[ -z "$all_output" ]]; then
+      all_output=$(grep -o '"total_output_tokens":[0-9]*' "$json_file" | cut -d: -f2)
     fi
 
-    input_tokens=${input_tokens:-0}
-    output_tokens=${output_tokens:-0}
-    total_tokens=$(( input_tokens + output_tokens ))
+    # Totales acumulados (último valor = suma de toda la sesión)
+    local cum_input cum_output cum_total
+    cum_input=$(echo "$all_input" | tail -1)
+    cum_output=$(echo "$all_output" | tail -1)
+    cum_input=${cum_input:-0}
+    cum_output=${cum_output:-0}
+    cum_total=$(( cum_input + cum_output ))
 
-    if (( total_tokens > 0 )); then
-      local ctx_window=200000
-      pct_context=$(awk "BEGIN {printf \"%.1f\", ($total_tokens / $ctx_window) * 100}")
-      log_file "TOKENS" "${task} | input=${input_tokens} output=${output_tokens} total=${total_tokens} (~${pct_context}% de ${ctx_window})"
+    if (( cum_total > 0 )); then
+      # Delta del último turno: último acumulado - penúltimo acumulado
+      local prev_input last_input_delta num_turns
+      num_turns=$(echo "$all_input" | wc -l | tr -d ' ')
+      if (( num_turns >= 2 )); then
+        prev_input=$(echo "$all_input" | tail -2 | head -1)
+        last_input_delta=$(( cum_input - prev_input ))
+      else
+        # Solo un turno: el acumulado ES el turno
+        last_input_delta=$cum_input
+      fi
+
+      local pct_context pct_cumulative
+      pct_context=$(awk "BEGIN {printf \"%.1f\", ($last_input_delta / $ctx_window) * 100}")
+      pct_cumulative=$(awk "BEGIN {printf \"%.1f\", ($cum_total / $ctx_window) * 100}")
+      log_file "TOKENS" "${task} | last_turn_input=${last_input_delta} (~${pct_context}% ventana ${ctx_window}) | acumulado: in=${cum_input} out=${cum_output} total=${cum_total} (~${pct_cumulative}% coste) | turnos=${num_turns}"
       return 0
     fi
   fi
