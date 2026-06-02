@@ -152,6 +152,7 @@ Este método no es una clonación bit a bit. En la práctica es una **reinstalac
 
 - Requiere rehacer en el NVMe cualquier ajuste que solo exista en la microSD.
 - No conserva automáticamente toda la instalación previa.
+- Si la carcasa es una **Argon ONE V3** y ya se instalaron los scripts de control del ventilador y botón de power, habrá que **reinstalarlos** tras el primer arranque desde NVMe (ver [02-esquema-conexiones.md](02-esquema-conexiones.md#scripts-de-la-carcasa-si-aplica)).
 
 ## Método 2: Clonación con `dd`
 
@@ -374,6 +375,7 @@ Antes de seguir con la fase de sistema base, comprueba:
 - `sudo rpi-eeprom-update` no reporta problemas de firmware pendientes por el cambio.
 - La red por Ethernet funciona con normalidad.
 - El SSD NVMe permanece visible y estable en `lsblk`.
+- Si la carcasa es una **Argon ONE V3** y se usó Raspberry Pi Imager, los scripts de control del ventilador y botón de power están reinstalados y funcionando.
 
 Si además ya conectaste `hd2t` y `hd5t`, verifica que siguen montando correctamente según [03-preparacion-discos.md](03-preparacion-discos.md) o [04-discos-con-datos.md](04-discos-con-datos.md).
 
