@@ -11,6 +11,7 @@ Este documento cubre los casos habituales de reutilización de discos en **ext4*
 - Haber completado o validado [01-material-necesario.md](01-material-necesario.md).
 - Tener conectados físicamente el **SSD NVMe**, **`hd2t`** y **`hd5t`** según [02-esquema-conexiones.md](02-esquema-conexiones.md).
 - Arrancar con Raspberry Pi OS y disponer de acceso por terminal con un usuario con permisos de `sudo`.
+- Si la carcasa es una **Argon ONE V3**, haber instalado los scripts de control del ventilador y botón de power según se indica en [02-esquema-conexiones.md](02-esquema-conexiones.md#scripts-de-la-carcasa-si-aplica).
 - Confirmar qué disco reutilizado será **`hd2t`** y cuál será **`hd5t`** según su contenido real.
 - Asumir que en esta fase **no se reformatea nada**.
 
@@ -334,6 +335,57 @@ Antes de dar por integrado el disco, comprueba:
 - El contenido visible coincide con la biblioteca real que querías conservar.
 - No hay errores recientes en `dmesg`.
 - El sistema reinicia correctamente y vuelve a montar ambos discos.
+
+## Solución de Problemas
+
+### Los discos USB no aparecen en `lsblk`
+
+Si al ejecutar `lsblk` los discos USB no aparecen como `/dev/sda` o `/dev/sdb`, comprueba primero si el kernel los ha detectado por USB:
+
+```bash
+lsusb
+dmesg | grep -iE 'usb|sd[a-z]' | tail -30
+```
+
+#### Caso más habitual: over-current / alimentación insuficiente
+
+Si en la salida de `dmesg` ves mensajes como:
+
+```
+usb usb3-port1: over-current change #N
+sd X:0:0:0: [sdX] Spinning up disk...
+sd X:0:0:0: [sdX] tag#N uas_eh_abort_handler
+```
+
+El problema es que la Raspberry Pi 5 **limita por defecto la corriente USB a 600 mA** en total para todos los puertos. Dos discos mecánicos necesitan mucho más que eso, especialmente durante el arranque (spin-up), y la Pi corta la alimentación por protección.
+
+**Solución**: habilitar la entrega de alta corriente USB añadiendo `usb_max_current_enable=1` en `/boot/firmware/config.txt`. Esto sube el límite a **1,6 A**, pero requiere una fuente de alimentación de al menos **5 V / 5 A** (la fuente oficial de la Raspberry Pi 5).
+
+Si la carcasa es una **Argon ONE V3** y ya se instalaron los scripts del fabricante según [02-esquema-conexiones.md](02-esquema-conexiones.md#scripts-de-la-carcasa-si-aplica), esta línea **ya se añadió automáticamente**. Verifica que existe:
+
+```bash
+grep usb_max_current_enable /boot/firmware/config.txt
+```
+
+Si aparece `usb_max_current_enable=1`, solo necesitas reiniciar para que surta efecto (si no lo has hecho tras instalar el script):
+
+```bash
+sudo reboot
+```
+
+Si la línea **no** está presente (carcasas sin script de Argon u otros modelos), añádela manualmente:
+
+```bash
+sudo cp /boot/firmware/config.txt /boot/firmware/config.txt.bak
+echo 'usb_max_current_enable=1' | sudo tee -a /boot/firmware/config.txt
+sudo reboot
+```
+
+Tras el reinicio, comprueba que los discos ya aparecen:
+
+```bash
+lsblk -o NAME,SIZE,TYPE,FSTYPE,LABEL,UUID,MOUNTPOINT,MODEL
+```
 
 ## Siguiente Paso
 

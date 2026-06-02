@@ -85,6 +85,16 @@ Este documento asume el material descrito en [01-material-necesario.md](01-mater
 5. Conectar el adaptador Zigbee solo si se va a usar en esta fase.
 6. Conectar la **fuente oficial USB-C de 27 W** al final.
 
+### Scripts de la carcasa (si aplica)
+
+Si la carcasa es una **Argon ONE V3** (o cualquier modelo Argon con ventilador activo y botón de encendido inteligente), sigue el manual del fabricante para instalar los scripts **antes de pasar a la preparación de discos**. Estos scripts habilitan:
+
+- **Control del ventilador por temperatura**: sin ellos, el ventilador puede quedarse apagado o funcionar a máxima velocidad permanentemente.
+- **Botón de power inteligente**: doble pulsación para reiniciar, pulsación larga para apagado limpio.
+- **`usb_max_current_enable=1`** en `/boot/firmware/config.txt`: sube el límite de corriente USB a 1,6 A, necesario para alimentar discos mecánicos externos.
+
+Si usas una carcasa pasiva como la **Argon NEO 5 M.2 NVME**, este paso no aplica.
+
 ## Orden Lógico de Uso de Discos
 
 | Disco | Montaje esperado | Uso previsto |
