@@ -14,13 +14,13 @@ La decisión operativa es deliberada:
 - en la **LAN** se asume una red confiable y no se introduce una CA interna ni certificados locales
 - fuera de la LAN, el acceso sigue limitado a **Tailscale** y el cifrado HTTPS se apoya en `tailscale cert`
 - **Pi-hole** sigue resolviendo `*.lan` hacia la IP LAN del host
-- la IP del host queda libre porque **Pi-hole** y **Unbound** ya viven en `dns_lan` con IP propia, según [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md), [02-pihole.md](/Users/x441425/workspace2/homelab/docs/03-red/02-pihole.md) y [03-unbound.md](/Users/x441425/workspace2/homelab/docs/03-red/03-unbound.md)
+- la IP del host queda libre porque **Pi-hole** y **Unbound** ya viven en `dns_lan` con IP propia, según [01-macvlan.md](01-macvlan.md), [02-pihole.md](02-pihole.md) y [03-unbound.md](03-unbound.md)
 
 ## Requisitos Previos
 
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [02-pihole.md](/Users/x441425/workspace2/homelab/docs/03-red/02-pihole.md).
-- Haber completado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md).
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [02-pihole.md](02-pihole.md).
+- Haber completado [04-tailscale.md](04-tailscale.md).
 - Tener resueltos por Pi-hole los nombres LAN que apuntarán a la IP del host, por ejemplo:
   - `jellyfin.lan`
   - `navidrome.lan`
@@ -302,7 +302,7 @@ Registros típicos:
 | `vaultwarden.lan` | `192.168.1.10` |
 | `portainer.lan` | `192.168.1.10` |
 
-Esto encaja con lo definido en [02-pihole.md](/Users/x441425/workspace2/homelab/docs/03-red/02-pihole.md): Pi-hole resuelve los nombres internos y Caddy decide a qué upstream enviarlos.
+Esto encaja con lo definido en [02-pihole.md](02-pihole.md): Pi-hole resuelve los nombres internos y Caddy decide a qué upstream enviarlos.
 
 ### 8. Validaciones que conviene dejar hechas
 
@@ -373,13 +373,13 @@ Orden de restauración recomendado:
 
 ## Referencias
 
-- [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md)
-- [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md)
-- [02-pihole.md](/Users/x441425/workspace2/homelab/docs/03-red/02-pihole.md)
-- [03-unbound.md](/Users/x441425/workspace2/homelab/docs/03-red/03-unbound.md)
-- [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md)
-- [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md)
-- [01-authelia.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/01-authelia.md)
+- [02-estructura-compose.md](../02-docker/02-estructura-compose.md)
+- [01-macvlan.md](01-macvlan.md)
+- [02-pihole.md](02-pihole.md)
+- [03-unbound.md](03-unbound.md)
+- [04-tailscale.md](04-tailscale.md)
+- [06-puertos-y-firewall.md](06-puertos-y-firewall.md)
+- [01-authelia.md](../04-seguridad/01-authelia.md)
 - Caddy Docs: [Getting Started](https://caddyserver.com/docs/getting-started)
 - Caddy Docs: [Caddyfile Concepts](https://caddyserver.com/docs/caddyfile/concepts)
 - Caddy Docs: [reverse_proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy)

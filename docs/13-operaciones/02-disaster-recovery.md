@@ -24,10 +24,10 @@ Este procedimiento cubre el escenario principal definido por el proyecto:
 
 ## Requisitos Previos
 
-- Haber completado [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md).
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md).
-- Haber completado [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md).
+- Haber completado [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md).
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber completado [02-borgmatic.md](../07-backups/02-borgmatic.md).
+- Haber completado [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md).
 - Tener acceso físico a la **Raspberry Pi 5**, al **SSD NVMe**, a **`hd2t`** y a **`hd5t`**.
 - Disponer de un medio de instalación válido de **Raspberry Pi OS Lite 64-bit** o equivalente.
 - Poder acceder por terminal con un usuario con permisos de `sudo`.
@@ -107,7 +107,7 @@ Si `hd2t` no es legible, detén el procedimiento y prioriza preservar ese disco,
 
 ### 4. Escenario A: restaurar el sistema en el SSD NVMe
 
-Si el **NVMe** sigue siendo reutilizable, o si lo sustituyes por uno nuevo, reconstruye primero el sistema base siguiendo [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md).
+Si el **NVMe** sigue siendo reutilizable, o si lo sustituyes por uno nuevo, reconstruye primero el sistema base siguiendo [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md).
 
 El resultado mínimo que debes obtener antes de seguir es este:
 
@@ -166,7 +166,7 @@ No continúes con la restauración de servicios si los discos no están montados
 
 ### 6. Reinstalar Docker y preparar la base del homelab
 
-Con el sistema estable y los discos montados, reinstala Docker siguiendo [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
+Con el sistema estable y los discos montados, reinstala Docker siguiendo [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
 
 Antes de restaurar datos, valida el runtime:
 
@@ -195,7 +195,7 @@ Regla práctica:
 
 ### 7. Restaurar la configuración y los datos desde Borg
 
-La recuperación base del proyecto se hace restaurando desde el repositorio definido en [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md).
+La recuperación base del proyecto se hace restaurando desde el repositorio definido en [02-borgmatic.md](../07-backups/02-borgmatic.md).
 
 Primero, identifica los archivos disponibles:
 
@@ -250,7 +250,7 @@ Validaciones obligatorias antes de arrancar contenedores:
 
 ### 8. Restaurar exports, dumps y named volumes si aplica
 
-La restauración detallada por tipo de dato se documenta en [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md). En un desastre real, úsalo así:
+La restauración detallada por tipo de dato se documenta en [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md). En un desastre real, úsalo así:
 
 - **bind mounts**: restaura desde Borg a ruta temporal y sincroniza de vuelta al **NVMe**
 - **MariaDB/PostgreSQL**: importa dumps lógicos desde `/mnt/hd2t/backups/exports/`

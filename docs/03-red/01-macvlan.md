@@ -15,11 +15,11 @@ Este diseño encaja bien con el alcance del proyecto: **solo LAN + Tailscale**, 
 
 ## Requisitos Previos
 
-- Haber completado [01-instalacion-os.md](/Users/x441425/workspace2/homelab/docs/01-sistema/01-instalacion-os.md).
-- Haber completado [02-configuracion-inicial.md](/Users/x441425/workspace2/homelab/docs/01-sistema/02-configuracion-inicial.md).
-- Haber completado [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md).
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
+- Haber completado [01-instalacion-os.md](../01-sistema/01-instalacion-os.md).
+- Haber completado [02-configuracion-inicial.md](../01-sistema/02-configuracion-inicial.md).
+- Haber completado [03-seguridad-base.md](../01-sistema/03-seguridad-base.md).
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Tener la Raspberry Pi conectada por **Ethernet** y confirmar que la interfaz LAN real es **`eth0`**.
 - Tener acceso administrativo al router para:
   - fijar o reservar la IP LAN del host
@@ -36,7 +36,7 @@ Al terminar este documento, el estado esperado es este:
 - el rango reservado para contenedores DNS queda **fuera del pool DHCP dinámico**
 - queda definida una asignación clara de IPs para **Pi-hole**, **Unbound** y el **host shim**
 - el host puede hablar con los contenedores macvlan gracias a `macvlan-shim`
-- el diseño queda listo para ser reutilizado en [02-pihole.md](/Users/x441425/workspace2/homelab/docs/03-red/02-pihole.md) y [03-unbound.md](/Users/x441425/workspace2/homelab/docs/03-red/03-unbound.md)
+- el diseño queda listo para ser reutilizado en [02-pihole.md](02-pihole.md) y [03-unbound.md](03-unbound.md)
 
 ## Docker Compose
 
@@ -307,9 +307,9 @@ Lo importante es poder reconstruir rápidamente:
 
 ## Referencias
 
-- [02-pihole.md](/Users/x441425/workspace2/homelab/docs/03-red/02-pihole.md)
-- [03-unbound.md](/Users/x441425/workspace2/homelab/docs/03-red/03-unbound.md)
-- [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
+- [02-pihole.md](02-pihole.md)
+- [03-unbound.md](03-unbound.md)
+- [05-caddy.md](05-caddy.md)
 - Docker Docs: [Networking using a macvlan network driver](https://docs.docker.com/engine/network/drivers/macvlan/)
 - Docker Docs: [docker network create](https://docs.docker.com/reference/cli/docker/network/create/)
 - `ip-link(8)`

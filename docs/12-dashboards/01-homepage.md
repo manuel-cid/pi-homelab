@@ -16,11 +16,11 @@ Para este homelab, esa combinación da un resultado razonable: un panel central 
 
 ## Requisitos Previos
 
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md) si quieres usar Homepage también desde la tailnet.
-- Haber completado [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md) si quieres publicar Homepage como `http://homepage.lan` o bajo `https://pi-homelab.<tailnet>.ts.net/homepage/`.
-- Haber completado [01-authelia.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/01-authelia.md) si quieres exigir autenticación en la ruta remota `/homepage/`.
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para mantener documentado el puerto `17000/tcp`.
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres usar Homepage también desde la tailnet.
+- Haber completado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Homepage como `http://homepage.lan` o bajo `https://pi-homelab.<tailnet>.ts.net/homepage/`.
+- Haber completado [01-authelia.md](../04-seguridad/01-authelia.md) si quieres exigir autenticación en la ruta remota `/homepage/`.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto `17000/tcp`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a integrarlo con Caddy.
 - Tener ya definidos los servicios que quieras mostrar y sus URLs canónicas.
 - Tener a mano las claves de API solo de los widgets que realmente vayas a usar; no hace falta preparar tokens para todos desde el primer día.
@@ -354,7 +354,7 @@ http://homepage.lan {
 }
 ```
 
-Si ya sigues el patrón descrito en [01-authelia.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/01-authelia.md), añade o conserva dentro del bloque HTTPS:
+Si ya sigues el patrón descrito en [01-authelia.md](../04-seguridad/01-authelia.md), añade o conserva dentro del bloque HTTPS:
 
 ```caddyfile
 handle_path /homepage/* {

@@ -2,7 +2,7 @@
 
 ## Descripción
 
-**Uptime Kuma** es el servicio de monitorización activa del homelab: comprueba si una URL, un puerto TCP o un endpoint concreto siguen respondiendo y envía alertas cuando detecta caídas o degradación. Complementa a [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md) y [02-grafana.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/02-grafana.md): Prometheus guarda métricas y Grafana las visualiza; Uptime Kuma confirma si cada servicio está realmente accesible desde el punto de vista operativo.
+**Uptime Kuma** es el servicio de monitorización activa del homelab: comprueba si una URL, un puerto TCP o un endpoint concreto siguen respondiendo y envía alertas cuando detecta caídas o degradación. Complementa a [01-prometheus.md](01-prometheus.md) y [02-grafana.md](02-grafana.md): Prometheus guarda métricas y Grafana las visualiza; Uptime Kuma confirma si cada servicio está realmente accesible desde el punto de vista operativo.
 
 En este homelab conviene mantener un criterio simple:
 
@@ -14,11 +14,11 @@ En este homelab conviene mantener un criterio simple:
 
 ## Requisitos Previos
 
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Haber completado [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
-- Recomendable haber completado [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md), [02-grafana.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/02-grafana.md) y [03-node-exporter.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/03-node-exporter.md) para tener objetivos reales que vigilar desde el primer día.
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Haber completado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
+- Recomendable haber completado [01-prometheus.md](01-prometheus.md), [02-grafana.md](02-grafana.md) y [03-node-exporter.md](03-node-exporter.md) para tener objetivos reales que vigilar desde el primer día.
 - Tener creada la red Docker externa `homelab_proxy`.
 - Poder crear directorios persistentes en `/home/<user>/homelab/data/`.
 - Si se van a usar alertas por Telegram, disponer de un bot y su `chat_id`.
@@ -160,10 +160,10 @@ Configuración inicial recomendada para esta fase:
 
 | Servicio | Tipo de monitor | Objetivo recomendado | Criterio práctico |
 |---------|------------------|----------------------|-------------------|
-| Prometheus | HTTP(s) | `http://prometheus:9090/-/healthy` | Debe devolver `200 OK`; complementa los targets internos de [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md) |
+| Prometheus | HTTP(s) | `http://prometheus:9090/-/healthy` | Debe devolver `200 OK`; complementa los targets internos de [01-prometheus.md](01-prometheus.md) |
 | Grafana | HTTP(s) | `http://grafana:3000/api/health` | Debe devolver `200 OK`; si quieres más precisión, usa `HTTP(s) Keyword` con `ok` |
 | Node Exporter | HTTP(s) Keyword | `http://node-exporter:9100/metrics` | Comprueba que existe `node_exporter_build_info` en el cuerpo |
-| Docker Engine `/metrics` | HTTP(s) Keyword | `http://host.docker.internal:9323/metrics` | Opcional; útil si ya habilitaste el endpoint en [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md) |
+| Docker Engine `/metrics` | HTTP(s) Keyword | `http://host.docker.internal:9323/metrics` | Opcional; útil si ya habilitaste el endpoint en [01-prometheus.md](01-prometheus.md) |
 | SSH del host | TCP Port | `<IP-LAN-RASPBERRY>:22` | Confirma acceso administrativo básico al host |
 
 Para el resto del homelab, la plantilla práctica es esta:

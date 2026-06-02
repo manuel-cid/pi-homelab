@@ -10,15 +10,15 @@ La política de almacenamiento no cambia:
 - **`hd2t`** sigue siendo el disco de bibliotecas multimedia y descargas
 - **`hd5t`** solo se comparte si quieres acceso SMB directo a la biblioteca de **Stash**
 
-El objetivo de este documento es desplegar Samba como contenedor Docker con **un share por carpeta** en `hd2t`, de forma predecible y con permisos coherentes con la estructura definida en [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
+El objetivo de este documento es desplegar Samba como contenedor Docker con **un share por carpeta** en `hd2t`, de forma predecible y con permisos coherentes con la estructura definida en [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 
 ## Requisitos Previos
 
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Tener montados `hd2t` y `hd5t` en `/mnt/hd2t` y `/mnt/hd5t`.
-- Poder administrar el firewall del host según [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
+- Poder administrar el firewall del host según [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 - Haber decidido qué usuario local del host será el propietario real de las carpetas compartidas.
 - Puertos necesarios para Samba:
   - **137/udp**
@@ -194,7 +194,7 @@ Qué se consigue con esto:
 - Samba escribe con ese mismo `UID` y `GID`
 - los directorios nuevos heredan permisos de grupo razonables gracias al bit `setgid`
 
-Si reutilizas discos con **NTFS** o **exFAT** según [04-discos-con-datos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/04-discos-con-datos.md), recuerda que los permisos efectivos dependen sobre todo de las opciones de montaje del host; los `chmod` anteriores pueden no tener efecto real en esos sistemas de archivos.
+Si reutilizas discos con **NTFS** o **exFAT** según [04-discos-con-datos.md](../00-hardware/04-discos-con-datos.md), recuerda que los permisos efectivos dependen sobre todo de las opciones de montaje del host; los `chmod` anteriores pueden no tener efecto real en esos sistemas de archivos.
 
 ### 3. Crear el directorio del stack
 

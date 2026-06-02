@@ -7,7 +7,7 @@ Este documento consolida el **mapa operativo final de puertos** del homelab y si
 Su objetivo en esta fase no es rediseñar la arquitectura, sino dejar clara una regla práctica:
 
 - para operación diaria, este documento y los documentos específicos de cada servicio mandan sobre reservas antiguas
-- [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) sigue siendo la política base y el registro de convenciones
+- [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) sigue siendo la política base y el registro de convenciones
 - cualquier puerto publicado en el host debe seguir teniendo una razón explícita
 - cualquier deriva entre la política base y el despliegue real debe quedar auditada
 
@@ -15,9 +15,9 @@ En este homelab, la exposición sigue limitada a **LAN + Tailscale**. No hay pub
 
 ## Requisitos Previos
 
-- Haber completado [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md).
-- Haber completado [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
-- Haber completado [01-mantenimiento-periodico.md](/Users/x441425/workspace2/homelab/docs/13-operaciones/01-mantenimiento-periodico.md).
+- Haber completado [03-seguridad-base.md](../01-sistema/03-seguridad-base.md).
+- Haber completado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
+- Haber completado [01-mantenimiento-periodico.md](01-mantenimiento-periodico.md).
 - Tener acceso administrativo por **SSH** al host.
 - Tener disponibles en el host estas herramientas:
   - `ss`
@@ -48,12 +48,12 @@ Para evitar confusión entre reservas antiguas y puertos reales, usa este orden:
 
 1. este documento como **mapa operativo consolidado**
 2. el documento específico del servicio cuando detalle el `bind` y el puerto publicado
-3. [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) como política base, convención de rangos y referencia histórica
+3. [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) como política base, convención de rangos y referencia histórica
 
 Interpretación práctica:
 
 - si un servicio ya tiene documento propio con un puerto concreto, ese es el puerto operativo real
-- si [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) reservó otro puerto distinto, eso se trata como **deriva documental**, no como orden de cambiar el servicio sin revisión
+- si [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) reservó otro puerto distinto, eso se trata como **deriva documental**, no como orden de cambiar el servicio sin revisión
 - si un puerto aparece escuchando en el host y no aparece ni aquí ni en el documento del servicio, se trata como incidencia de revisión
 
 ### 2. Mapa consolidado final de superficies y puertos
@@ -72,7 +72,7 @@ Interpretación práctica:
 | Macvlan | IP de Unbound | `5335/tcp` | Unbound | interno DNS |
 | Macvlan | IP de Unbound | `5335/udp` | Unbound | interno DNS |
 
-Estas entradas siguen siendo la base del diseño de red del proyecto y coinciden con [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
+Estas entradas siguen siendo la base del diseño de red del proyecto y coinciden con [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 
 #### 2.2 Puertos publicados actualmente en el host
 
@@ -140,7 +140,7 @@ Estos puertos no deben convertirse en reglas de firewall del host salvo que un d
 
 #### 3.1 Resultado general
 
-No se detectan **colisiones directas de puertos publicados en el host** entre los documentos de servicio revisados. Sí existe **deriva** entre la convención inicial de [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) y varios documentos posteriores.
+No se detectan **colisiones directas de puertos publicados en el host** entre los documentos de servicio revisados. Sí existe **deriva** entre la convención inicial de [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) y varios documentos posteriores.
 
 Eso significa:
 
@@ -298,9 +298,9 @@ En una recuperación del host, restaurar datos sin restaurar la política de pue
 
 ## Referencias
 
-- [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md)
-- [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md)
-- [01-mantenimiento-periodico.md](/Users/x441425/workspace2/homelab/docs/13-operaciones/01-mantenimiento-periodico.md)
+- [03-seguridad-base.md](../01-sistema/03-seguridad-base.md)
+- [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
+- [01-mantenimiento-periodico.md](01-mantenimiento-periodico.md)
 - Docker Docs: [Publishing and exposing ports](https://docs.docker.com/get-started/docker-concepts/running-containers/publishing-ports/)
 - Docker Docs: [Packet filtering and firewalls](https://docs.docker.com/engine/network/packet-filtering-firewalls/)
 - Tailscale Docs: [MagicDNS](https://tailscale.com/kb/1081/magicdns)

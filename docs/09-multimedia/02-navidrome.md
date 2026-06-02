@@ -10,18 +10,18 @@ La política de este proyecto se mantiene igual que en el resto de servicios mul
 - la música vive en `/mnt/hd2t/media/navidrome/music/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
-- **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
+- **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
 
 Navidrome encaja especialmente bien en este homelab porque expone su biblioteca a través de una API compatible con clientes móviles y de escritorio. Dos clientes especialmente prácticos para este escenario son **DSub** y **Symfonium**.
 
 ## Requisitos Previos
 
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber desplegado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md) si quieres acceso remoto seguro.
-- Haber desplegado [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md) si quieres publicar Navidrome detrás del reverse proxy interno.
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceso remoto seguro.
+- Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Navidrome detrás del reverse proxy interno.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
 - Tener montado `hd2t` en `/mnt/hd2t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:

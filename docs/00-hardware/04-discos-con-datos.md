@@ -4,12 +4,12 @@
 
 Procedimiento para incorporar al homelab discos USB que **ya contienen datos** y que **no deben formatearse**. El objetivo es identificar cada unidad con seguridad, comprobar su estado de salud, validar la integridad del sistema de archivos y dejar el montaje automático funcionando en la Raspberry Pi 5 sin perder contenido.
 
-Este documento cubre los casos habituales de reutilización de discos en **ext4**, **NTFS** y **exFAT**. La conexión física previa se describe en [02-esquema-conexiones.md](/Users/x441425/workspace2/homelab/docs/00-hardware/02-esquema-conexiones.md), la preparación de discos vacíos en [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md) y el arranque definitivo desde el SSD en [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md).
+Este documento cubre los casos habituales de reutilización de discos en **ext4**, **NTFS** y **exFAT**. La conexión física previa se describe en [02-esquema-conexiones.md](02-esquema-conexiones.md), la preparación de discos vacíos en [03-preparacion-discos.md](03-preparacion-discos.md) y el arranque definitivo desde el SSD en [05-arranque-nvme.md](05-arranque-nvme.md).
 
 ## Requisitos Previos
 
-- Haber completado o validado [01-material-necesario.md](/Users/x441425/workspace2/homelab/docs/00-hardware/01-material-necesario.md).
-- Tener conectados físicamente el **SSD NVMe**, **`hd2t`** y **`hd5t`** según [02-esquema-conexiones.md](/Users/x441425/workspace2/homelab/docs/00-hardware/02-esquema-conexiones.md).
+- Haber completado o validado [01-material-necesario.md](01-material-necesario.md).
+- Tener conectados físicamente el **SSD NVMe**, **`hd2t`** y **`hd5t`** según [02-esquema-conexiones.md](02-esquema-conexiones.md).
 - Arrancar con Raspberry Pi OS y disponer de acceso por terminal con un usuario con permisos de `sudo`.
 - Confirmar qué disco reutilizado será **`hd2t`** y cuál será **`hd5t`** según su contenido real.
 - Asumir que en esta fase **no se reformatea nada**.
@@ -22,7 +22,7 @@ Usa este procedimiento si se cumple cualquiera de estas condiciones:
 - El disco viene de otro PC, NAS o Raspberry Pi y quieres montarlo tal cual.
 - El sistema de archivos actual es **ext4**, **NTFS** o **exFAT** y prefieres posponer una migración a `ext4`.
 
-Si el disco puede borrarse por completo, el flujo correcto es [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md).
+Si el disco puede borrarse por completo, el flujo correcto es [03-preparacion-discos.md](03-preparacion-discos.md).
 
 ## Estrategia Recomendada
 
@@ -337,7 +337,7 @@ Antes de dar por integrado el disco, comprueba:
 
 ## Siguiente Paso
 
-Con los discos reutilizados ya validados y montados, el siguiente documento a completar o seguir es [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md), donde se documenta el arranque definitivo desde el SSD NVMe.
+Con los discos reutilizados ya validados y montados, el siguiente documento a completar o seguir es [05-arranque-nvme.md](05-arranque-nvme.md), donde se documenta el arranque definitivo desde el SSD NVMe.
 
 ## Referencias
 

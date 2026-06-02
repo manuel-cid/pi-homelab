@@ -4,11 +4,11 @@
 
 Mapa físico de conexiones para montar la **Raspberry Pi 5 (8 GB)** con **arranque y operación sobre SSD NVMe**, dos discos USB de datos, red por Ethernet y adaptador Zigbee opcional. El objetivo es dejar claro qué se conecta a cada interfaz antes de pasar al particionado de discos y a la migración de arranque.
 
-Este documento asume el material descrito en [01-material-necesario.md](/Users/x441425/workspace2/homelab/docs/00-hardware/01-material-necesario.md). La preparación de discos se documenta en [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md), la incorporación de discos con datos previos en [04-discos-con-datos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/04-discos-con-datos.md) y el arranque desde NVMe en [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md).
+Este documento asume el material descrito en [01-material-necesario.md](01-material-necesario.md). La preparación de discos se documenta en [03-preparacion-discos.md](03-preparacion-discos.md), la incorporación de discos con datos previos en [04-discos-con-datos.md](04-discos-con-datos.md) y el arranque desde NVMe en [05-arranque-nvme.md](05-arranque-nvme.md).
 
 ## Requisitos Previos
 
-- Disponer de todo el hardware validado en [01-material-necesario.md](/Users/x441425/workspace2/homelab/docs/00-hardware/01-material-necesario.md).
+- Disponer de todo el hardware validado en [01-material-necesario.md](01-material-necesario.md).
 - Tener claro el reparto de almacenamiento:
   - **SSD NVMe**: sistema operativo, Docker, configuraciones y datos persistentes de servicios.
   - **`hd2t`**: multimedia general, descargas y backups.
@@ -119,9 +119,9 @@ Esta separación evita cargar los discos USB con I/O operativo del sistema y red
 
 ## Siguiente Paso
 
-Con el esquema físico ya definido, el siguiente documento a completar o seguir es [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md), donde se documentan particionado, formato, etiquetas, montaje automático y estrategia de uso de cada disco.
+Con el esquema físico ya definido, el siguiente documento a completar o seguir es [03-preparacion-discos.md](03-preparacion-discos.md), donde se documentan particionado, formato, etiquetas, montaje automático y estrategia de uso de cada disco.
 
-Si los discos USB ya contienen datos y no deben formatearse, salta a [04-discos-con-datos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/04-discos-con-datos.md).
+Si los discos USB ya contienen datos y no deben formatearse, salta a [04-discos-con-datos.md](04-discos-con-datos.md).
 
 ## Referencias
 

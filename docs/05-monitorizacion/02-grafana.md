@@ -2,7 +2,7 @@
 
 ## Descripción
 
-**Grafana** es la capa de visualización del stack de observabilidad del homelab: consulta métricas almacenadas en [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md), las presenta en dashboards y permite construir paneles para revisar de un vistazo el estado de la Raspberry Pi 5, Docker Engine y los servicios del laboratorio.
+**Grafana** es la capa de visualización del stack de observabilidad del homelab: consulta métricas almacenadas en [01-prometheus.md](01-prometheus.md), las presenta en dashboards y permite construir paneles para revisar de un vistazo el estado de la Raspberry Pi 5, Docker Engine y los servicios del laboratorio.
 
 En este homelab conviene mantener un criterio simple:
 
@@ -10,18 +10,18 @@ En este homelab conviene mantener un criterio simple:
 - esos datos persistentes deben vivir en el **SSD NVMe**
 - el datasource principal es Prometheus, alcanzable por nombre interno `prometheus:9090`
 - los dashboards más útiles en esta fase son:
-  - métricas del host con **Node Exporter Full** cuando exista [03-node-exporter.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/03-node-exporter.md)
+  - métricas del host con **Node Exporter Full** cuando exista [03-node-exporter.md](03-node-exporter.md)
   - métricas del daemon Docker obtenidas desde el endpoint nativo `/metrics`
   - temperatura de la Raspberry Pi a partir de las métricas del host
 
 ## Requisitos Previos
 
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Haber completado [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md).
-- Haber completado [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
-- Recomendable haber completado [03-node-exporter.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/03-node-exporter.md) si se van a usar dashboards de sistema y temperatura.
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Haber completado [01-prometheus.md](01-prometheus.md).
+- Haber completado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
+- Recomendable haber completado [03-node-exporter.md](03-node-exporter.md) si se van a usar dashboards de sistema y temperatura.
 - Tener creada la red Docker externa `homelab_proxy` para que Grafana alcance Prometheus por nombre interno.
 - Poder crear directorios persistentes en `/home/<user>/homelab/config/` y `/home/<user>/homelab/data/`.
 - Puertos necesarios en esta fase:
@@ -135,7 +135,7 @@ Con este fichero, Grafana arranca con el datasource listo sin tener que crearlo 
 
 Punto importante:
 
-- `prometheus` debe ser el nombre del servicio definido en [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md) y ambos stacks deben compartir la red `homelab_proxy`
+- `prometheus` debe ser el nombre del servicio definido en [01-prometheus.md](01-prometheus.md) y ambos stacks deben compartir la red `homelab_proxy`
 
 ### 3. Aprovisionar la carpeta de dashboards
 
@@ -225,14 +225,14 @@ engine_daemon_engine_cpus_cpus
 Lectura práctica:
 
 - `up` confirma el estado de scrape de los targets
-- `node_uname_info` funcionará cuando esté desplegado [03-node-exporter.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/03-node-exporter.md)
-- `engine_daemon_engine_cpus_cpus` funcionará si en [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md) ya habilitaste el endpoint nativo `/metrics` de Docker Engine
+- `node_uname_info` funcionará cuando esté desplegado [03-node-exporter.md](03-node-exporter.md)
+- `engine_daemon_engine_cpus_cpus` funcionará si en [01-prometheus.md](01-prometheus.md) ya habilitaste el endpoint nativo `/metrics` de Docker Engine
 
 ### 7. Dashboards recomendados
 
 #### Dashboard 1: sistema del host con Node Exporter Full
 
-El dashboard recomendado para el host es **Node Exporter Full** una vez desplegado [03-node-exporter.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/03-node-exporter.md).
+El dashboard recomendado para el host es **Node Exporter Full** una vez desplegado [03-node-exporter.md](03-node-exporter.md).
 
 Qué debe mostrar como mínimo:
 
@@ -251,7 +251,7 @@ Consejos prácticos:
 
 #### Dashboard 2: Docker Engine vía endpoint nativo `/metrics`
 
-Para Docker no hace falta añadir un exporter adicional si ya estás recogiendo el endpoint nativo del daemon definido en [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md).
+Para Docker no hace falta añadir un exporter adicional si ya estás recogiendo el endpoint nativo del daemon definido en [01-prometheus.md](01-prometheus.md).
 
 La opción más simple es crear un dashboard propio llamado `Docker Engine` con paneles como estos:
 
@@ -332,7 +332,7 @@ Ajustes recomendados del panel:
 - visualización: `Time series` y un `Stat` adicional para el valor actual
 - umbrales orientativos: `70 °C` advertencia, `80 °C` crítico
 
-Si no aparece ninguna métrica de temperatura, revisa la configuración de [03-node-exporter.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/03-node-exporter.md), porque ahí es donde debe quedar resuelta la exportación de métricas del host.
+Si no aparece ninguna métrica de temperatura, revisa la configuración de [03-node-exporter.md](03-node-exporter.md), porque ahí es donde debe quedar resuelta la exportación de métricas del host.
 
 ### 8. Operación diaria
 

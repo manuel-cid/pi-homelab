@@ -10,14 +10,14 @@ La política de este proyecto es estricta:
 - **`/mnt/hd2t`** se dedica a multimedia general, descargas y copias de seguridad.
 - **`/mnt/hd5t`** se dedica en exclusiva a la biblioteca multimedia de **Stash**.
 
-En [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md) se validaron etiquetas, formato y montaje de los discos. Este documento **normaliza la estructura operativa final** y fija como puntos de montaje definitivos **`/mnt/hd2t`** y **`/mnt/hd5t`**.
+En [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md) se validaron etiquetas, formato y montaje de los discos. Este documento **normaliza la estructura operativa final** y fija como puntos de montaje definitivos **`/mnt/hd2t`** y **`/mnt/hd5t`**.
 
 ## Requisitos Previos
 
-- Haber completado [01-instalacion-os.md](/Users/x441425/workspace2/homelab/docs/01-sistema/01-instalacion-os.md).
-- Haber completado [02-configuracion-inicial.md](/Users/x441425/workspace2/homelab/docs/01-sistema/02-configuracion-inicial.md).
-- Tener la Raspberry Pi arrancando realmente desde el **SSD NVMe** según [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md).
-- Tener preparados y etiquetados los discos USB como **`hd2t`** y **`hd5t`** según [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md).
+- Haber completado [01-instalacion-os.md](01-instalacion-os.md).
+- Haber completado [02-configuracion-inicial.md](02-configuracion-inicial.md).
+- Tener la Raspberry Pi arrancando realmente desde el **SSD NVMe** según [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md).
+- Tener preparados y etiquetados los discos USB como **`hd2t`** y **`hd5t`** según [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md).
 - Poder acceder por terminal con el usuario administrativo y permisos de `sudo`.
 - Tener decidido qué usuario local será el propietario operativo de la estructura de carpetas.
 
@@ -267,8 +267,8 @@ Notas prácticas:
 
 ## Referencias
 
-- [01-instalacion-os.md](/Users/x441425/workspace2/homelab/docs/01-sistema/01-instalacion-os.md)
-- [02-configuracion-inicial.md](/Users/x441425/workspace2/homelab/docs/01-sistema/02-configuracion-inicial.md)
-- [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md)
-- [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md)
+- [01-instalacion-os.md](01-instalacion-os.md)
+- [02-configuracion-inicial.md](02-configuracion-inicial.md)
+- [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md)
+- [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md)
 - `fstab(5)`

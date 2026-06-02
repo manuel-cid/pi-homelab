@@ -16,9 +16,9 @@ Para este proyecto esa topología es la más coherente: despliegue muy simple, s
 
 ## Requisitos Previos
 
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md) si quieres usar Stirling PDF también fuera de casa a través de la tailnet.
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para mantener documentado el puerto del servicio.
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres usar Stirling PDF también fuera de casa a través de la tailnet.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto del servicio.
 - Tener claro que este despliegue queda **sin login persistente** y solo tiene sentido porque el alcance de red del homelab es **LAN + Tailscale**, sin exposición pública a internet.
 - Puertos necesarios en esta fase:
   - **`16004/tcp` publicado en el host** para acceso web desde LAN y Tailscale

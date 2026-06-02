@@ -14,12 +14,12 @@ En este proyecto se despliega en Docker sobre la **Raspberry Pi 5**, con persist
 
 ## Requisitos Previos
 
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber revisado [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para registrar el puerto del broker.
-- Recomendable haber completado [01-home-assistant.md](/Users/x441425/workspace2/homelab/docs/08-domotica/01-home-assistant.md) si Mosquitto se va a integrar inmediatamente con Home Assistant.
-- Si se quiere acceso remoto desde fuera de la LAN, tener operativa la VPN de [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber revisado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto del broker.
+- Recomendable haber completado [01-home-assistant.md](01-home-assistant.md) si Mosquitto se va a integrar inmediatamente con Home Assistant.
+- Si se quiere acceso remoto desde fuera de la LAN, tener operativa la VPN de [04-tailscale.md](../03-red/04-tailscale.md).
 - Puertos necesarios en esta fase:
   - **`1883/tcp`** para MQTT
   - no publicar **WebSockets** (`9001`) salvo que exista un caso real de uso
@@ -188,7 +188,7 @@ El resultado esperado es este:
 
 ### 6. Integración básica con Home Assistant
 
-En [01-home-assistant.md](/Users/x441425/workspace2/homelab/docs/08-domotica/01-home-assistant.md) ya quedó preparada la referencia a MQTT. Ahora completa la integración desde **Settings → Devices & services → Add integration → MQTT**.
+En [01-home-assistant.md](01-home-assistant.md) ya quedó preparada la referencia a MQTT. Ahora completa la integración desde **Settings → Devices & services → Add integration → MQTT**.
 
 Valores típicos:
 
@@ -201,7 +201,7 @@ Si todo va bien, Home Assistant detectará el broker y podrás usarlo como base 
 
 ### 7. Integración prevista con Zigbee2MQTT
 
-Cuando despliegues [03-zigbee2mqtt.md](/Users/x441425/workspace2/homelab/docs/08-domotica/03-zigbee2mqtt.md), configura su acceso a MQTT con:
+Cuando despliegues [03-zigbee2mqtt.md](03-zigbee2mqtt.md), configura su acceso a MQTT con:
 
 - servidor: `mqtt://IP_DE_LA_PI:1883`
 - usuario: `mqtt-zigbee2mqtt`
@@ -211,7 +211,7 @@ Si activas `homeassistant: true` en Zigbee2MQTT, este publicará mensajes de dis
 
 ### 8. Integración prevista con Node-RED
 
-Cuando despliegues [04-node-red.md](/Users/x441425/workspace2/homelab/docs/08-domotica/04-node-red.md), crea el servidor MQTT en Node-RED usando:
+Cuando despliegues [04-node-red.md](04-node-red.md), crea el servidor MQTT en Node-RED usando:
 
 - host: `IP_DE_LA_PI`
 - puerto: `1883`
@@ -277,7 +277,7 @@ docker compose stop mosquitto
 docker compose start mosquitto
 ```
 
-Este servicio debe integrarse más adelante con la estrategia de [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md).
+Este servicio debe integrarse más adelante con la estrategia de [02-borgmatic.md](../07-backups/02-borgmatic.md).
 
 ## Referencias
 

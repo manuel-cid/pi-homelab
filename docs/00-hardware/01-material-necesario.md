@@ -4,7 +4,7 @@
 
 Inventario base para montar el homelab sobre una **Raspberry Pi 5 (8 GB)** con **SSD NVMe como almacenamiento principal** y dos discos USB para datos. El objetivo de esta fase es comprar o validar todo el hardware antes de pasar a conexiones, preparación de discos y arranque desde NVMe.
 
-Este documento cubre solo materiales y criterios de compra. La conexión física se documenta en [02-esquema-conexiones.md](/Users/x441425/workspace2/homelab/docs/00-hardware/02-esquema-conexiones.md), la preparación de discos en [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md) y la migración de arranque al SSD en [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md).
+Este documento cubre solo materiales y criterios de compra. La conexión física se documenta en [02-esquema-conexiones.md](02-esquema-conexiones.md), la preparación de discos en [03-preparacion-discos.md](03-preparacion-discos.md) y la migración de arranque al SSD en [05-arranque-nvme.md](05-arranque-nvme.md).
 
 ## Requisitos Previos
 
@@ -51,7 +51,7 @@ Este documento cubre solo materiales y criterios de compra. La conexión física
 
 - **`hd2t` (2 TB)**: destinado a bibliotecas multimedia, descargas y copias de seguridad locales.
 - **`hd5t` (5 TB)**: reservado para la biblioteca de Stash, separando ese volumen del resto del contenido.
-- Si estos discos ya existen y contienen datos, no hace falta sustituirlos. Su incorporación sin formatear se documenta en [04-discos-con-datos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/04-discos-con-datos.md).
+- Si estos discos ya existen y contienen datos, no hace falta sustituirlos. Su incorporación sin formatear se documenta en [04-discos-con-datos.md](04-discos-con-datos.md).
 
 ## Presupuesto del Upgrade a NVMe
 
@@ -85,7 +85,7 @@ Si ya se dispone de Raspberry Pi 5, discos USB y cableado, el coste incremental 
 
 ## Siguiente Paso
 
-Con el material validado, el siguiente documento a completar o seguir es [02-esquema-conexiones.md](/Users/x441425/workspace2/homelab/docs/00-hardware/02-esquema-conexiones.md), donde se define cómo conectar físicamente la Pi, el NVMe, los discos USB, la red y el adaptador Zigbee.
+Con el material validado, el siguiente documento a completar o seguir es [02-esquema-conexiones.md](02-esquema-conexiones.md), donde se define cómo conectar físicamente la Pi, el NVMe, los discos USB, la red y el adaptador Zigbee.
 
 ## Referencias
 

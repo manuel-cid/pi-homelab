@@ -10,18 +10,18 @@ La política de almacenamiento de este proyecto se mantiene igual que en el rest
 - la biblioteca multimedia vive en `/mnt/hd5t/stash/data/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
-- **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
+- **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
 
 Stash encaja bien en este homelab porque separa claramente la **biblioteca real** del **estado operativo** del servicio. Eso permite dejar en el SSD NVMe lo sensible al rendimiento y a la consistencia del SQLite, mientras `hd5t` absorbe el crecimiento del catálogo multimedia.
 
 ## Requisitos Previos
 
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber desplegado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md) si quieres acceso remoto seguro.
-- Haber desplegado [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md) si quieres publicar Stash detrás del reverse proxy interno.
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceso remoto seguro.
+- Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Stash detrás del reverse proxy interno.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
 - Tener montado `hd5t` en `/mnt/hd5t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:

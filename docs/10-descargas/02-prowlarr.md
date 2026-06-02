@@ -16,13 +16,13 @@ La decisión importante aquí es que **Prowlarr no descarga contenido**. Solo ce
 
 ## Requisitos Previos
 
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber desplegado [01-transmission.md](/Users/x441425/workspace2/homelab/docs/10-descargas/01-transmission.md) si más adelante vas a usar búsquedas manuales desde Prowlarr con envío directo al cliente torrent.
-- Haber desplegado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md) si quieres acceder a la interfaz fuera de la LAN.
-- Haber desplegado [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md) si quieres publicar Prowlarr detrás del reverse proxy interno.
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber desplegado [01-transmission.md](01-transmission.md) si más adelante vas a usar búsquedas manuales desde Prowlarr con envío directo al cliente torrent.
+- Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder a la interfaz fuera de la LAN.
+- Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Prowlarr detrás del reverse proxy interno.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de integración entre stacks.
 - Puertos necesarios:
   - `15001/tcp` en el host para acceso web y API desde LAN o Tailscale
@@ -242,7 +242,7 @@ entonces **no necesitas añadir Transmission en Prowlarr**.
 
 Solo debes configurarlo en `Settings` -> `Download Clients` si quieres lanzar búsquedas y envíos directamente desde la interfaz de Prowlarr.
 
-Ejemplo de conexión con el stack descrito en [01-transmission.md](/Users/x441425/workspace2/homelab/docs/10-descargas/01-transmission.md):
+Ejemplo de conexión con el stack descrito en [01-transmission.md](01-transmission.md):
 
 - nombre: `Transmission`
 - host: `transmission`

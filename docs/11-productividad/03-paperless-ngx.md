@@ -20,10 +20,10 @@ Para este homelab la topología más simple y compatible es publicar Paperless-n
 
 ## Requisitos Previos
 
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md) si quieres acceder también desde fuera de casa por la tailnet.
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para documentar el puerto del servicio.
-- Revisar [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md) si vas a incluir sus bind mounts en la estrategia de copias.
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder también desde fuera de casa por la tailnet.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para documentar el puerto del servicio.
+- Revisar [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir sus bind mounts en la estrategia de copias.
 - Disponer de `/home/<user>/homelab/` en el **SSD NVMe** con permisos normales para el usuario administrador.
 - Tener decidido el idioma principal de OCR. Para un uso doméstico en España suele ser razonable empezar con `spa+eng`.
 - Puertos necesarios en esta fase:

@@ -17,10 +17,10 @@ Para este homelab, esa combinación suele ser la más razonable: despliegue cort
 
 ## Requisitos Previos
 
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md) si quieres acceder también desde fuera de casa por la tailnet.
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para mantener documentado el puerto `16005/tcp`.
-- Revisar [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount del servicio en la estrategia de copias.
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder también desde fuera de casa por la tailnet.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto `16005/tcp`.
+- Revisar [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount del servicio en la estrategia de copias.
 - Disponer de `/home/<user>/homelab/` en el **SSD NVMe** con espacio suficiente para configuración, base de datos, favicon cache y extensiones.
 - Tener exportado a `.opml` el catálogo de feeds si vienes de otro lector RSS.
 - Puertos necesarios en esta fase:
@@ -263,5 +263,5 @@ Buenas prácticas de restore:
 - [FreshRSS - Gestión de suscripciones e importación OPML](https://github.com/FreshRSS/FreshRSS/blob/edge/docs/en/users/04_Subscriptions.md)
 - [FreshRSS - Repositorio oficial](https://github.com/FreshRSS/FreshRSS)
 - [Imagen Docker `freshrss/freshrss`](https://hub.docker.com/r/freshrss/freshrss)
-- [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md)
-- [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md)
+- [02-estructura-compose.md](../02-docker/02-estructura-compose.md)
+- [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md)

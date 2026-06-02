@@ -24,15 +24,15 @@ Como la zona de descargas y la biblioteca final están en el mismo disco `hd2t`,
 
 ## Requisitos Previos
 
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber desplegado [01-transmission.md](/Users/x441425/workspace2/homelab/docs/10-descargas/01-transmission.md) para disponer del cliente de descargas.
-- Haber desplegado [02-prowlarr.md](/Users/x441425/workspace2/homelab/docs/10-descargas/02-prowlarr.md) si quieres centralizar los indexadores.
-- Haber desplegado [01-jellyfin.md](/Users/x441425/workspace2/homelab/docs/09-multimedia/01-jellyfin.md) o, al menos, haber adoptado la misma ruta final de películas en `hd2t`.
-- Haber desplegado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md) si quieres acceder a la interfaz fuera de la LAN.
-- Haber desplegado [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md) si quieres publicar Radarr detrás del reverse proxy interno.
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber desplegado [01-transmission.md](01-transmission.md) para disponer del cliente de descargas.
+- Haber desplegado [02-prowlarr.md](02-prowlarr.md) si quieres centralizar los indexadores.
+- Haber desplegado [01-jellyfin.md](../09-multimedia/01-jellyfin.md) o, al menos, haber adoptado la misma ruta final de películas en `hd2t`.
+- Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder a la interfaz fuera de la LAN.
+- Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Radarr detrás del reverse proxy interno.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
 - Tener montado `hd2t` en `/mnt/hd2t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de integración entre stacks.
 - Puertos necesarios:
@@ -93,7 +93,7 @@ mkdir -p /home/<user>/homelab/data/radarr/config
 sudo mkdir -p /mnt/hd2t/media/jellyfin/movies
 ```
 
-La carpeta de descargas ya debe existir si has seguido [01-transmission.md](/Users/x441425/workspace2/homelab/docs/10-descargas/01-transmission.md). No la recrees con otra estructura distinta, porque Radarr y Transmission deben ver la misma jerarquía de archivos.
+La carpeta de descargas ya debe existir si has seguido [01-transmission.md](01-transmission.md). No la recrees con otra estructura distinta, porque Radarr y Transmission deben ver la misma jerarquía de archivos.
 
 ### 2. Ajustar propiedad y permisos
 
@@ -210,7 +210,7 @@ La clave aquí es que Radarr ordene la biblioteca final y no deje películas sue
 
 ### 7. Integrar Transmission como cliente de descargas
 
-En `Settings` -> `Download Clients`, añade **Transmission** con los parámetros del stack descrito en [01-transmission.md](/Users/x441425/workspace2/homelab/docs/10-descargas/01-transmission.md).
+En `Settings` -> `Download Clients`, añade **Transmission** con los parámetros del stack descrito en [01-transmission.md](01-transmission.md).
 
 Valores recomendados:
 
@@ -234,7 +234,7 @@ Punto importante de diseño:
 
 ### 8. Integrar Prowlarr para los indexadores
 
-Si ya has completado [02-prowlarr.md](/Users/x441425/workspace2/homelab/docs/10-descargas/02-prowlarr.md), la integración correcta se hace desde **Prowlarr**, no creando indexadores a mano en Radarr.
+Si ya has completado [02-prowlarr.md](02-prowlarr.md), la integración correcta se hace desde **Prowlarr**, no creando indexadores a mano en Radarr.
 
 Flujo recomendado:
 

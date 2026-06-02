@@ -6,12 +6,12 @@ Procedimiento para completar la **configuración base del sistema operativo** en
 
 La política de memoria de este proyecto usa **`zram` como swap primario** y un **swapfile de 2 GB en el SSD NVMe** como red de seguridad. No se debe usar swap en los discos USB `hd2t` o `hd5t`: añaden latencia, pueden sufrir desconexiones y compiten con el I/O de multimedia y backups.
 
-Este documento asume que la Raspberry Pi **ya arranca desde el NVMe** siguiendo [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md). La estructura final de discos y su función dentro del homelab se apoya en [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md).
+Este documento asume que la Raspberry Pi **ya arranca desde el NVMe** siguiendo [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md). La estructura final de discos y su función dentro del homelab se apoya en [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md).
 
 ## Requisitos Previos
 
-- Haber completado la instalación inicial descrita en [01-instalacion-os.md](/Users/x441425/workspace2/homelab/docs/01-sistema/01-instalacion-os.md).
-- Haber migrado el arranque al SSD NVMe siguiendo [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md).
+- Haber completado la instalación inicial descrita en [01-instalacion-os.md](01-instalacion-os.md).
+- Haber migrado el arranque al SSD NVMe siguiendo [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md).
 - Poder acceder por **SSH** al sistema con el usuario administrativo.
 - Disponer de conectividad de red funcional, preferiblemente por **Ethernet**.
 - Tener decidido de antemano:
@@ -49,7 +49,7 @@ lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS,LABEL
 
 El dispositivo montado en `/` debe corresponder al **SSD NVMe**, no a la microSD. En una instalación típica verás algo parecido a `nvme0n1p2`.
 
-Si el sistema todavía arranca desde la microSD, detente aquí y vuelve a [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md).
+Si el sistema todavía arranca desde la microSD, detente aquí y vuelve a [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md).
 
 ### 2. Actualizar el sistema base
 
@@ -298,7 +298,7 @@ Revisa especialmente:
 
 ### 13. Qué hacer justo después
 
-El siguiente paso recomendado es endurecer el sistema con [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md). Más adelante, la organización definitiva de carpetas y montajes persistentes se documenta en [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
+El siguiente paso recomendado es endurecer el sistema con [03-seguridad-base.md](03-seguridad-base.md). Más adelante, la organización definitiva de carpetas y montajes persistentes se documenta en [04-estructura-directorios.md](04-estructura-directorios.md).
 
 ## Almacenamiento
 
@@ -332,6 +332,6 @@ Estos ficheros son pequeños, pero forman parte del estado base del host y convi
 - `man timedatectl`
 - `man locale`
 - `man swapon`
-- [01-instalacion-os.md](/Users/x441425/workspace2/homelab/docs/01-sistema/01-instalacion-os.md)
-- [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md)
-- [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md)
+- [01-instalacion-os.md](01-instalacion-os.md)
+- [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md)
+- [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md)

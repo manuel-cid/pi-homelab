@@ -6,12 +6,12 @@ Este documento define la **estrategia de organización** de los despliegues Dock
 
 Para este proyecto, la recomendación es clara: **no** usar un único `docker-compose.yml` monolítico para todo el homelab y **no** fragmentar sin criterio en un fichero por contenedor. El punto de equilibrio es usar **un `docker-compose.yml` por stack funcional**, entendiendo por stack un conjunto de servicios que comparten ciclo de vida, dependencias y contexto operativo.
 
-Esto encaja especialmente bien con una Raspberry Pi 5: simplifica actualizaciones, reduce el riesgo de tocar servicios no relacionados y hace más cómoda la gestión posterior desde terminal y desde [03-portainer.md](/Users/x441425/workspace2/homelab/docs/02-docker/03-portainer.md).
+Esto encaja especialmente bien con una Raspberry Pi 5: simplifica actualizaciones, reduce el riesgo de tocar servicios no relacionados y hace más cómoda la gestión posterior desde terminal y desde [03-portainer.md](03-portainer.md).
 
 ## Requisitos Previos
 
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
+- Haber completado [01-instalacion-docker.md](01-instalacion-docker.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 - Disponer de la raíz operativa del homelab en `/home/<user>/homelab/`.
 - Poder acceder por terminal con el usuario administrativo que ejecutará `docker compose`.
 - Tener claros los puntos de montaje persistentes del proyecto:

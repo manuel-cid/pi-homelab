@@ -10,11 +10,11 @@ La política de este proyecto se mantiene:
 - **`/mnt/hd2t/backups/`** es el destino local de backups
 - **`hd5t`** sigue reservado a la biblioteca multimedia de **Stash**
 
-Esta fase documenta la **estrategia general**. El despliegue concreto de la herramienta se cubre en [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md) y el procedimiento detallado para volúmenes y bases de datos en [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md).
+Esta fase documenta la **estrategia general**. El despliegue concreto de la herramienta se cubre en [02-borgmatic.md](02-borgmatic.md) y el procedimiento detallado para volúmenes y bases de datos en [03-backup-docker-volumes.md](03-backup-docker-volumes.md).
 
 ## Requisitos Previos
 
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 - Tener montado **`hd2t`** en **`/mnt/hd2t`** y operativo para escritura.
 - Tener al menos un servicio con datos persistentes desplegado o, como mínimo, definida la estructura de rutas bajo **`/home/<user>/homelab/data/`**.
 - Tener espacio libre suficiente en `hd2t` para almacenar varias versiones deduplicadas de los datos del NVMe.
@@ -32,7 +32,7 @@ Al terminar este documento, el criterio operativo debe quedar fijado así:
 
 ## Docker Compose
 
-No aplica en este documento. Aquí se define la política de backup; el despliegue del stack y la configuración YAML se documentan en [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md).
+No aplica en este documento. Aquí se define la política de backup; el despliegue del stack y la configuración YAML se documentan en [02-borgmatic.md](02-borgmatic.md).
 
 ## Configuración
 
@@ -242,14 +242,14 @@ Elementos excluidos por defecto:
 Implementación siguiente:
 
 - estrategia y política general: este documento
-- automatización con Borgmatic: [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md)
-- procedimiento de dumps y restore de volúmenes: [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md)
+- automatización con Borgmatic: [02-borgmatic.md](02-borgmatic.md)
+- procedimiento de dumps y restore de volúmenes: [03-backup-docker-volumes.md](03-backup-docker-volumes.md)
 
 ## Referencias
 
-- [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md)
-- [01-samba.md](/Users/x441425/workspace2/homelab/docs/06-almacenamiento/01-samba.md)
-- [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md)
-- [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md)
+- [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md)
+- [01-samba.md](../06-almacenamiento/01-samba.md)
+- [02-borgmatic.md](02-borgmatic.md)
+- [03-backup-docker-volumes.md](03-backup-docker-volumes.md)
 - Documentación oficial de BorgBackup: https://www.borgbackup.org/
 - Documentación oficial de Borgmatic: https://torsion.org/borgmatic/

@@ -4,12 +4,12 @@
 
 Procedimiento para instalar **Raspberry Pi OS Lite 64-bit** en una **microSD** usando **Raspberry Pi Imager**, dejando preparada una instalación inicial y totalmente headless para una **Raspberry Pi 5 (8 GB)**. El objetivo de este documento es cubrir el primer despliegue del sistema base con acceso por **SSH**, usuario administrativo definido desde el inicio y una red **WiFi de emergencia** como respaldo temporal si el enlace Ethernet no estuviera disponible.
 
-Esta instalación en microSD es **provisional**. El estado final del homelab debe migrarse al **SSD NVMe** siguiendo [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md). La distribución prevista del almacenamiento se define en [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md).
+Esta instalación en microSD es **provisional**. El estado final del homelab debe migrarse al **SSD NVMe** siguiendo [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md). La distribución prevista del almacenamiento se define en [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md).
 
 ## Requisitos Previos
 
-- Haber validado el hardware base descrito en [01-material-necesario.md](/Users/x441425/workspace2/homelab/docs/00-hardware/01-material-necesario.md).
-- Tener montada la Raspberry Pi 5 con su carcasa y el SSD NVMe según [02-esquema-conexiones.md](/Users/x441425/workspace2/homelab/docs/00-hardware/02-esquema-conexiones.md), aunque el primer arranque todavía se haga desde microSD.
+- Haber validado el hardware base descrito en [01-material-necesario.md](../00-hardware/01-material-necesario.md).
+- Tener montada la Raspberry Pi 5 con su carcasa y el SSD NVMe según [02-esquema-conexiones.md](../00-hardware/02-esquema-conexiones.md), aunque el primer arranque todavía se haga desde microSD.
 - Disponer de una **microSD** funcional, preferiblemente de **64 GB**.
 - Tener un equipo adicional desde el que ejecutar **Raspberry Pi Imager**.
 - Contar con conexión **Ethernet** disponible en el lugar de instalación. El WiFi configurado en este documento se considera solo una vía de emergencia.
@@ -29,7 +29,7 @@ Al terminar este documento, el estado esperado es este:
 - El acceso remoto básico queda disponible por **SSH**.
 - El usuario administrativo ya existe desde el primer arranque.
 - El sistema tiene configurado **Ethernet** como vía principal y **WiFi** como respaldo temporal.
-- La migración definitiva al **SSD NVMe** queda pendiente para [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md).
+- La migración definitiva al **SSD NVMe** queda pendiente para [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md).
 
 ## Docker Compose
 
@@ -80,7 +80,7 @@ Activa `Enable SSH`.
 Opciones recomendadas:
 
 - Si ya tienes clave pública: habilita SSH con **public-key authentication**.
-- Si todavía no la tienes preparada: habilita SSH con contraseña para el arranque inicial y sustitúyelo por claves en [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md).
+- Si todavía no la tienes preparada: habilita SSH con contraseña para el arranque inicial y sustitúyelo por claves en [03-seguridad-base.md](03-seguridad-base.md).
 
 Si usas claves, pega la **clave pública** correcta en el campo correspondiente de Imager.
 
@@ -164,7 +164,7 @@ En esta fase todavía no hace falta migrar al NVMe ni preparar montajes definiti
 
 ### 9. Qué hacer justo después
 
-El siguiente documento a ejecutar es [02-configuracion-inicial.md](/Users/x441425/workspace2/homelab/docs/01-sistema/02-configuracion-inicial.md), donde se realiza la actualización del sistema, ajustes regionales y configuración de memoria swap. La migración del arranque al SSD queda para [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md).
+El siguiente documento a ejecutar es [02-configuracion-inicial.md](02-configuracion-inicial.md), donde se realiza la actualización del sistema, ajustes regionales y configuración de memoria swap. La migración del arranque al SSD queda para [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md).
 
 ## Almacenamiento
 
@@ -172,8 +172,8 @@ Durante este documento, el reparto de discos debe entenderse así:
 
 - **microSD**: solo medio temporal para el arranque inicial y la configuración base.
 - **SSD NVMe**: destino definitivo del sistema operativo, Docker, configuraciones y datos persistentes tras la migración.
-- **`hd2t`**: multimedia general, descargas y backups, según [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md).
-- **`hd5t`**: biblioteca multimedia de Stash, según [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md).
+- **`hd2t`**: multimedia general, descargas y backups, según [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md).
+- **`hd5t`**: biblioteca multimedia de Stash, según [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md).
 
 Consideraciones prácticas:
 
@@ -195,5 +195,5 @@ Si necesitas rehacer la instalación, tener esos valores anotados permite recons
 
 - Raspberry Pi Imager
 - Raspberry Pi OS Lite (64-bit)
-- [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md)
-- [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md)
+- [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md)
+- [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md)

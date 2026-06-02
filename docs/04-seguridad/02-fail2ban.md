@@ -2,7 +2,7 @@
 
 ## Descripción
 
-En [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md) **Fail2ban** quedó instalado y activo solo para el jail `sshd`. En esta guía se amplía esa instalación para cubrir también **servicios Dockerizados** del homelab, en particular **Authelia** y **Vaultwarden**, leyendo sus logs persistidos en el **SSD NVMe** y aplicando bans a nivel de host.
+En [03-seguridad-base.md](../01-sistema/03-seguridad-base.md) **Fail2ban** quedó instalado y activo solo para el jail `sshd`. En esta guía se amplía esa instalación para cubrir también **servicios Dockerizados** del homelab, en particular **Authelia** y **Vaultwarden**, leyendo sus logs persistidos en el **SSD NVMe** y aplicando bans a nivel de host.
 
 Hay una decisión de diseño importante en esta fase:
 
@@ -20,9 +20,9 @@ El resultado buscado es este:
 
 ## Requisitos Previos
 
-- Haber completado [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md).
-- Haber completado [01-authelia.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/01-authelia.md).
-- Haber completado [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md) si Authelia o Vaultwarden se publican detrás de Caddy.
+- Haber completado [03-seguridad-base.md](../01-sistema/03-seguridad-base.md).
+- Haber completado [01-authelia.md](01-authelia.md).
+- Haber completado [05-caddy.md](../03-red/05-caddy.md) si Authelia o Vaultwarden se publican detrás de Caddy.
 - Tener Docker Engine operativo y con los stacks de infraestructura levantados.
 - Tener el servicio `fail2ban` activo en el host.
 - Poder usar `sudo` sobre la Raspberry Pi.
@@ -67,7 +67,7 @@ En este homelab conviene distinguir claramente dos casos:
 - **host**: `sshd`, con bans integrados en `ufw`
 - **contenedores publicados por Docker**: Authelia, Vaultwarden y otros servicios web, con bans en `DOCKER-USER`
 
-No sustituyas ni reescribas el fichero `sshd.local` definido en [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md). La ampliación de esta guía debe convivir con él.
+No sustituyas ni reescribas el fichero `sshd.local` definido en [03-seguridad-base.md](../01-sistema/03-seguridad-base.md). La ampliación de esta guía debe convivir con él.
 
 ### 3. Hacer persistente el log de Authelia
 
@@ -104,7 +104,7 @@ Haz un intento fallido de login y valida después que el log contiene la IP real
 
 ### 4. Preparar Vaultwarden para logging persistente
 
-Cuando despliegues **Vaultwarden** según [01-vaultwarden.md](/Users/x441425/workspace2/homelab/docs/11-productividad/01-vaultwarden.md), añade en su servicio estos valores de entorno:
+Cuando despliegues **Vaultwarden** según [01-vaultwarden.md](../11-productividad/01-vaultwarden.md), añade en su servicio estos valores de entorno:
 
 ```yaml
 environment:
@@ -381,10 +381,10 @@ No es necesario respaldar el estado temporal de bans ni los logs completos para 
 
 ## Referencias
 
-- [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md)
-- [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
-- [01-authelia.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/01-authelia.md)
-- [01-vaultwarden.md](/Users/x441425/workspace2/homelab/docs/11-productividad/01-vaultwarden.md)
+- [03-seguridad-base.md](../01-sistema/03-seguridad-base.md)
+- [05-caddy.md](../03-red/05-caddy.md)
+- [01-authelia.md](01-authelia.md)
+- [01-vaultwarden.md](../11-productividad/01-vaultwarden.md)
 - Fail2ban
 - Authelia Docs: Security Measures
 - Authelia Docs: Log Configuration

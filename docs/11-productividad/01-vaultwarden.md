@@ -16,15 +16,15 @@ Esta guía asume precisamente esa topología: **LAN + Tailscale**, sin puertos a
 
 ## Requisitos Previos
 
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md).
-- Haber completado [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md).
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para mantener documentado el puerto lógico del servicio aunque aquí no se publique directamente.
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-tailscale.md](../03-red/04-tailscale.md).
+- Haber completado [05-caddy.md](../03-red/05-caddy.md).
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto lógico del servicio aunque aquí no se publique directamente.
 - Tener creada la red Docker externa `homelab_proxy`.
 - Tener operativo el hostname MagicDNS del nodo, por ejemplo `pi-homelab.<tailnet>.ts.net`.
 - Tener ya emitido en Caddy el certificado de Tailscale para ese hostname.
-- Haber revisado [02-fail2ban.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/02-fail2ban.md) si quieres endurecer protección frente a fuerza bruta.
-- Haber revisado [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md) si vas a incluir la base SQLite en copias automáticas.
+- Haber revisado [02-fail2ban.md](../04-seguridad/02-fail2ban.md) si quieres endurecer protección frente a fuerza bruta.
+- Haber revisado [02-borgmatic.md](../07-backups/02-borgmatic.md) si vas a incluir la base SQLite en copias automáticas.
 - Puertos necesarios en esta fase:
   - **ninguno publicado en el host** para el contenedor de Vaultwarden
   - **`80/tcp` solo interno entre Caddy y Vaultwarden** dentro de Docker
@@ -82,7 +82,7 @@ Notas sobre este Compose:
 - **Caddy** resuelve el acceso web y TLS mediante la red `homelab_proxy`
 - `DOMAIN` debe coincidir con la URL real que usarán los clientes
 - el `ADMIN_TOKEN` puede guardarse en texto plano, pero es preferible almacenarlo como **hash Argon2**
-- el log persistente en `/data/vaultwarden.log` deja preparado el servicio para [02-fail2ban.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/02-fail2ban.md)
+- el log persistente en `/data/vaultwarden.log` deja preparado el servicio para [02-fail2ban.md](../04-seguridad/02-fail2ban.md)
 - se recomienda **no** autoactualizar a ciegas un gestor de contraseñas con Watchtower
 
 ## Configuración
@@ -179,7 +179,7 @@ Notas importantes para este servicio:
 
 - usa una **subruta HTTPS** y deja esa URL como **canónica**
 - no uses `http://vaultwarden.lan` como URL principal del vault; para Vaultwarden interesa priorizar el contexto seguro
-- `header_up X-Real-IP {remote_host}` ayuda a que [02-fail2ban.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/02-fail2ban.md) vea la IP real del cliente en el log
+- `header_up X-Real-IP {remote_host}` ayuda a que [02-fail2ban.md](../04-seguridad/02-fail2ban.md) vea la IP real del cliente en el log
 - si ya tienes otros `handle` en el bloque HTTPS, integra el matcher de Vaultwarden sin romper el orden existente
 
 Aplica cambios:
@@ -230,7 +230,7 @@ Si vas a activar la protección contra fuerza bruta:
 
 - conserva `LOG_FILE`, `LOG_LEVEL=warn` y `EXTENDED_LOGGING=true` como aparecen en este documento
 - verifica que `/home/<user>/homelab/data/vaultwarden/vaultwarden.log` registra la IP real del cliente
-- después sigue [02-fail2ban.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/02-fail2ban.md) para crear filtros y activar el jail `vaultwarden`
+- después sigue [02-fail2ban.md](../04-seguridad/02-fail2ban.md) para crear filtros y activar el jail `vaultwarden`
 
 Comprobación mínima recomendada:
 
@@ -269,7 +269,7 @@ Qué respaldar como mínimo:
 Estrategia recomendada en este homelab:
 
 - incluir el directorio completo en el backup de filesystem
-- añadir además un bloque `sqlite_databases` para `db.sqlite3` siguiendo [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md)
+- añadir además un bloque `sqlite_databases` para `db.sqlite3` siguiendo [02-borgmatic.md](../07-backups/02-borgmatic.md)
 
 Ejemplo de entrada útil en Borgmatic:
 
@@ -303,6 +303,6 @@ Buenas prácticas de restore:
 - [Vaultwarden Wiki - Backing up your vault](https://github.com/dani-garcia/vaultwarden/wiki/Backing-up-your-vault)
 - [Vaultwarden Wiki - Fail2Ban setup](https://github.com/dani-garcia/vaultwarden/wiki/Fail2Ban-Setup)
 - [Imagen Docker `vaultwarden/server`](https://hub.docker.com/r/vaultwarden/server)
-- [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
-- [02-fail2ban.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/02-fail2ban.md)
-- [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md)
+- [05-caddy.md](../03-red/05-caddy.md)
+- [02-fail2ban.md](../04-seguridad/02-fail2ban.md)
+- [02-borgmatic.md](../07-backups/02-borgmatic.md)

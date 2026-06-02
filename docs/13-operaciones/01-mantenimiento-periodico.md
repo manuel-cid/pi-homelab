@@ -18,11 +18,11 @@ En este proyecto, la prioridad operativa es proteger:
 
 ## Requisitos Previos
 
-- Haber completado [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md).
-- Haber completado [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md).
-- Haber completado [04-watchtower.md](/Users/x441425/workspace2/homelab/docs/02-docker/04-watchtower.md) si vas a automatizar parte de las actualizaciones.
-- Haber completado [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md).
-- Haber completado [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
+- Haber completado [02-borgmatic.md](../07-backups/02-borgmatic.md).
+- Haber completado [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md).
+- Haber completado [04-watchtower.md](../02-docker/04-watchtower.md) si vas a automatizar parte de las actualizaciones.
+- Haber completado [03-seguridad-base.md](../01-sistema/03-seguridad-base.md).
+- Haber completado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 - Tener instaladas herramientas de administración base en el host:
   - `smartmontools`
   - `util-linux`
@@ -130,7 +130,7 @@ Y una vez por trimestre, restaura una muestra en la ruta de prueba:
 mkdir -p /mnt/hd2t/backups/restore-test
 ```
 
-La restauración detallada de datos y volúmenes se documenta en [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md).
+La restauración detallada de datos y volúmenes se documenta en [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md).
 
 ### 4. Revisar logs semanalmente
 
@@ -276,7 +276,7 @@ sudo ufw status numbered
 Debes comprobar que:
 
 - no han aparecido puertos nuevos publicados en `0.0.0.0`
-- siguen abiertos solo los puertos previstos en [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md)
+- siguen abiertos solo los puertos previstos en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
 - los servicios que deberían vivir solo detrás de **Caddy** no se han quedado expuestos directamente
 
 ### 9. Plantilla operativa de mantenimiento
@@ -330,16 +330,16 @@ Este documento no genera un backup propio, pero sí fija qué debes conservar pa
 
 La recuperación técnica de datos y servicios depende de:
 
-- [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md)
-- [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md)
+- [02-borgmatic.md](../07-backups/02-borgmatic.md)
+- [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md)
 
 ## Referencias
 
-- [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md)
-- [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md)
-- [04-watchtower.md](/Users/x441425/workspace2/homelab/docs/02-docker/04-watchtower.md)
-- [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md)
-- [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md)
+- [02-borgmatic.md](../07-backups/02-borgmatic.md)
+- [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md)
+- [04-watchtower.md](../02-docker/04-watchtower.md)
+- [03-seguridad-base.md](../01-sistema/03-seguridad-base.md)
+- [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
 - Docker Docs: [docker system prune](https://docs.docker.com/reference/cli/docker/system/prune/)
 - Docker Docs: [docker system df](https://docs.docker.com/reference/cli/docker/system/df/)
 - smartmontools: [smartctl manual](https://www.smartmontools.org/)

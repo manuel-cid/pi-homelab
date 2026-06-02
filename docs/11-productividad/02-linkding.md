@@ -15,10 +15,10 @@ Para un homelab personal, esta topología suele ser la más práctica: despliegu
 
 ## Requisitos Previos
 
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md) si quieres acceder también desde fuera de casa a través de la tailnet.
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para documentar el puerto del servicio.
-- Revisar [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount de Linkding en el plan de copias.
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder también desde fuera de casa a través de la tailnet.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para documentar el puerto del servicio.
+- Revisar [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount de Linkding en el plan de copias.
 - Disponer de la raíz operativa del homelab en `/home/<user>/homelab/`.
 - Puertos necesarios en esta fase:
   - **`9090/tcp` publicado en el host** para acceso web desde LAN y Tailscale
@@ -261,5 +261,5 @@ Buenas prácticas de restore:
 - [Linkding - Repositorio oficial](https://github.com/sissbruecker/linkding)
 - [Extensión oficial de Linkding](https://github.com/sissbruecker/linkding-extension)
 - [Imagen Docker `sissbruecker/linkding`](https://hub.docker.com/r/sissbruecker/linkding)
-- [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md)
-- [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md)
+- [02-estructura-compose.md](../02-docker/02-estructura-compose.md)
+- [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md)

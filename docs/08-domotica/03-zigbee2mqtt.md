@@ -15,12 +15,12 @@ El servicio se publica solo en la **LAN** y a través de **Tailscale**. No hay e
 
 ## Requisitos Previos
 
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber desplegado [02-mosquitto.md](/Users/x441425/workspace2/homelab/docs/08-domotica/02-mosquitto.md), porque Zigbee2MQTT necesita un broker MQTT operativo.
-- Recomendable haber desplegado [01-home-assistant.md](/Users/x441425/workspace2/homelab/docs/08-domotica/01-home-assistant.md) si quieres discovery automático desde el primer momento.
-- Haber revisado [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para registrar el puerto de la interfaz web.
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber desplegado [02-mosquitto.md](02-mosquitto.md), porque Zigbee2MQTT necesita un broker MQTT operativo.
+- Recomendable haber desplegado [01-home-assistant.md](01-home-assistant.md) si quieres discovery automático desde el primer momento.
+- Haber revisado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto de la interfaz web.
 - Tener el coordinador Zigbee conectado por USB a la Raspberry Pi.
 - Puertos necesarios en esta fase:
   - **`8080/tcp`** para la interfaz web de Zigbee2MQTT
@@ -119,7 +119,7 @@ advanced:
 
 Puntos importantes:
 
-- `mqtt.server` debe apuntar al broker de [02-mosquitto.md](/Users/x441425/workspace2/homelab/docs/08-domotica/02-mosquitto.md)
+- `mqtt.server` debe apuntar al broker de [02-mosquitto.md](02-mosquitto.md)
 - `mqtt.user` y `mqtt.password` deben corresponder al usuario `mqtt-zigbee2mqtt` creado en Mosquitto
 - `homeassistant.enabled: true` activa MQTT Discovery para que Home Assistant detecte los dispositivos
 - `serial.port` debe ser la misma ruta estable encontrada en `/dev/serial/by-id/`
@@ -204,7 +204,7 @@ Si el dispositivo aparece en Zigbee2MQTT pero no en Home Assistant, revisa prime
 
 - que la integración MQTT de Home Assistant está conectada
 - que `homeassistant.enabled: true` sigue activo
-- que el usuario `mqtt-zigbee2mqtt` puede escribir en `homeassistant/#` según la ACL definida en [02-mosquitto.md](/Users/x441425/workspace2/homelab/docs/08-domotica/02-mosquitto.md)
+- que el usuario `mqtt-zigbee2mqtt` puede escribir en `homeassistant/#` según la ACL definida en [02-mosquitto.md](02-mosquitto.md)
 
 ### 9. Problemas habituales
 
@@ -276,7 +276,7 @@ Este punto es crítico: si pierdes el estado interno de Zigbee2MQTT, puedes perd
 Recomendaciones:
 
 - para un backup conservador, detén brevemente el contenedor antes de copiar `database.db` y `state.json`
-- integra esta ruta más adelante en [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md)
+- integra esta ruta más adelante en [02-borgmatic.md](../07-backups/02-borgmatic.md)
 - conserva al menos una copia adicional fuera del SSD NVMe
 
 ## Referencias

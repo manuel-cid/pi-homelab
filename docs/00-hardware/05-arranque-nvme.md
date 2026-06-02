@@ -4,12 +4,12 @@
 
 Procedimiento para migrar una **Raspberry Pi 5** desde un arranque inicial en **microSD** a un arranque definitivo desde **SSD NVMe**. El objetivo es que el sistema operativo, Docker, configuraciones y datos persistentes queden alojados en el NVMe, dejando la microSD solo como soporte temporal o de emergencia.
 
-Este documento cubre la actualización del firmware EEPROM, el cambio del orden de arranque, varias estrategias de migración al NVMe y la verificación final sin microSD insertada. La conexión física previa se describe en [02-esquema-conexiones.md](/Users/x441425/workspace2/homelab/docs/00-hardware/02-esquema-conexiones.md), la preparación de discos en [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md) y la incorporación de discos USB con datos en [04-discos-con-datos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/04-discos-con-datos.md).
+Este documento cubre la actualización del firmware EEPROM, el cambio del orden de arranque, varias estrategias de migración al NVMe y la verificación final sin microSD insertada. La conexión física previa se describe en [02-esquema-conexiones.md](02-esquema-conexiones.md), la preparación de discos en [03-preparacion-discos.md](03-preparacion-discos.md) y la incorporación de discos USB con datos en [04-discos-con-datos.md](04-discos-con-datos.md).
 
 ## Requisitos Previos
 
-- Haber validado el hardware descrito en [01-material-necesario.md](/Users/x441425/workspace2/homelab/docs/00-hardware/01-material-necesario.md).
-- Tener montado físicamente el **SSD NVMe** en una carcasa compatible con Raspberry Pi 5 según [02-esquema-conexiones.md](/Users/x441425/workspace2/homelab/docs/00-hardware/02-esquema-conexiones.md).
+- Haber validado el hardware descrito en [01-material-necesario.md](01-material-necesario.md).
+- Tener montado físicamente el **SSD NVMe** en una carcasa compatible con Raspberry Pi 5 según [02-esquema-conexiones.md](02-esquema-conexiones.md).
 - Disponer de una instalación funcional de Raspberry Pi OS ya arrancando desde **microSD**.
 - Acceso por terminal con un usuario con permisos de `sudo`.
 - Alimentación estable con la **fuente oficial USB-C de 27 W**.
@@ -375,7 +375,7 @@ Antes de seguir con la fase de sistema base, comprueba:
 - La red por Ethernet funciona con normalidad.
 - El SSD NVMe permanece visible y estable en `lsblk`.
 
-Si además ya conectaste `hd2t` y `hd5t`, verifica que siguen montando correctamente según [03-preparacion-discos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/03-preparacion-discos.md) o [04-discos-con-datos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/04-discos-con-datos.md).
+Si además ya conectaste `hd2t` y `hd5t`, verifica que siguen montando correctamente según [03-preparacion-discos.md](03-preparacion-discos.md) o [04-discos-con-datos.md](04-discos-con-datos.md).
 
 ## Problemas Habituales
 

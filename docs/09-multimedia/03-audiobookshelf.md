@@ -10,18 +10,18 @@ La política de almacenamiento de este proyecto se mantiene igual que en el rest
 - la biblioteca de audiolibros y podcasts vive en `/mnt/hd2t/audiobookshelf/data/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
-- **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
+- **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
 
 Audiobookshelf encaja bien en este homelab porque separa bien el **contenido multimedia** de la **metadata y el estado de lectura/escucha**. Eso permite mantener los ficheros grandes en `hd2t` y dejar en el SSD NVMe lo sensible al rendimiento: base de datos, índices, progreso de reproducción y carátulas.
 
 ## Requisitos Previos
 
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber desplegado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md) si quieres acceso remoto seguro.
-- Haber desplegado [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md) si quieres publicar Audiobookshelf detrás del reverse proxy interno.
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceso remoto seguro.
+- Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Audiobookshelf detrás del reverse proxy interno.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
 - Tener montado `hd2t` en `/mnt/hd2t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:

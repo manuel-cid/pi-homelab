@@ -10,13 +10,13 @@ Este documento despliega **Borgmatic** como servicio Docker para automatizar las
 - notificaciones
 - integración con dumps de bases de datos
 
-La estrategia general 3-2-1 se define en [01-estrategia-backup.md](/Users/x441425/workspace2/homelab/docs/07-backups/01-estrategia-backup.md). El detalle de qué volúmenes y qué dumps debe generar cada servicio se documenta en [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md).
+La estrategia general 3-2-1 se define en [01-estrategia-backup.md](01-estrategia-backup.md). El detalle de qué volúmenes y qué dumps debe generar cada servicio se documenta en [03-backup-docker-volumes.md](03-backup-docker-volumes.md).
 
 ## Requisitos Previos
 
-- Haber completado [01-estrategia-backup.md](/Users/x441425/workspace2/homelab/docs/07-backups/01-estrategia-backup.md).
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md) y [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
+- Haber completado [01-estrategia-backup.md](01-estrategia-backup.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md) y [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Tener montado **`hd2t`** en **`/mnt/hd2t`** con permisos de escritura.
 - Tener creadas las rutas base de backup:
   - `/mnt/hd2t/backups/borg/`
@@ -236,7 +236,7 @@ Notas operativas sobre este ejemplo:
 - el repositorio local se crea bajo **`/mnt/hd2t/backups/borg/<hostname>/`**
 - el bloque `postgresql_databases`, `mariadb_databases` y `sqlite_databases` es una plantilla base; elimina lo que no uses
 - los nombres de `container:` deben coincidir con los nombres reales que ve Docker en tu despliegue
-- los dumps detallados por servicio y el criterio exacto de restore se desarrollan en [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md)
+- los dumps detallados por servicio y el criterio exacto de restore se desarrollan en [03-backup-docker-volumes.md](03-backup-docker-volumes.md)
 
 ### 3. Añadir programación con `crontab.txt`
 
@@ -327,7 +327,7 @@ Objetivo de esta secuencia:
 
 ### 6. Añadir destino offsite sin romper la operativa local
 
-La estrategia offsite pertenece al criterio 3-2-1 descrito en [01-estrategia-backup.md](/Users/x441425/workspace2/homelab/docs/07-backups/01-estrategia-backup.md). La recomendación práctica aquí es:
+La estrategia offsite pertenece al criterio 3-2-1 descrito en [01-estrategia-backup.md](01-estrategia-backup.md). La recomendación práctica aquí es:
 
 - empezar con el repositorio local en `hd2t`
 - validar restauración local primero
@@ -402,14 +402,14 @@ Regla práctica:
 
 - el **repo local** es el resultado del backup
 - la **configuración de Borgmatic** y sus claves forman parte del estado que debe poder recuperarse en un desastre
-- la restauración de servicios concretos se ejecuta siguiendo [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md)
+- la restauración de servicios concretos se ejecuta siguiendo [03-backup-docker-volumes.md](03-backup-docker-volumes.md)
 
 ## Referencias
 
-- [01-estrategia-backup.md](/Users/x441425/workspace2/homelab/docs/07-backups/01-estrategia-backup.md)
-- [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md)
-- [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md)
-- [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md)
+- [01-estrategia-backup.md](01-estrategia-backup.md)
+- [03-backup-docker-volumes.md](03-backup-docker-volumes.md)
+- [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md)
+- [02-estructura-compose.md](../02-docker/02-estructura-compose.md)
 - Documentación oficial de Borgmatic: https://torsion.org/borgmatic/
 - Referencia de configuración de Borgmatic: https://torsion.org/borgmatic/reference/configuration/
 - Instalación de Borgmatic: https://torsion.org/borgmatic/how-to/install-borgmatic/

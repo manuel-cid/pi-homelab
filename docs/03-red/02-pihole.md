@@ -2,7 +2,7 @@
 
 ## Descripción
 
-Este documento cubre el despliegue de **Pi-hole** como resolvedor DNS con filtrado para toda la LAN usando una **IP propia dentro de la red `dns_lan`** definida en [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md).
+Este documento cubre el despliegue de **Pi-hole** como resolvedor DNS con filtrado para toda la LAN usando una **IP propia dentro de la red `dns_lan`** definida en [01-macvlan.md](01-macvlan.md).
 
 El objetivo es que:
 
@@ -10,15 +10,15 @@ El objetivo es que:
 - **Pi-hole** escuche en su propia IP LAN, sin publicar `53` ni `80` en la IP del host
 - la Raspberry Pi mantenga un **DNS fallback local en `/etc/resolv.conf`** para no perder resolución si Pi-hole cae o se está actualizando
 - el homelab pueda resolver nombres internos como `jellyfin.lan`
-- la capa recursiva quede preparada para integrarse después con [03-unbound.md](/Users/x441425/workspace2/homelab/docs/03-red/03-unbound.md)
+- la capa recursiva quede preparada para integrarse después con [03-unbound.md](03-unbound.md)
 
 En este diseño, **Pi-hole no actúa como servidor DHCP**. El DHCP sigue en el router y Pi-hole se limita a filtrar y resolver DNS.
 
 ## Requisitos Previos
 
-- Haber completado [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md).
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
+- Haber completado [01-macvlan.md](01-macvlan.md).
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Tener creada la red Docker externa `dns_lan`.
 - Tener reservada la IP `192.168.1.194` para Pi-hole y la IP `192.168.1.222` para `macvlan-shim`.
 - Mantener el DHCP en el router; no habilitar DHCP en Pi-hole en este escenario.
@@ -72,7 +72,7 @@ Notas sobre este Compose:
 - no se usa `ports:` porque el contenedor ya tiene su propia IP LAN mediante macvlan
 - no se habilita DHCP en Pi-hole, así que no hace falta exponer `67/udp`
 - el upstream inicial usa resolutores públicos solo para bootstrap
-- cuando completes [03-unbound.md](/Users/x441425/workspace2/homelab/docs/03-red/03-unbound.md), cambia `FTLCONF_dns_upstreams` para apuntar a `192.168.1.195#5335`
+- cuando completes [03-unbound.md](03-unbound.md), cambia `FTLCONF_dns_upstreams` para apuntar a `192.168.1.195#5335`
 
 Archivo recomendado: `/home/<user>/homelab/compose/infra-pihole-unbound/.env`
 
@@ -158,7 +158,7 @@ environment:
   FTLCONF_dns_upstreams: '192.168.1.195#5335'
 ```
 
-Haz este cambio solo después de completar [03-unbound.md](/Users/x441425/workspace2/homelab/docs/03-red/03-unbound.md).
+Haz este cambio solo después de completar [03-unbound.md](03-unbound.md).
 
 ### 4. DNS local para servicios internos
 
@@ -313,18 +313,18 @@ Motivos:
 
 En restauración:
 
-- recupera primero `dns_lan` y `macvlan-shim` según [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md)
+- recupera primero `dns_lan` y `macvlan-shim` según [01-macvlan.md](01-macvlan.md)
 - levanta Pi-hole
 - verifica resolución desde host y clientes
 - solo después reconfigura el router si fuese necesario
 
 ## Referencias
 
-- [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md)
-- [03-unbound.md](/Users/x441425/workspace2/homelab/docs/03-red/03-unbound.md)
-- [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
-- [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md)
-- [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md)
+- [01-macvlan.md](01-macvlan.md)
+- [03-unbound.md](03-unbound.md)
+- [05-caddy.md](05-caddy.md)
+- [06-puertos-y-firewall.md](06-puertos-y-firewall.md)
+- [02-estructura-compose.md](../02-docker/02-estructura-compose.md)
 - Pi-hole Docs: [Docker](https://docs.pi-hole.net/docker/)
 - Pi-hole Docs: [Docker Configuration](https://docs.pi-hole.net/docker/configuration/)
 - Pi-hole Docs: [FTL Configuration](https://docs.pi-hole.net/ftldns/configfile/)

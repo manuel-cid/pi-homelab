@@ -17,11 +17,11 @@ La opción en contenedor también es válida, pero se considera secundaria y sol
 
 ## Requisitos Previos
 
-- Haber completado [01-instalacion-os.md](/Users/x441425/workspace2/homelab/docs/01-sistema/01-instalacion-os.md).
-- Haber completado [02-configuracion-inicial.md](/Users/x441425/workspace2/homelab/docs/01-sistema/02-configuracion-inicial.md).
-- Haber completado [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md).
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md) solo si vas a usar el modo contenedor.
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md) solo si vas a usar el modo contenedor.
+- Haber completado [01-instalacion-os.md](../01-sistema/01-instalacion-os.md).
+- Haber completado [02-configuracion-inicial.md](../01-sistema/02-configuracion-inicial.md).
+- Haber completado [03-seguridad-base.md](../01-sistema/03-seguridad-base.md).
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md) solo si vas a usar el modo contenedor.
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md) solo si vas a usar el modo contenedor.
 - Tener creada una cuenta de Tailscale y acceso a la consola de administración de la tailnet.
 - Tener definido un hostname razonable para la Raspberry Pi, por ejemplo `pi-homelab`.
 - Elegir **una sola modalidad**:
@@ -80,7 +80,7 @@ Notas sobre este Compose:
 
 Recomendación operativa para este homelab:
 
-- usa **host** si quieres el camino más simple para acceder a servicios locales, a Docker y al futuro reverse proxy en [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
+- usa **host** si quieres el camino más simple para acceder a servicios locales, a Docker y al futuro reverse proxy en [05-caddy.md](05-caddy.md)
 - usa **contenedor** solo si prefieres aislar Tailscale del sistema base y aceptas una capa adicional de complejidad
 
 En la práctica:
@@ -162,7 +162,7 @@ Objetivo práctico en este homelab:
 
 - acceder al nodo por nombre en vez de depender de la IP Tailscale
 - usar un nombre estable para administración remota
-- dejar preparado el terreno para el acceso HTTPS del host en [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
+- dejar preparado el terreno para el acceso HTTPS del host en [05-caddy.md](05-caddy.md)
 
 Patrón esperado:
 
@@ -185,7 +185,7 @@ Este punto conviene dejarlo claro para evitar confusión:
 - **Pi-hole** sigue siendo el DNS de la **LAN**
 - **Unbound** sigue siendo el resolvedor recursivo detrás de Pi-hole
 - **MagicDNS** resuelve nombres dentro de la **tailnet**
-- Tailscale no sustituye el diseño LAN de [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md), [02-pihole.md](/Users/x441425/workspace2/homelab/docs/03-red/02-pihole.md) y [03-unbound.md](/Users/x441425/workspace2/homelab/docs/03-red/03-unbound.md)
+- Tailscale no sustituye el diseño LAN de [01-macvlan.md](01-macvlan.md), [02-pihole.md](02-pihole.md) y [03-unbound.md](03-unbound.md)
 
 Separación recomendada de nombres:
 
@@ -209,7 +209,7 @@ Antes de desplegar **Caddy**, puedes acceder a servicios publicados en la Raspbe
 http://pi-homelab.<tailnet>.ts.net:<puerto>
 ```
 
-Cuando completes [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md), el patrón recomendado cambiará a un único punto de entrada remoto sobre el hostname Tailscale del host, con HTTPS automático sobre `*.ts.net`.
+Cuando completes [05-caddy.md](05-caddy.md), el patrón recomendado cambiará a un único punto de entrada remoto sobre el hostname Tailscale del host, con HTTPS automático sobre `*.ts.net`.
 
 Ventajas operativas de este enfoque:
 
@@ -295,12 +295,12 @@ Orden de restauración recomendado:
 
 ## Referencias
 
-- [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md)
-- [02-pihole.md](/Users/x441425/workspace2/homelab/docs/03-red/02-pihole.md)
-- [03-unbound.md](/Users/x441425/workspace2/homelab/docs/03-red/03-unbound.md)
-- [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
-- [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md)
-- [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md)
+- [01-macvlan.md](01-macvlan.md)
+- [02-pihole.md](02-pihole.md)
+- [03-unbound.md](03-unbound.md)
+- [05-caddy.md](05-caddy.md)
+- [06-puertos-y-firewall.md](06-puertos-y-firewall.md)
+- [02-estructura-compose.md](../02-docker/02-estructura-compose.md)
 - Tailscale Docs: [Install Tailscale on Linux](https://tailscale.com/download/linux)
 - Tailscale Docs: [MagicDNS](https://tailscale.com/docs/features/magicdns)
 - Tailscale Docs: [Docker deployment](https://tailscale.com/kb/1282/docker)

@@ -2,7 +2,7 @@
 
 ## Descripción
 
-**Prometheus** es la base de la monitorización del homelab: recopila métricas en formato de series temporales, las guarda localmente en el **SSD NVMe** y las expone para consulta desde su propia UI o desde [02-grafana.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/02-grafana.md).
+**Prometheus** es la base de la monitorización del homelab: recopila métricas en formato de series temporales, las guarda localmente en el **SSD NVMe** y las expone para consulta desde su propia UI o desde [02-grafana.md](02-grafana.md).
 
 En esta Raspberry Pi 5 conviene fijar un criterio simple:
 
@@ -10,15 +10,15 @@ En esta Raspberry Pi 5 conviene fijar un criterio simple:
 - la UI no debe exponerse directamente a toda la LAN por defecto
 - los targets iniciales del proyecto son:
   - el propio Prometheus
-  - [03-node-exporter.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/03-node-exporter.md) para métricas del sistema
+  - [03-node-exporter.md](03-node-exporter.md) para métricas del sistema
   - el endpoint nativo de métricas de Docker Engine `/metrics`, opcional pero recomendado
 
 ## Requisitos Previos
 
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Haber completado [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Haber completado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 - Tener creada la red Docker externa `homelab_proxy` si más adelante Grafana va a consultar Prometheus por nombre interno.
 - Poder crear directorios persistentes en `/home/<user>/homelab/config/` y `/home/<user>/homelab/data/`.
 - Si se quiere scrapear el endpoint nativo de Docker, tener acceso administrativo al host para editar `/etc/docker/daemon.json` y reiniciar `docker`.
@@ -96,7 +96,7 @@ PROXY_NETWORK=homelab_proxy
 Puntos importantes de este Compose:
 
 - Prometheus se publica solo en `127.0.0.1:11000`, no en toda la LAN
-- el stack se une a `homelab_proxy` para que [02-grafana.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/02-grafana.md) pueda alcanzarlo por nombre interno `prometheus:9090`
+- el stack se une a `homelab_proxy` para que [02-grafana.md](02-grafana.md) pueda alcanzarlo por nombre interno `prometheus:9090`
 - `extra_hosts` deja resuelto `host.docker.internal` hacia el gateway del host, útil para scrapear métricas del daemon Docker
 - la retención queda acotada a **15 días** o **15 GB**, lo que ocurra antes
 - se recomienda **no** autoactualizar Prometheus ciegamente con Watchtower
@@ -154,7 +154,7 @@ scrape_configs:
 Lectura práctica de estos targets:
 
 - `prometheus:9090` valida que el propio servidor está sano
-- `node-exporter:9100` quedará operativo cuando se despliegue [03-node-exporter.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/03-node-exporter.md)
+- `node-exporter:9100` quedará operativo cuando se despliegue [03-node-exporter.md](03-node-exporter.md)
 - `host.docker.internal:9323` requiere habilitar antes el endpoint nativo de Docker Engine
 
 Si Node Exporter o el endpoint de Docker todavía no existen, esos jobs aparecerán como `DOWN`. Eso no rompe Prometheus; simplemente indica que el target aún no está disponible.
@@ -232,7 +232,7 @@ Dentro de la interfaz, revisa `Status` → `Targets`.
 Estado esperado justo después de desplegar solo Prometheus:
 
 - `prometheus` en estado `UP`
-- `node-exporter` probablemente `DOWN` hasta completar [03-node-exporter.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/03-node-exporter.md)
+- `node-exporter` probablemente `DOWN` hasta completar [03-node-exporter.md](03-node-exporter.md)
 - `docker` `UP` si ya habilitaste el endpoint nativo del daemon; en caso contrario, `DOWN`
 
 ### 6. Política recomendada de retención en el SSD NVMe

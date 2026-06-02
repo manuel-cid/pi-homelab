@@ -14,11 +14,11 @@ Syncthing **no sustituye a un backup** y tampoco es buena idea apuntarlo a bases
 
 ## Requisitos Previos
 
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Tener montado `hd2t` en `/mnt/hd2t`.
-- Poder administrar el firewall del host según [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
+- Poder administrar el firewall del host según [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 - Tener identificados los dispositivos que se van a parear con la Raspberry Pi.
 - Puertos necesarios para Syncthing:
   - **12000/tcp** para la interfaz web del homelab

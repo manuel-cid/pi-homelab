@@ -4,14 +4,14 @@
 
 Procedimiento para aplicar el **endurecimiento inicial del sistema operativo** sobre la **Raspberry Pi 5** una vez que ya arranca desde el **SSD NVMe** y tiene completada su configuración básica. El objetivo es dejar el host con una postura de seguridad razonable para un homelab de **solo acceso local (LAN) + Tailscale**, sin exposición directa a internet y sin depender todavía de medidas específicas de cada servicio.
 
-Este documento cubre cinco bloques: cambio de contraseña inicial, acceso por **claves SSH**, desactivación del login por contraseña, firewall a nivel de host y protección básica con **Fail2ban** solo para **SSH**. También deja activadas las **actualizaciones automáticas** del sistema. Las reglas de puertos más detalladas y la política final de acceso se complementarán más adelante en [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
+Este documento cubre cinco bloques: cambio de contraseña inicial, acceso por **claves SSH**, desactivación del login por contraseña, firewall a nivel de host y protección básica con **Fail2ban** solo para **SSH**. También deja activadas las **actualizaciones automáticas** del sistema. Las reglas de puertos más detalladas y la política final de acceso se complementarán más adelante en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 
-La configuración avanzada de **Fail2ban** para servicios concretos no se hace aquí. Esa parte se documenta más adelante en [02-fail2ban.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/02-fail2ban.md).
+La configuración avanzada de **Fail2ban** para servicios concretos no se hace aquí. Esa parte se documenta más adelante en [02-fail2ban.md](../04-seguridad/02-fail2ban.md).
 
 ## Requisitos Previos
 
-- Haber completado [01-instalacion-os.md](/Users/x441425/workspace2/homelab/docs/01-sistema/01-instalacion-os.md).
-- Haber completado [02-configuracion-inicial.md](/Users/x441425/workspace2/homelab/docs/01-sistema/02-configuracion-inicial.md).
+- Haber completado [01-instalacion-os.md](01-instalacion-os.md).
+- Haber completado [02-configuracion-inicial.md](02-configuracion-inicial.md).
 - Poder abrir una sesión por **SSH** con el usuario administrativo local.
 - Tener preparada al menos una **clave pública SSH** del equipo desde el que vas a administrar el homelab.
 - Disponer de conectividad de red funcional, preferiblemente por **Ethernet**.
@@ -137,7 +137,7 @@ sudo apt update
 sudo apt install -y ufw fail2ban unattended-upgrades apt-listchanges
 ```
 
-Se usa **`ufw`** como capa operativa de firewall por simplicidad. En sistemas modernos puede apoyarse en backend basado en `nftables`, pero para este homelab interesa una gestión clara y fácil de mantener. Si más adelante decides operar con reglas `nftables` puras, mantén la misma política lógica documentada aquí y compárala con [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
+Se usa **`ufw`** como capa operativa de firewall por simplicidad. En sistemas modernos puede apoyarse en backend basado en `nftables`, pero para este homelab interesa una gestión clara y fácil de mantener. Si más adelante decides operar con reglas `nftables` puras, mantén la misma política lógica documentada aquí y compárala con [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 
 ### 6. Activar una política mínima de firewall
 
@@ -163,7 +163,7 @@ Resultado esperado en esta fase:
 - **SSH** permitido
 - ningún otro puerto abierto manualmente todavía
 
-`ufw allow OpenSSH` abre el acceso SSH en el host sin entrar todavía en reglas finas por subred, interfaz o servicio. Ese refinamiento vendrá más adelante, cuando el mapa completo de puertos del homelab esté definido en [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
+`ufw allow OpenSSH` abre el acceso SSH en el host sin entrar todavía en reglas finas por subred, interfaz o servicio. Ese refinamiento vendrá más adelante, cuando el mapa completo de puertos del homelab esté definido en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 
 ### 7. Configurar Fail2ban solo para SSH
 
@@ -264,7 +264,7 @@ Además, valida operativamente estos puntos:
 
 ### 10. Qué hacer justo después
 
-Con el host ya endurecido, el siguiente paso natural es definir la estructura persistente de carpetas y montajes en [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md). Más adelante, cuando se incorporen servicios y reglas más granulares, completa la parte de red con [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) y amplía Fail2ban con [02-fail2ban.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/02-fail2ban.md).
+Con el host ya endurecido, el siguiente paso natural es definir la estructura persistente de carpetas y montajes en [04-estructura-directorios.md](04-estructura-directorios.md). Más adelante, cuando se incorporen servicios y reglas más granulares, completa la parte de red con [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) y amplía Fail2ban con [02-fail2ban.md](../04-seguridad/02-fail2ban.md).
 
 ## Almacenamiento
 
@@ -301,7 +301,7 @@ Además, conserva en tu gestor de secretos:
 - unattended-upgrades
 - `man sshd_config`
 - `man ufw`
-- [01-instalacion-os.md](/Users/x441425/workspace2/homelab/docs/01-sistema/01-instalacion-os.md)
-- [02-configuracion-inicial.md](/Users/x441425/workspace2/homelab/docs/01-sistema/02-configuracion-inicial.md)
-- [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md)
-- [02-fail2ban.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/02-fail2ban.md)
+- [01-instalacion-os.md](01-instalacion-os.md)
+- [02-configuracion-inicial.md](02-configuracion-inicial.md)
+- [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
+- [02-fail2ban.md](../04-seguridad/02-fail2ban.md)

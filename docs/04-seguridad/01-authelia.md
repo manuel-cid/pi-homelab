@@ -7,7 +7,7 @@
 En este proyecto conviene fijar una decisión de diseño clara desde el principio:
 
 - **Authelia se integra sobre la entrada HTTPS de Tailscale en Caddy**, no sobre los hosts HTTP `*.lan`
-- el motivo es operativo: la arquitectura actual de [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md) usa **HTTP plano en LAN** y un único punto HTTPS en `https://pi-homelab.<tailnet>.ts.net`
+- el motivo es operativo: la arquitectura actual de [05-caddy.md](../03-red/05-caddy.md) usa **HTTP plano en LAN** y un único punto HTTPS en `https://pi-homelab.<tailnet>.ts.net`
 - ese diseño encaja bien con Authelia si el portal y los servicios protegidos comparten **el mismo hostname HTTPS** y se publican por **subrutas**
 - intentar hacer SSO limpio entre varios hosts `http://servicio.lan` no es la opción adecuada en esta fase
 
@@ -31,13 +31,13 @@ Ejemplos que conviene evaluar con cuidado antes de poner detrás de Authelia:
 
 ## Requisitos Previos
 
-- Haber completado [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md).
-- Haber completado [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md).
+- Haber completado [03-seguridad-base.md](../01-sistema/03-seguridad-base.md).
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-tailscale.md](../03-red/04-tailscale.md).
+- Haber completado [05-caddy.md](../03-red/05-caddy.md).
 - Tener creada la red Docker externa `homelab_proxy`.
 - Tener operativo el hostname MagicDNS del nodo, por ejemplo `pi-homelab.<tailnet>.ts.net`.
-- Tener ya funcional el certificado de Tailscale usado por Caddy según [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md).
+- Tener ya funcional el certificado de Tailscale usado por Caddy según [05-caddy.md](../03-red/05-caddy.md).
 - Poder crear directorios persistentes en `/home/<user>/homelab/config/` y `/home/<user>/homelab/data/`.
 - Tener decidido al menos un usuario inicial de Authelia y su grupo lógico, por ejemplo `admins`.
 - Puertos necesarios en esta fase:
@@ -259,7 +259,7 @@ El resultado esperado es este:
 
 ### 6. Integrar Authelia en Caddy con `forward_auth`
 
-La base de Caddy ya se definió en [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md). Para integrar Authelia, actualiza el `Caddyfile` de ese documento con este patrón.
+La base de Caddy ya se definió en [05-caddy.md](../03-red/05-caddy.md). Para integrar Authelia, actualiza el `Caddyfile` de ese documento con este patrón.
 
 Añade un bloque reutilizable:
 
@@ -428,12 +428,12 @@ Orden de restauración recomendado:
 
 ## Referencias
 
-- [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md)
-- [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md)
-- [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
-- [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md)
-- [02-fail2ban.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/02-fail2ban.md)
-- [01-vaultwarden.md](/Users/x441425/workspace2/homelab/docs/11-productividad/01-vaultwarden.md)
+- [02-estructura-compose.md](../02-docker/02-estructura-compose.md)
+- [04-tailscale.md](../03-red/04-tailscale.md)
+- [05-caddy.md](../03-red/05-caddy.md)
+- [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
+- [02-fail2ban.md](02-fail2ban.md)
+- [01-vaultwarden.md](../11-productividad/01-vaultwarden.md)
 - Authelia Docs: Configuration
 - Authelia Docs: File Authentication Backend
 - Authelia Docs: Session

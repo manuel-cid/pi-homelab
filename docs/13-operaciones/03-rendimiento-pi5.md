@@ -23,10 +23,10 @@ Regla principal:
 
 ## Requisitos Previos
 
-- Haber completado [02-configuracion-inicial.md](/Users/x441425/workspace2/homelab/docs/01-sistema/02-configuracion-inicial.md).
-- Haber completado [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md).
-- Haber completado [03-node-exporter.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/03-node-exporter.md).
-- Haber completado [01-mantenimiento-periodico.md](/Users/x441425/workspace2/homelab/docs/13-operaciones/01-mantenimiento-periodico.md).
+- Haber completado [02-configuracion-inicial.md](../01-sistema/02-configuracion-inicial.md).
+- Haber completado [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md).
+- Haber completado [03-node-exporter.md](../05-monitorizacion/03-node-exporter.md).
+- Haber completado [01-mantenimiento-periodico.md](01-mantenimiento-periodico.md).
 - Tener refrigeración activa funcional en la carcasa de la Pi 5.
 - Usar una fuente de alimentación estable y adecuada para la Pi 5 con **NVMe** y discos USB conectados.
 - Tener acceso administrativo por **SSH** o consola local.
@@ -396,7 +396,7 @@ swapon --show
 
 ### 9. Política de memoria del host
 
-La política base de memoria de este proyecto ya está definida en [02-configuracion-inicial.md](/Users/x441425/workspace2/homelab/docs/01-sistema/02-configuracion-inicial.md):
+La política base de memoria de este proyecto ya está definida en [02-configuracion-inicial.md](../01-sistema/02-configuracion-inicial.md):
 
 - `zram` como swap primario
 - `swapfile` de **2 GB** en el **SSD NVMe**
@@ -505,9 +505,9 @@ Buenas prácticas:
 
 ## Referencias
 
-- [02-configuracion-inicial.md](/Users/x441425/workspace2/homelab/docs/01-sistema/02-configuracion-inicial.md)
-- [03-node-exporter.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/03-node-exporter.md)
-- [01-mantenimiento-periodico.md](/Users/x441425/workspace2/homelab/docs/13-operaciones/01-mantenimiento-periodico.md)
+- [02-configuracion-inicial.md](../01-sistema/02-configuracion-inicial.md)
+- [03-node-exporter.md](../05-monitorizacion/03-node-exporter.md)
+- [01-mantenimiento-periodico.md](01-mantenimiento-periodico.md)
 - Raspberry Pi Docs: [config.txt](https://www.raspberrypi.com/documentation/computers/config_txt.html)
 - Raspberry Pi Docs: [Raspberry Pi OS utilities (`vcgencmd`)](https://www.raspberrypi.com/documentation/computers/os.html#vcgencmd)
 - Raspberry Pi Docs: [Frequency management and thermal control](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#frequency-management-and-thermal-control)

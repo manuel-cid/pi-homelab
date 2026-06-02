@@ -2,7 +2,7 @@
 
 ## Descripción
 
-Este documento define el procedimiento operativo para respaldar y restaurar los datos persistentes de los servicios Docker del homelab. Complementa a [01-estrategia-backup.md](/Users/x441425/workspace2/homelab/docs/07-backups/01-estrategia-backup.md), que fija la política general, y a [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md), que automatiza la ejecución.
+Este documento define el procedimiento operativo para respaldar y restaurar los datos persistentes de los servicios Docker del homelab. Complementa a [01-estrategia-backup.md](01-estrategia-backup.md), que fija la política general, y a [02-borgmatic.md](02-borgmatic.md), que automatiza la ejecución.
 
 La regla principal es simple:
 
@@ -15,8 +15,8 @@ En este homelab, la opción preferida para datos persistentes es usar **bind mou
 
 ## Requisitos Previos
 
-- Haber completado [01-estrategia-backup.md](/Users/x441425/workspace2/homelab/docs/07-backups/01-estrategia-backup.md).
-- Haber completado [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md).
+- Haber completado [01-estrategia-backup.md](01-estrategia-backup.md).
+- Haber completado [02-borgmatic.md](02-borgmatic.md).
 - Tener desplegados los servicios que se van a respaldar.
 - Tener identificados los contenedores de bases de datos y las rutas persistentes de cada servicio.
 - Tener disponible `/mnt/hd2t/backups/exports/` para dumps lógicos y `/mnt/hd2t/backups/restore-test/` para pruebas de restauración.
@@ -29,7 +29,7 @@ Puertos necesarios en esta fase:
 
 ## Docker Compose
 
-No aplica en este documento. Aquí se define el procedimiento operativo de backup y restore sobre los datos persistentes ya desplegados. La automatización del stack está en [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md).
+No aplica en este documento. Aquí se define el procedimiento operativo de backup y restore sobre los datos persistentes ya desplegados. La automatización del stack está en [02-borgmatic.md](02-borgmatic.md).
 
 ## Configuración
 
@@ -306,7 +306,7 @@ docker compose start vaultwarden
 
 ### 11. Integrar los dumps en `pre-backup.sh`
 
-El `pre-backup.sh` de [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md) debe comportarse como un orquestador simple:
+El `pre-backup.sh` de [02-borgmatic.md](02-borgmatic.md) debe comportarse como un orquestador simple:
 
 - crear directorios de export si no existen
 - generar dumps con timestamp
@@ -421,8 +421,8 @@ Orden recomendado de recuperación:
 
 ## Referencias
 
-- [01-estrategia-backup.md](/Users/x441425/workspace2/homelab/docs/07-backups/01-estrategia-backup.md)
-- [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md)
+- [01-estrategia-backup.md](01-estrategia-backup.md)
+- [02-borgmatic.md](02-borgmatic.md)
 - Documentación oficial de Borgmatic sobre backup de bases de datos: https://torsion.org/borgmatic/how-to/backup-your-databases/
 - Documentación oficial de Docker sobre volúmenes y backup/restore: https://docs.docker.com/engine/storage/volumes/
 - Documentación oficial de MariaDB para `mariadb-dump`: https://mariadb.com/docs/server/clients-and-utilities/backup-restore-and-import-clients/mariadb-dump

@@ -16,10 +16,10 @@ Para este homelab esa combinación es suficiente: instalación sencilla, backup 
 
 ## Requisitos Previos
 
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md) si quieres acceder también desde fuera de casa a través de la tailnet.
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para mantener documentado el puerto asignado al servicio.
-- Revisar [03-backup-docker-volumes.md](/Users/x441425/workspace2/homelab/docs/07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount de Mealie en la estrategia de copias.
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder también desde fuera de casa a través de la tailnet.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto asignado al servicio.
+- Revisar [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount de Mealie en la estrategia de copias.
 - Disponer de `/home/<user>/homelab/` en el **SSD NVMe** con permisos normales para el usuario administrador.
 - Tener decidido el hostname o URL que usarás como `BASE_URL`; para acceso directo sin reverse proxy suele bastar `http://pi-homelab.<tailnet>.ts.net:16003`.
 - Puertos necesarios en esta fase:

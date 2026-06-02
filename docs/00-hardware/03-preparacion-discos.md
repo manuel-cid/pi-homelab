@@ -10,12 +10,12 @@ El objetivo es dejar tres roles bien definidos:
 - **`hd2t`**: multimedia general, descargas y copias de seguridad.
 - **`hd5t`**: biblioteca multimedia dedicada de Stash.
 
-Este documento aplica a discos nuevos o vacíos que se pueden reformatear. Si alguno de los discos USB ya contiene datos y no debe tocarse, usa [04-discos-con-datos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/04-discos-con-datos.md). La conexión física previa se describe en [02-esquema-conexiones.md](/Users/x441425/workspace2/homelab/docs/00-hardware/02-esquema-conexiones.md) y el arranque definitivo desde el SSD se documenta en [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md).
+Este documento aplica a discos nuevos o vacíos que se pueden reformatear. Si alguno de los discos USB ya contiene datos y no debe tocarse, usa [04-discos-con-datos.md](04-discos-con-datos.md). La conexión física previa se describe en [02-esquema-conexiones.md](02-esquema-conexiones.md) y el arranque definitivo desde el SSD se documenta en [05-arranque-nvme.md](05-arranque-nvme.md).
 
 ## Requisitos Previos
 
-- Haber completado o validado [01-material-necesario.md](/Users/x441425/workspace2/homelab/docs/00-hardware/01-material-necesario.md).
-- Tener conectados físicamente el **SSD NVMe**, **`hd2t`** y **`hd5t`** según [02-esquema-conexiones.md](/Users/x441425/workspace2/homelab/docs/00-hardware/02-esquema-conexiones.md).
+- Haber completado o validado [01-material-necesario.md](01-material-necesario.md).
+- Tener conectados físicamente el **SSD NVMe**, **`hd2t`** y **`hd5t`** según [02-esquema-conexiones.md](02-esquema-conexiones.md).
 - Arrancar temporalmente con Raspberry Pi OS ya instalado, aunque todavía sea desde microSD.
 - Acceso por terminal con un usuario con permisos de `sudo`.
 - Confirmar que **`hd2t`** y **`hd5t`** pueden borrarse por completo.
@@ -37,7 +37,7 @@ Este documento aplica a discos nuevos o vacíos que se pueden reformatear. Si al
 
 ## Advertencia Sobre el SSD NVMe
 
-En esta fase **no hace falta reparticionar manualmente el SSD NVMe** si va a recibir el sistema mediante clonación o instalación en [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md). Ese proceso crea o adapta las particiones del disco del sistema.
+En esta fase **no hace falta reparticionar manualmente el SSD NVMe** si va a recibir el sistema mediante clonación o instalación en [05-arranque-nvme.md](05-arranque-nvme.md). Ese proceso crea o adapta las particiones del disco del sistema.
 
 En otras palabras:
 
@@ -312,8 +312,8 @@ Ese contenido debe permanecer en el **SSD NVMe** para reducir latencia, mejorar 
 
 Con los discos ya preparados:
 
-- Continúa con [05-arranque-nvme.md](/Users/x441425/workspace2/homelab/docs/00-hardware/05-arranque-nvme.md) para migrar el arranque del sistema al SSD NVMe.
-- Si en realidad uno o ambos discos externos ya tenían datos y no deben reformatearse, sigue [04-discos-con-datos.md](/Users/x441425/workspace2/homelab/docs/00-hardware/04-discos-con-datos.md).
+- Continúa con [05-arranque-nvme.md](05-arranque-nvme.md) para migrar el arranque del sistema al SSD NVMe.
+- Si en realidad uno o ambos discos externos ya tenían datos y no deben reformatearse, sigue [04-discos-con-datos.md](04-discos-con-datos.md).
 
 ## Referencias
 

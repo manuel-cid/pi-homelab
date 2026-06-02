@@ -10,18 +10,18 @@ La política de este proyecto se mantiene sin excepciones:
 - los archivos multimedia viven en `/mnt/hd2t/media/jellyfin/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
-- **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
+- **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
 
 En una **Raspberry Pi 5**, Jellyfin funciona bien si el objetivo principal es **Direct Play** y **Direct Stream**. La transcodificación existe, pero en ARM no conviene diseñar el servicio como si fuera un host x86 con Quick Sync o VA-API: el margen es más estrecho, la compatibilidad depende más del sistema base y ciertas combinaciones de códec, resolución, HDR o subtítulos pueden degradar mucho el rendimiento.
 
 ## Requisitos Previos
 
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber desplegado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md) si quieres acceso remoto seguro.
-- Haber desplegado [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md) si quieres publicar Jellyfin detrás del reverse proxy interno.
-- Revisar [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceso remoto seguro.
+- Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Jellyfin detrás del reverse proxy interno.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
 - Tener montado `hd2t` en `/mnt/hd2t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:
@@ -187,7 +187,7 @@ En **Dashboard -> Libraries**:
 En **Dashboard -> Networking**:
 
 - si accedes por nombre LAN detrás de Caddy, puedes mantener el acceso normal sin cambios especiales
-- si vas a usar la ruta remota `https://pi-homelab.<tailnet>.ts.net/jellyfin/` del ejemplo de [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md), valida cuidadosamente la opción **Base URL** con `/jellyfin` antes de depender de ella en clientes móviles o TV
+- si vas a usar la ruta remota `https://pi-homelab.<tailnet>.ts.net/jellyfin/` del ejemplo de [05-caddy.md](../03-red/05-caddy.md), valida cuidadosamente la opción **Base URL** con `/jellyfin` antes de depender de ella en clientes móviles o TV
 
 Recomendación operativa:
 

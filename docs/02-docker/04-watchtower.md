@@ -8,9 +8,9 @@ En este proyecto, Watchtower se plantea como una herramienta de **mantenimiento 
 
 ## Requisitos Previos
 
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [03-portainer.md](/Users/x441425/workspace2/homelab/docs/02-docker/03-portainer.md) si se quiere inspeccionar el estado desde la UI, aunque no es obligatorio para desplegar Watchtower.
+- Haber completado [01-instalacion-docker.md](01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](02-estructura-compose.md).
+- Haber completado [03-portainer.md](03-portainer.md) si se quiere inspeccionar el estado desde la UI, aunque no es obligatorio para desplegar Watchtower.
 - Disponer del directorio operativo del homelab en `/home/<user>/homelab/`.
 - Poder crear el stack en `/home/<user>/homelab/compose/infra-watchtower/`.
 - Tener claro que Watchtower necesita acceso al socket Docker del host (`/var/run/docker.sock`), lo que implica capacidad de administración real sobre los contenedores.
@@ -57,7 +57,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
 ```
 
-Este Compose sigue la convención definida en [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md):
+Este Compose sigue la convención definida en [02-estructura-compose.md](02-estructura-compose.md):
 
 - stack independiente de infraestructura
 - sin campo legado `version:`

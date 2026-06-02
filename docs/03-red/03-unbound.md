@@ -9,7 +9,7 @@ El objetivo de esta capa es separar responsabilidades:
 - los clientes de la red siguen consultando solo a **Pi-hole**
 - **Pi-hole** mantiene el filtrado, las estadísticas y el DNS local del homelab
 - **Unbound** resuelve de forma recursiva, sin depender de resolutores públicos del ISP o de terceros
-- ambos servicios usan IP fija en la macvlan definida en [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md)
+- ambos servicios usan IP fija en la macvlan definida en [01-macvlan.md](01-macvlan.md)
 
 En este diseño, la ruta DNS final queda así:
 
@@ -21,10 +21,10 @@ Esto mantiene la IP LAN del host libre para **Caddy** y otros servicios, evita p
 
 ## Requisitos Previos
 
-- Haber completado [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md).
-- Haber completado [02-pihole.md](/Users/x441425/workspace2/homelab/docs/03-red/02-pihole.md).
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
+- Haber completado [01-macvlan.md](01-macvlan.md).
+- Haber completado [02-pihole.md](02-pihole.md).
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Tener creada la red Docker externa `dns_lan`.
 - Tener reservada la IP `192.168.1.194` para Pi-hole, la IP `192.168.1.195` para Unbound y la IP `192.168.1.222` para `macvlan-shim`.
 - Mantener la Raspberry Pi conectada por `eth0` y con el `macvlan-shim` operativo para validar desde el host.
@@ -207,7 +207,7 @@ Qué debes esperar:
 - las consultas normales deben responder correctamente desde `192.168.1.195#5335`
 - `dnssec-failed.org` debe devolver **`SERVFAIL`**, señal de que la validación DNSSEC está funcionando
 
-Si el host no alcanza `192.168.1.195`, vuelve a revisar el `macvlan-shim` descrito en [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md).
+Si el host no alcanza `192.168.1.195`, vuelve a revisar el `macvlan-shim` descrito en [01-macvlan.md](01-macvlan.md).
 
 ### 5. Confirmar la integración con Pi-hole
 
@@ -290,7 +290,7 @@ Para poder reconstruir la capa DNS recursiva sin perder configuración ni integr
 
 Orden de restauración recomendado:
 
-- recuperar `dns_lan` y `macvlan-shim` según [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md)
+- recuperar `dns_lan` y `macvlan-shim` según [01-macvlan.md](01-macvlan.md)
 - restaurar `unbound.conf`, `root.hints`, el Compose y el `.env`
 - levantar el stack `infra-pihole-unbound`
 - validar primero `dig @192.168.1.195 -p 5335 cloudflare.com`
@@ -299,9 +299,9 @@ Orden de restauración recomendado:
 
 ## Referencias
 
-- [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md)
-- [02-pihole.md](/Users/x441425/workspace2/homelab/docs/03-red/02-pihole.md)
-- [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md)
+- [01-macvlan.md](01-macvlan.md)
+- [02-pihole.md](02-pihole.md)
+- [06-puertos-y-firewall.md](06-puertos-y-firewall.md)
 - Pi-hole Docs: [Recursive DNS Server / Unbound](https://docs.pi-hole.net/guides/dns/unbound/)
 - Pi-hole Docs: [Docker](https://docs.pi-hole.net/docker/)
 - NLnet Labs: [Unbound Documentation](https://unbound.docs.nlnetlabs.nl/)

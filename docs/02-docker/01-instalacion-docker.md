@@ -8,10 +8,10 @@ Este proyecto asume una instalación de **Raspberry Pi OS Lite 64-bit** o sistem
 
 ## Requisitos Previos
 
-- Haber completado [01-instalacion-os.md](/Users/x441425/workspace2/homelab/docs/01-sistema/01-instalacion-os.md).
-- Haber completado [02-configuracion-inicial.md](/Users/x441425/workspace2/homelab/docs/01-sistema/02-configuracion-inicial.md).
-- Haber completado [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md).
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
+- Haber completado [01-instalacion-os.md](../01-sistema/01-instalacion-os.md).
+- Haber completado [02-configuracion-inicial.md](../01-sistema/02-configuracion-inicial.md).
+- Haber completado [03-seguridad-base.md](../01-sistema/03-seguridad-base.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 - Poder acceder por terminal con el usuario administrativo y permisos de `sudo`.
 - Disponer de conectividad de red saliente funcional para descargar paquetes desde el repositorio oficial de Docker.
 - Puertos necesarios en esta fase:
@@ -204,7 +204,7 @@ Para este proyecto, la regla práctica es esta:
 - no asumas que `ufw` por sí solo controla correctamente los puertos publicados por Docker
 - cuando llegue el momento de abrir o restringir servicios, sigue el documento de red y firewall del proyecto y aplica las reglas con criterio compatible con Docker
 
-Esto será especialmente relevante en [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
+Esto será especialmente relevante en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 
 ## Almacenamiento
 
@@ -214,7 +214,7 @@ En esta fase, Docker usa almacenamiento local del host:
 - **estado de `containerd`**: `/var/lib/containerd/`
 - **socket local**: `/var/run/docker.sock`
 
-Para este homelab, esas rutas deben permanecer en el disco del sistema, es decir, en el **SSD NVMe**. No conviene moverlas a `hd2t` ni a `hd5t`, porque esos discos están reservados para multimedia, descargas y backups según [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
+Para este homelab, esas rutas deben permanecer en el disco del sistema, es decir, en el **SSD NVMe**. No conviene moverlas a `hd2t` ni a `hd5t`, porque esos discos están reservados para multimedia, descargas y backups según [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 
 Además, el criterio operativo futuro queda así:
 

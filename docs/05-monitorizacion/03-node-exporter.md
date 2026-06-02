@@ -6,8 +6,8 @@
 
 Su función en esta fase es muy concreta:
 
-- exponer métricas del host para que las recoja [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md)
-- alimentar dashboards de sistema en [02-grafana.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/02-grafana.md), especialmente **Node Exporter Full**
+- exponer métricas del host para que las recoja [01-prometheus.md](01-prometheus.md)
+- alimentar dashboards de sistema en [02-grafana.md](02-grafana.md), especialmente **Node Exporter Full**
 - dar visibilidad sobre el **SSD NVMe** y los discos USB conectados al host
 
 En este proyecto conviene mantener un criterio simple:
@@ -15,15 +15,15 @@ En este proyecto conviene mantener un criterio simple:
 - Node Exporter no necesita base de datos ni almacenamiento persistente
 - no hace falta publicar su puerto en la LAN
 - debe ser accesible solo desde la red Docker compartida con Prometheus
-- el nombre del servicio debe ser `node-exporter`, porque así está definido el target en [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md)
+- el nombre del servicio debe ser `node-exporter`, porque así está definido el target en [01-prometheus.md](01-prometheus.md)
 
 ## Requisitos Previos
 
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Haber completado [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md).
-- Haber completado [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md).
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Haber completado [01-prometheus.md](01-prometheus.md).
+- Haber completado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 - Tener creada la red Docker externa `homelab_proxy`.
 - Poder montar en modo solo lectura el sistema de ficheros del host dentro del contenedor.
 - Puertos necesarios en esta fase:
@@ -134,7 +134,7 @@ El resultado esperado es este:
 
 Como este servicio no publica puerto al host, la validación práctica debe hacerse a través de Prometheus.
 
-Si ya tienes desplegado [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md), una comprobación útil es esta:
+Si ya tienes desplegado [01-prometheus.md](01-prometheus.md), una comprobación útil es esta:
 
 ```bash
 curl -s http://127.0.0.1:11000/api/v1/targets | jq '.data.activeTargets[] | select(.labels.job=="node-exporter") | {scrapeUrl: .scrapeUrl, health: .health, lastError: .lastError}'
@@ -197,7 +197,7 @@ Lectura práctica:
 
 ### 5. Relación con Grafana
 
-En [02-grafana.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/02-grafana.md), este servicio se usa para alimentar dos vistas especialmente útiles:
+En [02-grafana.md](02-grafana.md), este servicio se usa para alimentar dos vistas especialmente útiles:
 
 - el dashboard **Node Exporter Full**
 - paneles de temperatura de la Raspberry Pi
@@ -231,7 +231,7 @@ Notas importantes:
 - Node Exporter no mantiene base de datos ni volúmenes persistentes en este homelab
 - no hace falta crear `/home/<user>/homelab/data/node-exporter/`
 - no hace falta crear `/home/<user>/homelab/config/node-exporter/` salvo que en el futuro quieras encapsular opciones adicionales fuera del Compose
-- las métricas se generan en tiempo real y quedan almacenadas realmente en [01-prometheus.md](/Users/x441425/workspace2/homelab/docs/05-monitorizacion/01-prometheus.md), no aquí
+- las métricas se generan en tiempo real y quedan almacenadas realmente en [01-prometheus.md](01-prometheus.md), no aquí
 
 ## Backup
 

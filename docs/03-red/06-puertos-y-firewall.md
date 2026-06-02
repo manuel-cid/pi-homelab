@@ -7,9 +7,9 @@ Este documento define la política de exposición de puertos del homelab y la co
 Su objetivo es dejar una regla operativa clara:
 
 - la **IP LAN del host** expone solo lo imprescindible
-- **Pi-hole** y **Unbound** usan sus propias IPs en `dns_lan`, según [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md), [02-pihole.md](/Users/x441425/workspace2/homelab/docs/03-red/02-pihole.md) y [03-unbound.md](/Users/x441425/workspace2/homelab/docs/03-red/03-unbound.md)
-- los servicios web normales entran por **Caddy**, según [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md)
-- el acceso remoto entra solo por **Tailscale**, según [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md)
+- **Pi-hole** y **Unbound** usan sus propias IPs en `dns_lan`, según [01-macvlan.md](01-macvlan.md), [02-pihole.md](02-pihole.md) y [03-unbound.md](03-unbound.md)
+- los servicios web normales entran por **Caddy**, según [05-caddy.md](05-caddy.md)
+- el acceso remoto entra solo por **Tailscale**, según [04-tailscale.md](04-tailscale.md)
 - el router no publica nada hacia internet
 
 Este documento es un **registro vivo**. Cada vez que se despliegue un servicio nuevo, hay que revisar y actualizar:
@@ -20,12 +20,12 @@ Este documento es un **registro vivo**. Cada vez que se despliegue un servicio n
 
 ## Requisitos Previos
 
-- Haber completado [03-seguridad-base.md](/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md).
-- Haber completado [01-macvlan.md](/Users/x441425/workspace2/homelab/docs/03-red/01-macvlan.md).
-- Haber completado [02-pihole.md](/Users/x441425/workspace2/homelab/docs/03-red/02-pihole.md).
-- Haber completado [03-unbound.md](/Users/x441425/workspace2/homelab/docs/03-red/03-unbound.md).
-- Haber completado [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md).
-- Haber completado [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md).
+- Haber completado [03-seguridad-base.md](../01-sistema/03-seguridad-base.md).
+- Haber completado [01-macvlan.md](01-macvlan.md).
+- Haber completado [02-pihole.md](02-pihole.md).
+- Haber completado [03-unbound.md](03-unbound.md).
+- Haber completado [04-tailscale.md](04-tailscale.md).
+- Haber completado [05-caddy.md](05-caddy.md).
 - Tener fijada o reservada la IP LAN del host, por ejemplo `192.168.1.10`.
 - Tener reservado el bloque macvlan y las IPs de `Pi-hole`, `Unbound` y `macvlan-shim`.
 - Tener acceso administrativo al router para revisar DHCP, DNS, `UPnP` y reglas NAT.

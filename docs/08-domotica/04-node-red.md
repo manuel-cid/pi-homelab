@@ -15,14 +15,14 @@ El servicio se publica solo en la **LAN** y a través de **Tailscale**. No hay e
 
 ## Requisitos Previos
 
-- Haber completado [04-estructura-directorios.md](/Users/x441425/workspace2/homelab/docs/01-sistema/04-estructura-directorios.md).
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
-- Haber desplegado [01-home-assistant.md](/Users/x441425/workspace2/homelab/docs/08-domotica/01-home-assistant.md) para integrar Node-RED con Home Assistant.
-- Haber desplegado [02-mosquitto.md](/Users/x441425/workspace2/homelab/docs/08-domotica/02-mosquitto.md) para usar MQTT desde los flujos.
-- Recomendable haber desplegado [03-zigbee2mqtt.md](/Users/x441425/workspace2/homelab/docs/08-domotica/03-zigbee2mqtt.md) si vas a automatizar dispositivos Zigbee desde el primer momento.
-- Haber revisado [06-puertos-y-firewall.md](/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md) para registrar el puerto del editor web.
-- Si se quiere acceso remoto, tener operativa la VPN de [04-tailscale.md](/Users/x441425/workspace2/homelab/docs/03-red/04-tailscale.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber desplegado [01-home-assistant.md](01-home-assistant.md) para integrar Node-RED con Home Assistant.
+- Haber desplegado [02-mosquitto.md](02-mosquitto.md) para usar MQTT desde los flujos.
+- Recomendable haber desplegado [03-zigbee2mqtt.md](03-zigbee2mqtt.md) si vas a automatizar dispositivos Zigbee desde el primer momento.
+- Haber revisado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto del editor web.
+- Si se quiere acceso remoto, tener operativa la VPN de [04-tailscale.md](../03-red/04-tailscale.md).
 - Puertos necesarios en esta fase:
   - **`1880/tcp`** para la interfaz web de Node-RED
 
@@ -123,7 +123,7 @@ docker compose restart node-red
 
 En una LAN domestica de confianza puede bastar con restringir el acceso por red, pero el editor de Node-RED sigue siendo una superficie potente. Al menos una de estas medidas deberia aplicarse si vas a acceder desde varios dispositivos:
 
-- publicar Node-RED detras de [05-caddy.md](/Users/x441425/workspace2/homelab/docs/03-red/05-caddy.md) y protegerlo con [01-authelia.md](/Users/x441425/workspace2/homelab/docs/04-seguridad/01-authelia.md)
+- publicar Node-RED detras de [05-caddy.md](../03-red/05-caddy.md) y protegerlo con [01-authelia.md](../04-seguridad/01-authelia.md)
 - o bien activar autenticacion propia del editor mediante `adminAuth` en `settings.js`
 
 Si no vas a ponerlo detras de Caddy, la opcion mas simple es mantenerlo accesible solo por IP interna y por Tailscale.
@@ -175,7 +175,7 @@ Configura un broker MQTT reutilizable para todos los flujos:
    - Host: `IP_DE_LA_PI`
    - Puerto: `1883`
    - Usuario: `mqtt-nodered`
-   - Contraseña: la creada en [02-mosquitto.md](/Users/x441425/workspace2/homelab/docs/08-domotica/02-mosquitto.md)
+   - Contraseña: la creada en [02-mosquitto.md](02-mosquitto.md)
 4. Guarda y despliega.
 
 Pruebas minimas recomendadas:
@@ -385,7 +385,7 @@ Revisa:
 
 - host y puerto del broker
 - usuario `mqtt-nodered` y su contraseña
-- ACLs en [02-mosquitto.md](/Users/x441425/workspace2/homelab/docs/08-domotica/02-mosquitto.md)
+- ACLs en [02-mosquitto.md](02-mosquitto.md)
 - topic exacto y formato de payload esperado
 
 ## Almacenamiento
@@ -430,7 +430,7 @@ Recomendaciones:
 
 - para una copia conservadora, detén brevemente el contenedor antes del backup si acabas de desplegar cambios o instalar nodos
 - conserva el `credentialSecret` usado en `settings.js`; sin el, `flows_cred.json` no sera reutilizable
-- integra esta ruta mas adelante en [02-borgmatic.md](/Users/x441425/workspace2/homelab/docs/07-backups/02-borgmatic.md)
+- integra esta ruta mas adelante en [02-borgmatic.md](../07-backups/02-borgmatic.md)
 
 Ejemplo de parada breve:
 

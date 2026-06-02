@@ -4,12 +4,12 @@
 
 **Portainer CE** aporta una interfaz web ligera para administrar el motor Docker del homelab: contenedores, imágenes, volúmenes, redes y stacks. En una Raspberry Pi 5 resulta especialmente útil para operaciones cotidianas de mantenimiento, consulta rápida del estado de servicios y despliegues puntuales sin depender siempre de la terminal.
 
-En este proyecto, Portainer se usa como **capa de gestión**, no como sustituto del diseño operativo definido en [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md) y [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md). El motor sigue siendo Docker Engine local, los datos persistentes siguen viviendo en el **SSD NVMe** y la publicación del panel queda limitada a la **LAN** y, si se desea, a acceso remoto a través de **Tailscale**.
+En este proyecto, Portainer se usa como **capa de gestión**, no como sustituto del diseño operativo definido en [01-instalacion-docker.md](01-instalacion-docker.md) y [02-estructura-compose.md](02-estructura-compose.md). El motor sigue siendo Docker Engine local, los datos persistentes siguen viviendo en el **SSD NVMe** y la publicación del panel queda limitada a la **LAN** y, si se desea, a acceso remoto a través de **Tailscale**.
 
 ## Requisitos Previos
 
-- Haber completado [01-instalacion-docker.md](/Users/x441425/workspace2/homelab/docs/02-docker/01-instalacion-docker.md).
-- Haber completado [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md).
+- Haber completado [01-instalacion-docker.md](01-instalacion-docker.md).
+- Haber completado [02-estructura-compose.md](02-estructura-compose.md).
 - Disponer del directorio operativo del homelab en `/home/<user>/homelab/`.
 - Poder crear directorios persistentes bajo `/home/<user>/homelab/data/`.
 - Tener claro que Portainer necesitará acceso al socket Docker del host (`/var/run/docker.sock`).
@@ -54,7 +54,7 @@ services:
       - com.centurylinklabs.watchtower.enable=true
 ```
 
-Este Compose sigue la convención definida en [02-estructura-compose.md](/Users/x441425/workspace2/homelab/docs/02-docker/02-estructura-compose.md):
+Este Compose sigue la convención definida en [02-estructura-compose.md](02-estructura-compose.md):
 
 - stack independiente para infraestructura
 - sin campo legado `version:`
