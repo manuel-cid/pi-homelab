@@ -158,14 +158,14 @@ sudo fsck.exfat /dev/sdb1
 Mantén la misma estructura del resto del homelab:
 
 ```bash
-sudo mkdir -p /srv/storage/hd2t
-sudo mkdir -p /srv/storage/hd5t
+sudo mkdir -p /media/hd2t
+sudo mkdir -p /media/hd5t
 ```
 
 La recomendación es:
 
-- Montar el disco reutilizado que hará de **`hd2t`** en `/srv/storage/hd2t`.
-- Montar el disco reutilizado que hará de **`hd5t`** en `/srv/storage/hd5t`.
+- Montar el disco reutilizado que hará de **`hd2t`** en `/media/hd2t`.
+- Montar el disco reutilizado que hará de **`hd5t`** en `/media/hd5t`.
 
 No hace falta que la etiqueta original del volumen coincida con `hd2t` o `hd5t` si usas **UUID** en `fstab`.
 
@@ -182,8 +182,8 @@ sudo blkid /dev/sda1 /dev/sdb1
 ### Ejemplo para `ext4`
 
 ```bash
-sudo mount -t ext4 /dev/sda1 /srv/storage/hd2t
-sudo mount -t ext4 /dev/sdb1 /srv/storage/hd5t
+sudo mount -t ext4 /dev/sda1 /media/hd2t
+sudo mount -t ext4 /dev/sdb1 /media/hd5t
 ```
 
 ### Ejemplo para `NTFS`
@@ -191,30 +191,30 @@ sudo mount -t ext4 /dev/sdb1 /srv/storage/hd5t
 Si el kernel soporta `ntfs3`, usa esta opción:
 
 ```bash
-sudo mount -t ntfs3 /dev/sda1 /srv/storage/hd2t
-sudo mount -t ntfs3 /dev/sdb1 /srv/storage/hd5t
+sudo mount -t ntfs3 /dev/sda1 /media/hd2t
+sudo mount -t ntfs3 /dev/sdb1 /media/hd5t
 ```
 
 Si `ntfs3` no está disponible, usa el fallback:
 
 ```bash
-sudo mount -t ntfs-3g /dev/sda1 /srv/storage/hd2t
-sudo mount -t ntfs-3g /dev/sdb1 /srv/storage/hd5t
+sudo mount -t ntfs-3g /dev/sda1 /media/hd2t
+sudo mount -t ntfs-3g /dev/sdb1 /media/hd5t
 ```
 
 ### Ejemplo para `exFAT`
 
 ```bash
-sudo mount -t exfat /dev/sda1 /srv/storage/hd2t
-sudo mount -t exfat /dev/sdb1 /srv/storage/hd5t
+sudo mount -t exfat /dev/sda1 /media/hd2t
+sudo mount -t exfat /dev/sdb1 /media/hd5t
 ```
 
 ### Verificación
 
 ```bash
 df -h | grep -E 'hd2t|hd5t'
-ls -la /srv/storage/hd2t
-ls -la /srv/storage/hd5t
+ls -la /media/hd2t
+ls -la /media/hd5t
 ```
 
 Valida estas tres cosas:
@@ -232,8 +232,8 @@ dmesg | tail -n 50
 Cuando termines la prueba manual:
 
 ```bash
-sudo umount /srv/storage/hd2t
-sudo umount /srv/storage/hd5t
+sudo umount /media/hd2t
+sudo umount /media/hd5t
 ```
 
 ## Montaje Automático con `fstab`
@@ -253,8 +253,8 @@ sudo cp /etc/fstab /etc/fstab.bak
 ### Ejemplo para `ext4`
 
 ```fstab
-UUID=AAAA-BBBB-CCCC-DDDD  /srv/storage/hd2t  ext4   defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
-UUID=EEEE-FFFF-GGGG-HHHH  /srv/storage/hd5t  ext4   defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
+UUID=AAAA-BBBB-CCCC-DDDD  /media/hd2t  ext4   defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
+UUID=EEEE-FFFF-GGGG-HHHH  /media/hd5t  ext4   defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
 ```
 
 ### Ejemplo para `NTFS`
@@ -262,22 +262,22 @@ UUID=EEEE-FFFF-GGGG-HHHH  /srv/storage/hd5t  ext4   defaults,nofail,noatime,x-sy
 Con driver `ntfs3`:
 
 ```fstab
-UUID=AAAA-BBBB  /srv/storage/hd2t  ntfs3   uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
-UUID=CCCC-DDDD  /srv/storage/hd5t  ntfs3   uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=AAAA-BBBB  /media/hd2t  ntfs3   uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=CCCC-DDDD  /media/hd5t  ntfs3   uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
 ```
 
 Fallback con `ntfs-3g`:
 
 ```fstab
-UUID=AAAA-BBBB  /srv/storage/hd2t  ntfs-3g  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
-UUID=CCCC-DDDD  /srv/storage/hd5t  ntfs-3g  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=AAAA-BBBB  /media/hd2t  ntfs-3g  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=CCCC-DDDD  /media/hd5t  ntfs-3g  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
 ```
 
 ### Ejemplo para `exFAT`
 
 ```fstab
-UUID=AAAA-BBBB  /srv/storage/hd2t  exfat  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
-UUID=CCCC-DDDD  /srv/storage/hd5t  exfat  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=AAAA-BBBB  /media/hd2t  exfat  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=CCCC-DDDD  /media/hd5t  exfat  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
 ```
 
 ### Validación inmediata
@@ -286,8 +286,8 @@ Después de guardar `fstab`, comprueba el resultado sin reiniciar:
 
 ```bash
 sudo mount -a
-findmnt /srv/storage/hd2t
-findmnt /srv/storage/hd5t
+findmnt /media/hd2t
+findmnt /media/hd5t
 ```
 
 Si `mount -a` no devuelve errores, el montaje persistente está listo.
@@ -301,8 +301,8 @@ El tratamiento de permisos depende del sistema de archivos.
 `ext4` sí guarda permisos y propietarios Linux reales. Después de montar:
 
 ```bash
-sudo chown -R $USER:$USER /srv/storage/hd2t
-sudo chown -R $USER:$USER /srv/storage/hd5t
+sudo chown -R $USER:$USER /media/hd2t
+sudo chown -R $USER:$USER /media/hd5t
 ```
 
 Haz esto solo si el contenido debe quedar gestionado por tu usuario operativo. Si ya existe una estructura con permisos deliberados, revisa antes de aplicar cambios recursivos.
@@ -331,7 +331,7 @@ Si más adelante usas un UID/GID distinto para Docker, ajusta esos valores en `f
 Antes de dar por integrado el disco, comprueba:
 
 - `lsblk -f` muestra cada partición con su sistema de archivos y punto de montaje correcto.
-- `findmnt /srv/storage/hd2t` y `findmnt /srv/storage/hd5t` devuelven la unidad esperada.
+- `findmnt /media/hd2t` y `findmnt /media/hd5t` devuelven la unidad esperada.
 - El contenido visible coincide con la biblioteca real que querías conservar.
 - No hay errores recientes en `dmesg`.
 - El sistema reinicia correctamente y vuelve a montar ambos discos.
