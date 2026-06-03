@@ -148,21 +148,34 @@ Si prefieres otro locale principal, sustituye `es_ES.UTF-8` por el valor que cor
 Antes de reconfigurar la memoria virtual, comprueba qué swap existe ahora mismo:
 
 ```bash
-swapon --show --output=NAME,TYPE,SIZE,USED,PRIO
-systemctl status dphys-swapfile --no-pager
+swapon --show
+free -h
 ```
 
-En Raspberry Pi OS es habitual encontrar `dphys-swapfile` activo por defecto. Para este homelab no interesa mantener esa configuración genérica porque vamos a sustituirla por una política controlada y explícita.
+En versiones recientes de Raspberry Pi OS (Bookworm y posteriores) ya no se incluye `dphys-swapfile`. Si tu sistema lo tiene, aparecerá como servicio activo:
+
+```bash
+systemctl list-units --type=swap --no-pager
+systemctl status dphys-swapfile --no-pager 2>/dev/null || echo "dphys-swapfile no está instalado en este sistema"
+```
+
+Si `swapon --show` no devuelve nada, el sistema no tiene swap activo y puedes saltar directamente al paso 8. Si muestra algún dispositivo de swap (swapfile, partición o `zram` preexistente), continúa con el paso 7 para desactivarlo.
 
 ### 7. Desactivar el swap por defecto
 
-Desactiva y deshabilita `dphys-swapfile`:
+Desactiva cualquier swap activo que no forme parte de la configuración objetivo:
 
 ```bash
-sudo systemctl disable --now dphys-swapfile
+sudo swapoff -a
 ```
 
-Si existe el swapfile antiguo de la configuración por defecto, elimínalo:
+Si `dphys-swapfile` está instalado en tu sistema, desactívalo y deshabilítalo:
+
+```bash
+sudo systemctl disable --now dphys-swapfile 2>/dev/null
+```
+
+Si existe un swapfile antiguo de la configuración por defecto, elimínalo:
 
 ```bash
 sudo rm -f /var/swap
@@ -264,7 +277,7 @@ sudo reboot
 Después del reinicio, comprueba:
 
 ```bash
-swapon --show --output=NAME,TYPE,SIZE,USED,PRIO
+swapon --show
 cat /proc/sys/vm/swappiness
 findmnt -no SOURCE /
 ```
