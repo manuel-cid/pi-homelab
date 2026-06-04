@@ -3,8 +3,8 @@
 Plan maestro para redactar toda la documentación necesaria para montar el homelab definido en `SERVICES.md` sobre una **Raspberry Pi 5 (8 GB)** montada en una **carcasa con soporte NVMe** y un **SSD NVMe como almacenamiento principal del sistema**, junto con **dos discos duros externos conectados por USB**:
 
 - **SSD NVMe** (500 GB, M.2 vía PCIe en carcasa) — sistema operativo, Docker Engine, configs, **datos persistentes de todos los servicios** (BD, volúmenes, uploads, logs)
-- **hd2t** (2 TB, USB 3.0) — contenidos multimedia (Jellyfin, Navidrome, Audiobookshelf, Calibre-Web, descargas) y **backups**
-- **hd5t** (5 TB, USB 3.0) — contenidos multimedia de Stash
+- **hd2t** (2 TB, USB 3.0) — contenidos multimedia (vídeo, música, audiolibros, ebooks), descargas y **backups**
+- **hd5t** (5 TB, USB 3.0) — biblioteca multimedia dedicada
 
 > **Alcance de red**: el homelab es **solo acceso local (LAN) + Tailscale (VPN mesh)**. No hay exposición a internet, no se abren puertos en el router, no se usan certificados Let's Encrypt ni DDNS.
 
@@ -16,7 +16,7 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 |-----|-----------|
 | `docs/00-hardware/01-material-necesario.md` | Lista de materiales: Raspberry Pi 5 8 GB, fuente oficial USB-C 27 W (5V/5A — imprescindible con NVMe), microSD 64 GB (solo arranque inicial), **carcasa cerrada con slot M.2 NVMe** (ej. Argon NEO 5 M.2 NVME ~35–45 €, Argon ONE V3 ~55–65 €), **SSD NVMe M.2 500 GB** (ej. Kingston NV2 ~35–40 €), disco duro externo **hd2t** (2 TB, USB 3.0), disco duro externo **hd5t** (5 TB, USB 3.0), cable Ethernet, adaptador Zigbee (opcional). Presupuesto upgrade NVMe: ~70–105 € |
 | `docs/00-hardware/02-esquema-conexiones.md` | Diagrama físico de conexiones: Pi → SSD NVMe (M.2 en carcasa vía PCIe), Pi → discos duros USB, Pi → router (Ethernet Gigabit), Pi → adaptador Zigbee |
-| `docs/00-hardware/03-preparacion-discos.md` | Particionado, formato (ext4), montaje automático (`fstab`), etiquetas (`hd5t`, `hd2t`), pruebas SMART, estrategia de uso (SSD NVMe: SO + Docker + datos de servicios, hd2t: multimedia + backups, hd5t: multimedia Stash) |
+| `docs/00-hardware/03-preparacion-discos.md` | Particionado, formato (ext4), montaje automático (`fstab`), etiquetas (`hd5t`, `hd2t`), pruebas SMART, estrategia de uso (SSD NVMe: SO + Docker + datos de servicios, hd2t: multimedia + backups, hd5t: biblioteca multimedia dedicada) |
 | `docs/00-hardware/04-discos-con-datos.md` | Instalación de discos externos **sin formatear** (con datos existentes): identificación, SMART, comprobación de integridad, montaje automático (`fstab`), soporte para ext4/NTFS/exFAT, ajuste de permisos |
 | `docs/00-hardware/05-arranque-nvme.md` | Configuración del arranque desde NVMe: actualización de firmware (`rpi-eeprom-update`), cambio de boot order (`raspi-config`), clonación de microSD al SSD NVMe (`rpi-imager` / `dd` / `rsync`), retirada de microSD, verificación |
 
@@ -29,7 +29,7 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | `docs/01-sistema/01-instalacion-os.md` | Flash de Raspberry Pi OS Lite 64-bit con Raspberry Pi Imager en microSD, configuración headless (SSH, usuario, WiFi de emergencia), migración posterior a SSD NVMe (→ ver `docs/00-hardware/05-arranque-nvme.md`). Estructura de discos según → ver `docs/00-hardware/03-preparacion-discos.md` |
 | `docs/01-sistema/02-configuracion-inicial.md` | Primer arranque (desde NVMe tras migración), actualización del sistema, hostname, zona horaria, locale, configurar swap: **zram** como swap primario (compresión en RAM, prioridad alta) + **swapfile de 2 GB en SSD NVMe** como red de seguridad (prioridad baja, `swappiness=10`) — no usar swap en HDD USB (latencia alta, riesgo de desconexión, compite con I/O multimedia) |
 | `docs/01-sistema/03-seguridad-base.md` | Cambio de contraseña, claves SSH, deshabilitar login con password, firewall (`ufw`/`nftables`), `fail2ban` básico a nivel de host (solo jail SSH — → ver `docs/04-seguridad/02-fail2ban.md` para jails de servicios), actualizaciones automáticas (`unattended-upgrades`). Reglas de firewall complementan → ver `docs/03-red/06-puertos-y-firewall.md` |
-| `docs/01-sistema/04-estructura-directorios.md` | Estructura de carpetas: **SSD NVMe** (`/home/<user>/homelab/` — configs, composes, `.env`, `data/` con volúmenes de servicios), `/media/hd2t` (multimedia de Jellyfin/Navidrome/Audiobookshelf/Calibre-Web, descargas, backups), `/media/hd5t` (multimedia Stash). Política: el SSD almacena todo lo operativo, los HDDs solo multimedia y backups. Montaje permanente en `/etc/fstab` |
+| `docs/01-sistema/04-estructura-directorios.md` | Estructura de carpetas: **SSD NVMe** (`/home/<user>/homelab/` — configs, composes, `.env`, `data/` con volúmenes de servicios), `/media/hd2t` (multimedia por tipo de contenido — vídeo, música, audiolibros, ebooks — descargas, backups), `/media/hd5t` (biblioteca multimedia dedicada). Política: el SSD almacena todo lo operativo, los HDDs solo multimedia y backups. Montaje permanente en `/etc/fstab` |
 
 ---
 
@@ -83,7 +83,7 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 
 | Doc | Contenido |
 |-----|-----------|
-| `docs/06-almacenamiento/01-samba.md` | Despliegue de Samba, shares por carpeta en hd2t (multimedia) y opcionalmente hd5t (Stash), permisos, acceso desde Windows/Mac/Linux |
+| `docs/06-almacenamiento/01-samba.md` | Despliegue de Samba, shares por carpeta en hd2t (multimedia) y opcionalmente hd5t (biblioteca dedicada), permisos, acceso desde Windows/Mac/Linux |
 | `docs/06-almacenamiento/02-syncthing.md` | Despliegue de Syncthing, carpetas compartidas (SSD o hd2t según tipo de contenido), dispositivos pareados |
 
 ---

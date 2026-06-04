@@ -8,7 +8,7 @@ La política de este proyecto se mantiene:
 
 - el **SSD NVMe** es la fuente principal de verdad para sistema, `compose`, configuraciones, volúmenes persistentes y bases de datos
 - **`/media/hd2t/backups/`** es el destino local de backups
-- **`hd5t`** sigue reservado a la biblioteca multimedia de **Stash**
+- **`hd5t`** sigue reservado a la biblioteca multimedia dedicada
 
 Esta fase documenta la **estrategia general**. El despliegue concreto de la herramienta se cubre en [02-borgmatic.md](02-borgmatic.md) y el procedimiento detallado para volúmenes y bases de datos en [03-backup-docker-volumes.md](03-backup-docker-volumes.md).
 
@@ -77,7 +77,7 @@ Servicios y categorías que normalmente generan datos a proteger:
 - cachés, transcodes, thumbnails regenerables y ficheros temporales
 - descargas incompletas o colas transitorias
 - bibliotecas multimedia masivas en `/media/hd2t/media/`
-- contenido multimedia de Stash en `/media/hd5t/stash/`
+- contenido multimedia en `/media/hd5t/media/`
 
 Excluir estas rutas reduce tiempo de backup, consumo de espacio y riesgo de llenar `hd2t` con datos que no son críticos para recuperar el servicio.
 
@@ -202,7 +202,7 @@ Distribución operativa de la estrategia:
 - **Fuera de alcance de la rutina base**
   - `/media/hd2t/media/`
   - `/media/hd2t/downloads/`
-  - `/media/hd5t/stash/`
+  - `/media/hd5t/media/`
 
 Regla importante:
 

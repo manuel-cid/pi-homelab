@@ -12,7 +12,7 @@ Este documento asume el material descrito en [01-material-necesario.md](01-mater
 - Tener claro el reparto de almacenamiento:
   - **SSD NVMe**: sistema operativo, Docker, configuraciones y datos persistentes de servicios.
   - **`hd2t`**: multimedia general, descargas y backups.
-  - **`hd5t`**: biblioteca multimedia de Stash.
+  - **`hd5t`**: biblioteca multimedia dedicada.
 - Ubicar la Raspberry Pi cerca del router o switch para usar **Ethernet Gigabit**.
 - Reservar una toma de corriente estable para la **fuente oficial USB-C de 27 W**.
 
@@ -52,7 +52,7 @@ Este documento asume el material descrito en [01-material-necesario.md](01-mater
 |------------|--------------|-----------------|---------|
 | SSD NVMe M.2 500 GB | PCIe interno de la carcasa | Montado dentro de la carcasa compatible | Disco principal del sistema, Docker y datos persistentes |
 | Disco `hd2t` | USB 3.0 | Cable USB al puerto azul de la Pi | Multimedia general, descargas y backups |
-| Disco `hd5t` | USB 3.0 | Cable USB al otro puerto azul de la Pi | Biblioteca multimedia dedicada de Stash |
+| Disco `hd5t` | USB 3.0 | Cable USB al otro puerto azul de la Pi | Biblioteca multimedia dedicada |
 | Router o switch | Ethernet RJ45 Gigabit | Cable Ethernet desde la Pi | Red local estable, acceso LAN y Tailscale |
 | Adaptador Zigbee | USB 2.0 o USB con alargador | Directo o mediante extensión corta | Domótica futura con Zigbee2MQTT/Home Assistant |
 | Fuente oficial 27 W | USB-C alimentación | Directo a la Pi | Alimentación estable del conjunto |
@@ -100,8 +100,8 @@ Si usas una carcasa pasiva como la **Argon NEO 5 M.2 NVME**, este paso no aplica
 | Disco | Montaje esperado | Uso previsto |
 |-------|------------------|--------------|
 | SSD NVMe | Sistema principal | Raspberry Pi OS, Docker Engine, `docker compose`, configuraciones, bases de datos, volúmenes persistentes y logs |
-| `hd2t` | Disco de datos secundario | Jellyfin, Navidrome, Audiobookshelf, Calibre-Web, descargas y backups |
-| `hd5t` | Disco de datos dedicado | Biblioteca multimedia de Stash |
+| `hd2t` | Disco de datos secundario | Multimedia general (vídeo, música, audiolibros, ebooks), descargas y backups |
+| `hd5t` | Disco de datos dedicado | Biblioteca multimedia dedicada |
 
 Esta separación evita cargar los discos USB con I/O operativo del sistema y reduce el impacto de picos de lectura/escritura multimedia sobre el host.
 

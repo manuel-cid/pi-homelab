@@ -201,7 +201,7 @@ Si el montaje es correcto, crea ya la estructura inicial dentro de cada disco:
 sudo mkdir -p /srv/storage/hd2t/media
 sudo mkdir -p /srv/storage/hd2t/downloads
 sudo mkdir -p /srv/storage/hd2t/backups
-sudo mkdir -p /srv/storage/hd5t/stash
+sudo mkdir -p /srv/storage/hd5t/media
 ```
 
 Si todo es correcto, desmonta de nuevo para preparar el montaje persistente:
@@ -288,7 +288,7 @@ Usa desde el inicio una separación clara de contenidos:
 | `/srv/storage/hd2t/media` | Películas, series, música, libros y contenido general |
 | `/srv/storage/hd2t/downloads` | Descargas temporales o de ingestión |
 | `/srv/storage/hd2t/backups` | Backups locales del host y de servicios |
-| `/srv/storage/hd5t/stash` | Biblioteca multimedia exclusiva de Stash |
+| `/srv/storage/hd5t/media` | Biblioteca multimedia dedicada |
 
 ### Qué no conviene mover a USB
 

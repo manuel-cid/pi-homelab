@@ -12,7 +12,7 @@ Este documento cubre solo materiales y criterios de compra. La conexión física
 - Tener claro el reparto de almacenamiento:
   - **SSD NVMe 500 GB**: sistema operativo, Docker, configuraciones y datos persistentes de servicios.
   - **hd2t 2 TB**: multimedia general, descargas y backups.
-  - **hd5t 5 TB**: biblioteca multimedia de Stash.
+  - **hd5t 5 TB**: biblioteca multimedia dedicada.
 - Disponer de una toma de corriente estable y un punto de red Ethernet cerca del lugar de instalación.
 
 ## Lista de Materiales
@@ -25,7 +25,7 @@ Este documento cubre solo materiales y criterios de compra. La conexión física
 | Carcasa con M.2 NVMe | Sí | Carcasa cerrada con slot **M.2 NVMe** para Pi 5 | Montaje físico, refrigeración y conexión PCIe al SSD | **35-65 EUR** |
 | SSD NVMe M.2 | Sí | **500 GB** | Disco principal del sistema y datos persistentes | **35-40 EUR** |
 | Disco externo `hd2t` | Sí | **2 TB, USB 3.0** | Multimedia general, descargas y backups | Reutilizable o según tienda |
-| Disco externo `hd5t` | Sí | **5 TB, USB 3.0** | Multimedia dedicada de Stash | Reutilizable o según tienda |
+| Disco externo `hd5t` | Sí | **5 TB, USB 3.0** | Biblioteca multimedia dedicada | Reutilizable o según tienda |
 | Cable de red | Sí | Ethernet Cat 5e o superior | Conexión estable al router/switch | Bajo coste |
 | Adaptador Zigbee | Opcional | USB compatible con Zigbee2MQTT/Home Assistant | Integración domótica futura | Según modelo |
 
@@ -50,7 +50,7 @@ Este documento cubre solo materiales y criterios de compra. La conexión física
 ### Discos USB de datos
 
 - **`hd2t` (2 TB)**: destinado a bibliotecas multimedia, descargas y copias de seguridad locales.
-- **`hd5t` (5 TB)**: reservado para la biblioteca de Stash, separando ese volumen del resto del contenido.
+- **`hd5t` (5 TB)**: reservado para una biblioteca multimedia dedicada, separando ese disco del resto del contenido.
 - Si estos discos ya existen y contienen datos, no hace falta sustituirlos. Su incorporación sin formatear se documenta en [04-discos-con-datos.md](04-discos-con-datos.md).
 
 ## Presupuesto del Upgrade a NVMe
