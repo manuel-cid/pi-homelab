@@ -7,7 +7,7 @@
 La política de almacenamiento de este proyecto se mantiene igual que en el resto de servicios:
 
 - la configuración, la base de datos, los blobs, la metadata descargada, la caché y el contenido generado viven en `/home/<user>/homelab/data/stash/` sobre el **SSD NVMe**
-- la biblioteca multimedia vive en `/mnt/hd5t/stash/data/`
+- la biblioteca multimedia vive en `/media/hd5t/stash/data/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
 - **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
@@ -22,7 +22,7 @@ Stash encaja bien en este homelab porque separa claramente la **biblioteca real*
 - Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceso remoto seguro.
 - Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Stash detrás del reverse proxy interno.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
-- Tener montado `hd5t` en `/mnt/hd5t`.
+- Tener montado `hd5t` en `/media/hd5t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:
   - `14004/tcp` en el host para acceso web desde LAN o Tailscale
@@ -53,7 +53,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /home/<user>/homelab/data/stash/config:/root/.stash
-      - /mnt/hd5t/stash/data:/data:ro
+      - /media/hd5t/stash/data:/data:ro
       - /home/<user>/homelab/data/stash/metadata:/metadata
       - /home/<user>/homelab/data/stash/cache:/cache
       - /home/<user>/homelab/data/stash/blobs:/blobs
@@ -84,7 +84,7 @@ Notas sobre este Compose:
 - el servicio se conecta también a `homelab_proxy` para que **Caddy** pueda alcanzarlo por nombre interno Docker
 - el Compose sigue el esquema oficial de Stash para `config`, `metadata`, `cache`, `blobs` y `generated`
 
-Si más adelante quieres usar funciones de **organización, renombrado o movimiento de archivos desde Stash**, tendrás que quitar `:ro` del bind mount `/mnt/hd5t/stash/data:/data:ro` y validar muy bien esa política antes de activarla en producción.
+Si más adelante quieres usar funciones de **organización, renombrado o movimiento de archivos desde Stash**, tendrás que quitar `:ro` del bind mount `/media/hd5t/stash/data:/data:ro` y validar muy bien esa política antes de activarla en producción.
 
 ## Configuración
 
@@ -93,14 +93,14 @@ Si más adelante quieres usar funciones de **organización, renombrado o movimie
 ```bash
 mkdir -p /home/<user>/homelab/compose/media-stash
 mkdir -p /home/<user>/homelab/data/stash/{config,metadata,cache,blobs,generated}
-sudo mkdir -p /mnt/hd5t/stash/data/{scenes,galleries,incoming}
+sudo mkdir -p /media/hd5t/stash/data/{scenes,galleries,incoming}
 ```
 
 Una organización razonable de la biblioteca puede ser:
 
 ```bash
-sudo mkdir -p /mnt/hd5t/stash/data/scenes/{studio,clips,movies}
-sudo mkdir -p /mnt/hd5t/stash/data/galleries/{sets,photos}
+sudo mkdir -p /media/hd5t/stash/data/scenes/{studio,clips,movies}
+sudo mkdir -p /media/hd5t/stash/data/galleries/{sets,photos}
 ```
 
 No es obligatorio seguir ese esquema exacto, pero sí conviene mantener raíces estables para que los escaneos, filtros y scrapers sean predecibles.
@@ -112,12 +112,12 @@ Usa el mismo usuario operativo del host que administra Docker y las carpetas del
 ```bash
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/stash
-sudo chown -R <user>:<user> /mnt/hd5t/stash
+sudo chown -R <user>:<user> /media/hd5t/stash
 
 sudo find /home/<user>/homelab/data/stash -type d -exec chmod 775 {} \;
 sudo find /home/<user>/homelab/data/stash -type f -exec chmod 664 {} \;
-sudo find /mnt/hd5t/stash -type d -exec chmod 755 {} \;
-sudo find /mnt/hd5t/stash -type f -exec chmod 644 {} \;
+sudo find /media/hd5t/stash -type d -exec chmod 755 {} \;
+sudo find /media/hd5t/stash -type f -exec chmod 644 {} \;
 ```
 
 La lógica base es:
@@ -272,7 +272,7 @@ Rutas persistentes del servicio:
 - Caché: `/home/<user>/homelab/data/stash/cache`
 - Blobs binarios: `/home/<user>/homelab/data/stash/blobs`
 - Contenido generado: `/home/<user>/homelab/data/stash/generated`
-- Biblioteca multimedia: `/mnt/hd5t/stash/data`
+- Biblioteca multimedia: `/media/hd5t/stash/data`
 
 Criterio de almacenamiento:
 
@@ -303,7 +303,7 @@ Puntos importantes:
 - una ruta razonable para guardar ese backup es `/metadata/backups`
 - si quieres un único fichero de recuperación, puedes incluir `blobs` en el backup desde la UI, sabiendo que pesará más
 
-La biblioteca de `/mnt/hd5t/stash/data` no forma parte del backup de la aplicación en sí; es el **contenido multimedia** y debe tratarse según la estrategia general de copias del homelab.
+La biblioteca de `/media/hd5t/stash/data` no forma parte del backup de la aplicación en sí; es el **contenido multimedia** y debe tratarse según la estrategia general de copias del homelab.
 
 Secuencia práctica recomendada:
 

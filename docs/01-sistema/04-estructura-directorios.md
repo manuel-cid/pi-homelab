@@ -7,10 +7,10 @@ Procedimiento para fijar la **estructura operativa final de almacenamiento** del
 La política de este proyecto es estricta:
 
 - El **SSD NVMe** almacena sistema, configuraciones, archivos `compose`, `.env`, datos persistentes de servicios, bases de datos, uploads y logs.
-- **`/mnt/hd2t`** se dedica a multimedia general, descargas y copias de seguridad.
-- **`/mnt/hd5t`** se dedica en exclusiva a la biblioteca multimedia de **Stash**.
+- **`/media/hd2t`** se dedica a multimedia general, descargas y copias de seguridad.
+- **`/media/hd5t`** se dedica en exclusiva a la biblioteca multimedia de **Stash**.
 
-En [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md) se validaron etiquetas, formato y montaje de los discos. Este documento **normaliza la estructura operativa final** y fija como puntos de montaje definitivos **`/mnt/hd2t`** y **`/mnt/hd5t`**.
+En [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md) se validaron etiquetas, formato y montaje de los discos. Este documento **normaliza la estructura operativa final** y fija como puntos de montaje definitivos **`/media/hd2t`** y **`/media/hd5t`**.
 
 ## Requisitos Previos
 
@@ -26,7 +26,7 @@ En [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md) se valida
 Al terminar este documento, el estado esperado es este:
 
 - Existe una raíz operativa única en **`/home/<user>/homelab`** sobre el **SSD NVMe**.
-- Los discos USB quedan montados de forma persistente en **`/mnt/hd2t`** y **`/mnt/hd5t`** mediante **`/etc/fstab`**.
+- Los discos USB quedan montados de forma persistente en **`/media/hd2t`** y **`/media/hd5t`** mediante **`/etc/fstab`**.
 - La estructura de carpetas deja separado el almacenamiento operativo del almacenamiento masivo.
 - Los futuros servicios Docker tienen rutas claras para `compose`, configuración y datos persistentes.
 - Ningún servicio crítico depende de guardar bases de datos o volúmenes operativos en discos USB.
@@ -45,14 +45,14 @@ Antes de reorganizar rutas, valida el estado real del sistema:
 whoami
 findmnt -no SOURCE /
 lsblk -o NAME,SIZE,TYPE,FSTYPE,LABEL,MOUNTPOINTS
-findmnt /mnt/hd2t /mnt/hd5t
+findmnt /media/hd2t /media/hd5t
 ```
 
 Resultados esperados:
 
 - `/` debe vivir sobre el **SSD NVMe**.
 - Los discos USB deben conservar las etiquetas **`hd2t`** y **`hd5t`**.
-- Si todavía aparecen montados en rutas antiguas como `/srv/storage/hd2t` o `/srv/storage/hd5t`, no es un problema: en este documento se corrige `fstab` para dejar el diseño final en `/mnt/...`.
+- Si todavía aparecen montados en rutas antiguas como `/srv/storage/hd2t` o `/srv/storage/hd5t`, no es un problema: en este documento se corrige `fstab` para dejar el diseño final en `/media/...`.
 
 ### 2. Aplicar la política definitiva de almacenamiento
 
@@ -61,10 +61,10 @@ Usa esta distribución como criterio estable del proyecto:
 | Ubicación | Disco | Uso |
 |-----------|-------|-----|
 | `/home/<user>/homelab/` | SSD NVMe | `compose`, configs, `.env`, volúmenes persistentes, bases de datos, uploads, logs y utilidades del homelab |
-| `/mnt/hd2t/media/` | `hd2t` | Bibliotecas multimedia de Jellyfin, Navidrome, Audiobookshelf y Calibre-Web |
-| `/mnt/hd2t/downloads/` | `hd2t` | Descargas temporales o procesadas |
-| `/mnt/hd2t/backups/` | `hd2t` | Backups del host, exports y copias de datos de servicios |
-| `/mnt/hd5t/stash/` | `hd5t` | Biblioteca multimedia dedicada de Stash |
+| `/media/hd2t/media/` | `hd2t` | Bibliotecas multimedia de Jellyfin, Navidrome, Audiobookshelf y Calibre-Web |
+| `/media/hd2t/downloads/` | `hd2t` | Descargas temporales o procesadas |
+| `/media/hd2t/backups/` | `hd2t` | Backups del host, exports y copias de datos de servicios |
+| `/media/hd5t/stash/` | `hd5t` | Biblioteca multimedia dedicada de Stash |
 
 Reglas operativas:
 
@@ -78,11 +78,11 @@ Reglas operativas:
 Crea los puntos de montaje que usará el sistema de forma permanente:
 
 ```bash
-sudo mkdir -p /mnt/hd2t
-sudo mkdir -p /mnt/hd5t
+sudo mkdir -p /media/hd2t
+sudo mkdir -p /media/hd5t
 ```
 
-Si existen rutas antiguas bajo `/srv/storage/`, no las borres todavía. Primero deja el nuevo montaje persistente funcionando y valida que los discos realmente quedan accesibles en `/mnt/...`.
+Si existen rutas antiguas bajo `/srv/storage/`, no las borres todavía. Primero deja el nuevo montaje persistente funcionando y valida que los discos realmente quedan accesibles en `/media/...`.
 
 ### 4. Ajustar `fstab` para el montaje persistente final
 
@@ -107,11 +107,11 @@ sudo nano /etc/fstab
 Las entradas finales deben quedar así:
 
 ```fstab
-LABEL=hd2t  /mnt/hd2t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
-LABEL=hd5t  /mnt/hd5t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
+LABEL=hd2t  /media/hd2t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
+LABEL=hd5t  /media/hd5t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
 ```
 
-Si en `fstab` todavía aparecen rutas anteriores como `/srv/storage/hd2t` o `/srv/storage/hd5t`, **sustitúyelas** por las rutas nuevas en `/mnt/...`. No dejes entradas duplicadas para la misma etiqueta.
+Si en `fstab` todavía aparecen rutas anteriores como `/srv/storage/hd2t` o `/srv/storage/hd5t`, **sustitúyelas** por las rutas nuevas en `/media/...`. No dejes entradas duplicadas para la misma etiqueta.
 
 ### 5. Montar y validar los discos en las rutas finales
 
@@ -119,9 +119,9 @@ Aplica el fichero sin reiniciar:
 
 ```bash
 sudo mount -a
-findmnt /mnt/hd2t
-findmnt /mnt/hd5t
-df -h | grep -E '/mnt/hd2t|/mnt/hd5t'
+findmnt /media/hd2t
+findmnt /media/hd5t
+df -h | grep -E '/media/hd2t|/media/hd5t'
 ```
 
 Si `mount -a` no devuelve errores y ambos discos aparecen montados donde corresponde, la parte de persistencia queda resuelta.
@@ -164,19 +164,19 @@ Si más adelante necesitas más subdirectorios, añádelos sin romper esta idea 
 Prepara el disco de 2 TB para su función mixta de media, descargas y backups:
 
 ```bash
-sudo mkdir -p /mnt/hd2t/media/{jellyfin,navidrome,audiobookshelf,calibre-web}
-sudo mkdir -p /mnt/hd2t/downloads
-sudo mkdir -p /mnt/hd2t/backups
+sudo mkdir -p /media/hd2t/media/{jellyfin,navidrome,audiobookshelf,calibre-web}
+sudo mkdir -p /media/hd2t/downloads
+sudo mkdir -p /media/hd2t/backups
 ```
 
 Ejemplo de lectura operativa:
 
-- `Jellyfin` podrá montar bibliotecas dentro de `/mnt/hd2t/media/jellyfin/`.
-- `Navidrome` usará `/mnt/hd2t/media/navidrome/`.
-- `Audiobookshelf` usará `/mnt/hd2t/media/audiobookshelf/`.
-- `Calibre-Web` trabajará sobre `/mnt/hd2t/media/calibre-web/`.
-- Las descargas temporales o finales vivirán en `/mnt/hd2t/downloads/`.
-- Los backups centralizados del homelab vivirán en `/mnt/hd2t/backups/`.
+- `Jellyfin` podrá montar bibliotecas dentro de `/media/hd2t/media/jellyfin/`.
+- `Navidrome` usará `/media/hd2t/media/navidrome/`.
+- `Audiobookshelf` usará `/media/hd2t/media/audiobookshelf/`.
+- `Calibre-Web` trabajará sobre `/media/hd2t/media/calibre-web/`.
+- Las descargas temporales o finales vivirán en `/media/hd2t/downloads/`.
+- Los backups centralizados del homelab vivirán en `/media/hd2t/backups/`.
 
 Si más adelante necesitas subcarpetas internas como `movies`, `series`, `music`, `incoming` o `exports`, créalas dentro de estos bloques sin cambiar los puntos de anclaje principales.
 
@@ -185,7 +185,7 @@ Si más adelante necesitas subcarpetas internas como `movies`, `series`, `music`
 El disco de 5 TB queda reservado exclusivamente a Stash:
 
 ```bash
-sudo mkdir -p /mnt/hd5t/stash
+sudo mkdir -p /media/hd5t/stash
 ```
 
 Mantener este disco aislado simplifica permisos, evita mezclar catálogos y hace más predecible el crecimiento de almacenamiento de Stash.
@@ -196,8 +196,8 @@ Asigna como propietario operativo al usuario administrador del host:
 
 ```bash
 sudo chown -R <user>:<user> /home/<user>/homelab
-sudo chown -R <user>:<user> /mnt/hd2t
-sudo chown -R <user>:<user> /mnt/hd5t
+sudo chown -R <user>:<user> /media/hd2t
+sudo chown -R <user>:<user> /media/hd5t
 chmod 750 /home/<user>/homelab
 ```
 
@@ -209,17 +209,17 @@ Haz una comprobación rápida del resultado:
 
 ```bash
 find /home/<user>/homelab -maxdepth 2 -type d | sort
-find /mnt/hd2t -maxdepth 3 -type d | sort
-find /mnt/hd5t -maxdepth 2 -type d | sort
-findmnt /mnt/hd2t /mnt/hd5t
+find /media/hd2t -maxdepth 3 -type d | sort
+find /media/hd5t -maxdepth 2 -type d | sort
+findmnt /media/hd2t /media/hd5t
 ```
 
 Al terminar, deberías poder afirmar todo esto:
 
 - el sistema arranca desde el **NVMe**
 - la raíz operativa del homelab vive en **`/home/<user>/homelab`**
-- `hd2t` queda montado en **`/mnt/hd2t`**
-- `hd5t` queda montado en **`/mnt/hd5t`**
+- `hd2t` queda montado en **`/media/hd2t`**
+- `hd5t` queda montado en **`/media/hd5t`**
 - las rutas para media, descargas, backups y datos persistentes ya existen
 
 ## Almacenamiento
@@ -233,11 +233,11 @@ Resumen de uso por tipo de dato:
   - `/home/<user>/homelab/data/<servicio>/`
   - `/home/<user>/homelab/logs/`
 - **`hd2t`**
-  - `/mnt/hd2t/media/`
-  - `/mnt/hd2t/downloads/`
-  - `/mnt/hd2t/backups/`
+  - `/media/hd2t/media/`
+  - `/media/hd2t/downloads/`
+  - `/media/hd2t/backups/`
 - **`hd5t`**
-  - `/mnt/hd5t/stash/`
+  - `/media/hd5t/stash/`
 
 Política importante:
 
@@ -257,7 +257,7 @@ Los elementos mínimos que deben formar parte de la estrategia de backup son:
 
 Destino recomendado dentro del propio homelab:
 
-- `/mnt/hd2t/backups/`
+- `/media/hd2t/backups/`
 
 Notas prácticas:
 

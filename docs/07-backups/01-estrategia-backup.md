@@ -7,7 +7,7 @@ Este documento define la estrategia de copias de seguridad del homelab siguiendo
 La política de este proyecto se mantiene:
 
 - el **SSD NVMe** es la fuente principal de verdad para sistema, `compose`, configuraciones, volúmenes persistentes y bases de datos
-- **`/mnt/hd2t/backups/`** es el destino local de backups
+- **`/media/hd2t/backups/`** es el destino local de backups
 - **`hd5t`** sigue reservado a la biblioteca multimedia de **Stash**
 
 Esta fase documenta la **estrategia general**. El despliegue concreto de la herramienta se cubre en [02-borgmatic.md](02-borgmatic.md) y el procedimiento detallado para volúmenes y bases de datos en [03-backup-docker-volumes.md](03-backup-docker-volumes.md).
@@ -15,7 +15,7 @@ Esta fase documenta la **estrategia general**. El despliegue concreto de la herr
 ## Requisitos Previos
 
 - Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
-- Tener montado **`hd2t`** en **`/mnt/hd2t`** y operativo para escritura.
+- Tener montado **`hd2t`** en **`/media/hd2t`** y operativo para escritura.
 - Tener al menos un servicio con datos persistentes desplegado o, como mínimo, definida la estructura de rutas bajo **`/home/<user>/homelab/data/`**.
 - Tener espacio libre suficiente en `hd2t` para almacenar varias versiones deduplicadas de los datos del NVMe.
 - Disponer de un destino remoto para la copia offsite con conectividad saliente desde la Raspberry Pi.
@@ -25,7 +25,7 @@ Esta fase documenta la **estrategia general**. El despliegue concreto de la herr
 Al terminar este documento, el criterio operativo debe quedar fijado así:
 
 - el homelab respalda **datos operativos y recuperables**, no contenedores efímeros
-- existe un destino local en **`/mnt/hd2t/backups/`**
+- existe un destino local en **`/media/hd2t/backups/`**
 - existe un segundo destino **offsite** cifrado
 - la frecuencia, retención y verificación de restauración quedan definidas antes de automatizar Borgmatic
 - cada servicio futuro sabrá si sus datos entran en backup y con qué prioridad
@@ -76,8 +76,8 @@ Servicios y categorías que normalmente generan datos a proteger:
 - contenedores recreables
 - cachés, transcodes, thumbnails regenerables y ficheros temporales
 - descargas incompletas o colas transitorias
-- bibliotecas multimedia masivas en `/mnt/hd2t/media/`
-- contenido multimedia de Stash en `/mnt/hd5t/stash/`
+- bibliotecas multimedia masivas en `/media/hd2t/media/`
+- contenido multimedia de Stash en `/media/hd5t/stash/`
 
 Excluir estas rutas reduce tiempo de backup, consumo de espacio y riesgo de llenar `hd2t` con datos que no son críticos para recuperar el servicio.
 
@@ -108,7 +108,7 @@ Por tanto, la política recomendada es esta:
 La estructura recomendada queda así:
 
 ```text
-/mnt/hd2t/backups/
+/media/hd2t/backups/
 ├── borg/
 │   └── <hostname>/
 ├── exports/
@@ -169,7 +169,7 @@ Un backup no se considera válido solo porque termine sin errores. Debe poder **
 Verificación mínima obligatoria:
 
 - revisar el código de salida y las notificaciones tras cada ejecución
-- restaurar **mensualmente** uno o varios ficheros a `/mnt/hd2t/backups/restore-test/`
+- restaurar **mensualmente** uno o varios ficheros a `/media/hd2t/backups/restore-test/`
 - restaurar **trimestralmente** el estado completo de un servicio con datos, incluyendo dump de base de datos y volumen asociado
 - documentar incidencias de permisos, usuarios, `UID/GID`, rutas rotas o secretos faltantes
 
@@ -196,13 +196,13 @@ Distribución operativa de la estrategia:
   - `/home/<user>/homelab/scripts/`
   - `/home/<user>/homelab/data/<servicio>/`
 - **Destino local**
-  - `/mnt/hd2t/backups/borg/`
-  - `/mnt/hd2t/backups/exports/`
-  - `/mnt/hd2t/backups/restore-test/`
+  - `/media/hd2t/backups/borg/`
+  - `/media/hd2t/backups/exports/`
+  - `/media/hd2t/backups/restore-test/`
 - **Fuera de alcance de la rutina base**
-  - `/mnt/hd2t/media/`
-  - `/mnt/hd2t/downloads/`
-  - `/mnt/hd5t/stash/`
+  - `/media/hd2t/media/`
+  - `/media/hd2t/downloads/`
+  - `/media/hd5t/stash/`
 
 Regla importante:
 

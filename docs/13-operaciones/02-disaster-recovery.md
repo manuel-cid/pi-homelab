@@ -32,8 +32,8 @@ Este procedimiento cubre el escenario principal definido por el proyecto:
 - Disponer de un medio de instalación válido de **Raspberry Pi OS Lite 64-bit** o equivalente.
 - Poder acceder por terminal con un usuario con permisos de `sudo`.
 - Tener disponible el disco **`hd2t`** con el repositorio Borg y los exports de restore:
-  - `/mnt/hd2t/backups/borg/`
-  - `/mnt/hd2t/backups/exports/`
+  - `/media/hd2t/backups/borg/`
+  - `/media/hd2t/backups/exports/`
 - Conocer o poder recuperar secretos críticos:
   - claves SSH del host
   - passphrase del repositorio Borg
@@ -141,25 +141,25 @@ Comandos base:
 
 ```bash
 lsblk -o NAME,SIZE,TYPE,FSTYPE,LABEL,MOUNTPOINT,MODEL
-findmnt /mnt/hd2t
-findmnt /mnt/hd5t
-df -h /mnt/hd2t
-df -h /mnt/hd5t
+findmnt /media/hd2t
+findmnt /media/hd5t
+df -h /media/hd2t
+df -h /media/hd5t
 ```
 
 Debes confirmar:
 
-- **`hd2t`** montado en `/mnt/hd2t`
-- **`hd5t`** montado en `/mnt/hd5t`
+- **`hd2t`** montado en `/media/hd2t`
+- **`hd5t`** montado en `/media/hd5t`
 - permisos de lectura y escritura correctos
 - presencia del repositorio Borg y de los exports
 
 Verificación mínima:
 
 ```bash
-ls -lah /mnt/hd2t/backups
-ls -lah /mnt/hd2t/backups/exports
-ls -lah /mnt/hd2t/backups/borg
+ls -lah /media/hd2t/backups
+ls -lah /media/hd2t/backups/exports
+ls -lah /media/hd2t/backups/borg
 ```
 
 No continúes con la restauración de servicios si los discos no están montados exactamente en las rutas esperadas.
@@ -202,8 +202,8 @@ Primero, identifica los archivos disponibles:
 ```bash
 cd /home/<user>/homelab
 docker run --rm \
-  -v /mnt/hd2t/backups/borg:/mnt/borg-repository \
-  -v /mnt/hd2t/backups/restore-test:/mnt/restore \
+  -v /media/hd2t/backups/borg:/mnt/borg-repository \
+  -v /media/hd2t/backups/restore-test:/mnt/restore \
   -it modem7/borgmatic-docker:latest \
   borg list /mnt/borg-repository/$(hostname)
 ```
@@ -213,15 +213,15 @@ Si prefieres restaurar con Borg/Borgmatic instalado temporalmente en el host, pu
 Ruta de trabajo recomendada:
 
 ```bash
-mkdir -p /mnt/hd2t/backups/restore-test/full-host
+mkdir -p /media/hd2t/backups/restore-test/full-host
 ```
 
 Ejemplo genérico de extracción:
 
 ```bash
 docker run --rm \
-  -v /mnt/hd2t/backups/borg:/mnt/borg-repository \
-  -v /mnt/hd2t/backups/restore-test/full-host:/mnt/restore \
+  -v /media/hd2t/backups/borg:/mnt/borg-repository \
+  -v /media/hd2t/backups/restore-test/full-host:/mnt/restore \
   -it modem7/borgmatic-docker:latest \
   borg extract /mnt/borg-repository/$(hostname)::$(hostname)-homelab-<fecha> \
     source/homelab/compose \
@@ -234,11 +234,11 @@ docker run --rm \
 Después, copia de vuelta al árbol operativo:
 
 ```bash
-rsync -aHAX /mnt/hd2t/backups/restore-test/full-host/source/homelab/compose/ /home/<user>/homelab/compose/
-rsync -aHAX /mnt/hd2t/backups/restore-test/full-host/source/homelab/config/ /home/<user>/homelab/config/
-rsync -aHAX /mnt/hd2t/backups/restore-test/full-host/source/homelab/scripts/ /home/<user>/homelab/scripts/
-rsync -aHAX /mnt/hd2t/backups/restore-test/full-host/source/homelab/data/ /home/<user>/homelab/data/
-cp /mnt/hd2t/backups/restore-test/full-host/source/homelab/.env /home/<user>/homelab/.env
+rsync -aHAX /media/hd2t/backups/restore-test/full-host/source/homelab/compose/ /home/<user>/homelab/compose/
+rsync -aHAX /media/hd2t/backups/restore-test/full-host/source/homelab/config/ /home/<user>/homelab/config/
+rsync -aHAX /media/hd2t/backups/restore-test/full-host/source/homelab/scripts/ /home/<user>/homelab/scripts/
+rsync -aHAX /media/hd2t/backups/restore-test/full-host/source/homelab/data/ /home/<user>/homelab/data/
+cp /media/hd2t/backups/restore-test/full-host/source/homelab/.env /home/<user>/homelab/.env
 ```
 
 Validaciones obligatorias antes de arrancar contenedores:
@@ -253,14 +253,14 @@ Validaciones obligatorias antes de arrancar contenedores:
 La restauración detallada por tipo de dato se documenta en [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md). En un desastre real, úsalo así:
 
 - **bind mounts**: restaura desde Borg a ruta temporal y sincroniza de vuelta al **NVMe**
-- **MariaDB/PostgreSQL**: importa dumps lógicos desde `/mnt/hd2t/backups/exports/`
+- **MariaDB/PostgreSQL**: importa dumps lógicos desde `/media/hd2t/backups/exports/`
 - **named volumes**: recrea el volumen y restaura su `tar.gz`
 - **SQLite**: sustituye el fichero solo con el servicio detenido
 
 Comprobaciones previas:
 
 ```bash
-find /mnt/hd2t/backups/exports -maxdepth 3 -type f | sort
+find /media/hd2t/backups/exports -maxdepth 3 -type f | sort
 docker volume ls
 ```
 
@@ -312,8 +312,8 @@ Checklist mínimo del host:
 ```bash
 uptime
 df -h /
-df -h /mnt/hd2t
-df -h /mnt/hd5t
+df -h /media/hd2t
+df -h /media/hd5t
 docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 systemctl --failed
 ```
@@ -359,7 +359,7 @@ Durante la recuperación, cada dato debe volver a su sitio original:
 - **árbol del proyecto**: `/home/<user>/homelab/`
 - **datos persistentes de servicios**: `/home/<user>/homelab/data/`
 - **`compose` y configuración**: `/home/<user>/homelab/compose/` y `/home/<user>/homelab/config/`
-- **backups locales y exports**: `/mnt/hd2t/backups/`
+- **backups locales y exports**: `/media/hd2t/backups/`
 - **multimedia general**: `hd2t`
 - **biblioteca grande de Stash**: `hd5t`
 
@@ -378,13 +378,13 @@ Este documento depende directamente de que la estrategia de backup sea restaurab
 - `/home/<user>/homelab/scripts/`
 - `/home/<user>/homelab/data/`
 - `/home/<user>/homelab/.env`
-- dumps lógicos de **MariaDB** y **PostgreSQL** en `/mnt/hd2t/backups/exports/`
+- dumps lógicos de **MariaDB** y **PostgreSQL** en `/media/hd2t/backups/exports/`
 - exports de **named volumes** si existen
 - passphrases, claves y secretos necesarios para abrir el repositorio y reconfigurar acceso
 
 Prueba operativa recomendada:
 
-- al menos una vez por trimestre, restaura un servicio completo en `/mnt/hd2t/backups/restore-test/` y valida que este runbook sigue siendo realista
+- al menos una vez por trimestre, restaura un servicio completo en `/media/hd2t/backups/restore-test/` y valida que este runbook sigue siendo realista
 
 ## Referencias
 

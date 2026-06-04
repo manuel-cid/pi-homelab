@@ -170,8 +170,8 @@ LAN / Tailscale (VPN mesh)
   - **Ventaja sobre microSD**: velocidad de lectura/escritura ×10, mayor durabilidad, sin problemas de corrupción por escrituras intensivas
 - **Almacenamiento**:
   - **SSD NVMe 500 GB**: sistema operativo (Raspberry Pi OS), Docker Engine, ficheros de configuración (`docker-compose.yml`, `.env`), y **datos persistentes de todos los servicios** (bases de datos, volúmenes, uploads, logs)
-  - **HDD externo USB 2 TB (hd2t)**: contenidos multimedia de Jellyfin, Navidrome, Audiobookshelf, Calibre-Web, descargas de Transmission/Sonarr/Radarr, y **backups** — montado en `/mnt/hd2t`
-  - **HDD externo USB 5 TB (hd5t)**: exclusivamente contenidos multimedia de **Stash** — montado en `/mnt/hd5t`
+  - **HDD externo USB 2 TB (hd2t)**: contenidos multimedia de Jellyfin, Navidrome, Audiobookshelf, Calibre-Web, descargas de Transmission/Sonarr/Radarr, y **backups** — montado en `/media/hd2t`
+  - **HDD externo USB 5 TB (hd5t)**: exclusivamente contenidos multimedia de **Stash** — montado en `/media/hd5t`
   - Ambos discos HDD conectados vía **USB 3.0** a la Raspberry Pi 5 y montados de forma permanente (`/etc/fstab`)
   - Se mantiene una **microSD** solo para el arranque inicial (el bootloader de la Pi 5 permite arrancar directamente desde NVMe tras configurarlo)
 - **RAM**: Modelo de 8 GB imprescindible para correr múltiples servicios
@@ -221,7 +221,7 @@ SSD NVMe (/home/<user>/homelab/)          ← Configs, composes, envs, datos de 
 │   └── ...
 └── ...
 
-/mnt/hd2t/                                ← Contenidos multimedia + backups
+/media/hd2t/                                ← Contenidos multimedia + backups
 ├── jellyfin/media/                      ← Películas, series
 ├── navidrome/music/                     ← Música
 ├── audiobookshelf/data/                 ← Audiolibros, podcasts
@@ -230,8 +230,8 @@ SSD NVMe (/home/<user>/homelab/)          ← Configs, composes, envs, datos de 
 ├── backups/                             ← Backups de Borgmatic
 └── ...
 
-/mnt/hd5t/                                ← Multimedia de Stash
+/media/hd5t/                                ← Multimedia de Stash
 └── stash/data/
 ```
 
-> **Política**: el **SSD NVMe** almacena todo lo necesario para que el homelab funcione (SO, Docker, configs, bases de datos, volúmenes de servicios). Los **HDDs externos** almacenan exclusivamente **contenidos multimedia** (hd2t: Jellyfin, Navidrome, Audiobookshelf, Calibre-Web, descargas; hd5t: Stash) y **backups** (hd2t). Los `docker-compose.yml` montan los volúmenes multimedia apuntando a `/mnt/hd2t/...` o `/mnt/hd5t/...`, y los volúmenes de datos de servicios al SSD.
+> **Política**: el **SSD NVMe** almacena todo lo necesario para que el homelab funcione (SO, Docker, configs, bases de datos, volúmenes de servicios). Los **HDDs externos** almacenan exclusivamente **contenidos multimedia** (hd2t: Jellyfin, Navidrome, Audiobookshelf, Calibre-Web, descargas; hd5t: Stash) y **backups** (hd2t). Los `docker-compose.yml` montan los volúmenes multimedia apuntando a `/media/hd2t/...` o `/media/hd5t/...`, y los volúmenes de datos de servicios al SSD.

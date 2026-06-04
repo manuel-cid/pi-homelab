@@ -16,8 +16,8 @@ Esto encaja especialmente bien con una Raspberry Pi 5: simplifica actualizacione
 - Poder acceder por terminal con el usuario administrativo que ejecutará `docker compose`.
 - Tener claros los puntos de montaje persistentes del proyecto:
   - **SSD NVMe** para `compose`, `.env`, configuración y datos persistentes
-  - **`/mnt/hd2t`** para multimedia general, descargas y backups
-  - **`/mnt/hd5t`** para la librería de Stash
+  - **`/media/hd2t`** para multimedia general, descargas y backups
+  - **`/media/hd5t`** para la librería de Stash
 - Puertos necesarios en esta fase:
   - ninguno obligatorio a nivel host
   - se recomienda reservar el nombre de la red compartida Docker `homelab_proxy`
@@ -320,8 +320,8 @@ La política de almacenamiento no cambia por usar múltiples stacks:
 - los `docker-compose.yml` y `.env` viven en el **SSD NVMe** bajo `/home/<user>/homelab/compose/`
 - los datos persistentes de aplicaciones viven en el **SSD NVMe** bajo `/home/<user>/homelab/data/<servicio>/`
 - las configuraciones editables viven en `/home/<user>/homelab/config/<servicio>/`
-- las bibliotecas multimedia se montan desde **`/mnt/hd2t`** o **`/mnt/hd5t`** según el servicio
-- los backups del homelab se almacenan en **`/mnt/hd2t/backups/`**
+- las bibliotecas multimedia se montan desde **`/media/hd2t`** o **`/media/hd5t`** según el servicio
+- los backups del homelab se almacenan en **`/media/hd2t/backups/`**
 
 Reglas operativas:
 

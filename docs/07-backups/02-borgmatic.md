@@ -2,7 +2,7 @@
 
 ## Descripción
 
-Este documento despliega **Borgmatic** como servicio Docker para automatizar las copias de seguridad del homelab hacia un repositorio local en **`/mnt/hd2t/backups/borg/`**. La idea es centralizar en un único stack:
+Este documento despliega **Borgmatic** como servicio Docker para automatizar las copias de seguridad del homelab hacia un repositorio local en **`/media/hd2t/backups/borg/`**. La idea es centralizar en un único stack:
 
 - ejecución programada
 - política de retención
@@ -17,11 +17,11 @@ La estrategia general 3-2-1 se define en [01-estrategia-backup.md](01-estrategia
 - Haber completado [01-estrategia-backup.md](01-estrategia-backup.md).
 - Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 - Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md) y [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
-- Tener montado **`hd2t`** en **`/mnt/hd2t`** con permisos de escritura.
+- Tener montado **`hd2t`** en **`/media/hd2t`** con permisos de escritura.
 - Tener creadas las rutas base de backup:
-  - `/mnt/hd2t/backups/borg/`
-  - `/mnt/hd2t/backups/exports/`
-  - `/mnt/hd2t/backups/restore-test/`
+  - `/media/hd2t/backups/borg/`
+  - `/media/hd2t/backups/exports/`
+  - `/media/hd2t/backups/restore-test/`
 - Tener desplegados los servicios con datos que vayan a entrar en backup.
 - Si vas a usar hooks contra contenedores de bases de datos, permitir acceso a **`/var/run/docker.sock`** desde Borgmatic.
 - Si vas a añadir destino offsite, disponer de clave SSH y conectividad saliente hacia ese destino.
@@ -53,8 +53,8 @@ services:
       - ${ROOT_DIR}/scripts:/source/homelab/scripts:ro
       - ${ROOT_DIR}/data:/source/homelab/data:ro
       - ${ROOT_DIR}/.env:/source/homelab/.env:ro
-      - /mnt/hd2t/backups/borg:/mnt/borg-repository
-      - /mnt/hd2t/backups/exports:/mnt/borg-exports
+      - /media/hd2t/backups/borg:/mnt/borg-repository
+      - /media/hd2t/backups/exports:/mnt/borg-exports
       - ${DATA_ROOT}/borgmatic/cache:/root/.cache/borg
       - ${DATA_ROOT}/borgmatic/state:/var/lib/borgmatic
       - ${DATA_ROOT}/borgmatic/runtime:/run/borgmatic
@@ -77,7 +77,7 @@ Puntos importantes del stack:
 
 - la configuración editable vive en **`/home/<user>/homelab/config/borgmatic/`**
 - los orígenes a respaldar se montan en modo **solo lectura**
-- el repositorio local Borg vive en **`/mnt/hd2t/backups/borg/`**
+- el repositorio local Borg vive en **`/media/hd2t/backups/borg/`**
 - el directorio `exports/` sirve para dumps o exportaciones auxiliares que quieras conservar fuera del repositorio
 - se monta el **socket Docker** para que los hooks o los data sources puedan ejecutar dumps en contenedores de PostgreSQL/MariaDB
 
@@ -233,7 +233,7 @@ apprise:
 
 Notas operativas sobre este ejemplo:
 
-- el repositorio local se crea bajo **`/mnt/hd2t/backups/borg/<hostname>/`**
+- el repositorio local se crea bajo **`/media/hd2t/backups/borg/<hostname>/`**
 - el bloque `postgresql_databases`, `mariadb_databases` y `sqlite_databases` es una plantilla base; elimina lo que no uses
 - los nombres de `container:` deben coincidir con los nombres reales que ve Docker en tu despliegue
 - los dumps detallados por servicio y el criterio exacto de restore se desarrollan en [03-backup-docker-volumes.md](03-backup-docker-volumes.md)
@@ -298,7 +298,7 @@ Qué debe hacer el `pre-backup.sh` en un despliegue real:
 
 - generar dumps coherentes de PostgreSQL o MariaDB si no usas los data sources nativos
 - congelar temporalmente aplicaciones si un servicio concreto lo requiere
-- exportar ficheros administrativos pequeños a `/mnt/hd2t/backups/exports/`
+- exportar ficheros administrativos pequeños a `/media/hd2t/backups/exports/`
 
 Qué no debe hacer:
 
@@ -373,9 +373,9 @@ Distribución recomendada de este servicio:
   - `/home/<user>/homelab/data/borgmatic/runtime/`
   - `/home/<user>/homelab/data/borgmatic/state/`
 - **Destino local**
-  - `/mnt/hd2t/backups/borg/`
+  - `/media/hd2t/backups/borg/`
 - **Exports auxiliares**
-  - `/mnt/hd2t/backups/exports/`
+  - `/media/hd2t/backups/exports/`
 
 Regla importante:
 
@@ -394,7 +394,7 @@ Para Borgmatic, lo crítico a proteger es:
 
 Qué no se debe incluir dentro del mismo repositorio que Borgmatic gestiona:
 
-- `/mnt/hd2t/backups/borg/` sobre sí mismo
+- `/media/hd2t/backups/borg/` sobre sí mismo
 - cachés recreables de Borg
 - media grande de `hd2t` o `hd5t`
 

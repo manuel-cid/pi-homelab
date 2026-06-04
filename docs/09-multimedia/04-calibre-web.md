@@ -7,7 +7,7 @@
 La política de este proyecto se mantiene igual que en el resto de servicios multimedia:
 
 - la configuración, la base de datos interna de la aplicación y el estado del servicio viven en `/home/<user>/homelab/data/calibre-web/` sobre el **SSD NVMe**
-- la biblioteca de ebooks vive en `/mnt/hd2t/media/calibre-web/library/`
+- la biblioteca de ebooks vive en `/media/hd2t/media/calibre-web/library/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
 - **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
@@ -22,7 +22,7 @@ Calibre-Web no sustituye a **Calibre** como gestor completo de biblioteca. En es
 - Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceso remoto seguro.
 - Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Calibre-Web detrás del reverse proxy interno.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
-- Tener montado `hd2t` en `/mnt/hd2t`.
+- Tener montado `hd2t` en `/media/hd2t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Tener preparada una biblioteca Calibre válida en `hd2t`, con `metadata.db` en la raíz de la carpeta que vayas a montar.
 - Puertos necesarios:
@@ -49,7 +49,7 @@ services:
       - "${CALIBRE_WEB_BIND_IP}:${CALIBRE_WEB_HTTP_PORT}:8083"
     volumes:
       - /home/<user>/homelab/data/calibre-web/config:/config
-      - /mnt/hd2t/media/calibre-web/library:/books:ro
+      - /media/hd2t/media/calibre-web/library:/books:ro
     networks:
       - default
       - proxy
@@ -78,13 +78,13 @@ Notas sobre este Compose:
 ```bash
 mkdir -p /home/<user>/homelab/compose/media-calibre-web
 mkdir -p /home/<user>/homelab/data/calibre-web/config
-sudo mkdir -p /mnt/hd2t/media/calibre-web/library
+sudo mkdir -p /media/hd2t/media/calibre-web/library
 ```
 
 Si quieres separar mejor entradas y exportaciones, puedes añadir carpetas auxiliares fuera de la biblioteca principal:
 
 ```bash
-sudo mkdir -p /mnt/hd2t/media/calibre-web/{import,exports}
+sudo mkdir -p /media/hd2t/media/calibre-web/{import,exports}
 ```
 
 La carpeta importante para Calibre-Web es `library/`: ahí debe existir el fichero `metadata.db` en el nivel superior.
@@ -94,14 +94,14 @@ La carpeta importante para Calibre-Web es `library/`: ahí debe existir el fiche
 Si ya gestionas tus ebooks con **Calibre** en otro equipo, copia o sincroniza la biblioteca completa a:
 
 ```bash
-/mnt/hd2t/media/calibre-web/library
+/media/hd2t/media/calibre-web/library
 ```
 
 Validación mínima:
 
 ```bash
-ls -lah /mnt/hd2t/media/calibre-web/library/metadata.db
-find /mnt/hd2t/media/calibre-web/library -maxdepth 2 -type d | head
+ls -lah /media/hd2t/media/calibre-web/library/metadata.db
+find /media/hd2t/media/calibre-web/library -maxdepth 2 -type d | head
 ```
 
 Puntos importantes:
@@ -119,12 +119,12 @@ Usa el mismo usuario operativo del host que administra Docker y las carpetas del
 ```bash
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/calibre-web
-sudo chown -R <user>:<user> /mnt/hd2t/media/calibre-web
+sudo chown -R <user>:<user> /media/hd2t/media/calibre-web
 
 sudo find /home/<user>/homelab/data/calibre-web -type d -exec chmod 775 {} \;
 sudo find /home/<user>/homelab/data/calibre-web -type f -exec chmod 664 {} \;
-sudo find /mnt/hd2t/media/calibre-web/library -type d -exec chmod 755 {} \;
-sudo find /mnt/hd2t/media/calibre-web/library -type f -exec chmod 644 {} \;
+sudo find /media/hd2t/media/calibre-web/library -type d -exec chmod 755 {} \;
+sudo find /media/hd2t/media/calibre-web/library -type f -exec chmod 644 {} \;
 ```
 
 La lógica base es:
@@ -196,7 +196,7 @@ Rutas relevantes dentro del contenedor:
 
 Si no aparecen libros:
 
-- revisa que `metadata.db` exista en `/mnt/hd2t/media/calibre-web/library/`
+- revisa que `metadata.db` exista en `/media/hd2t/media/calibre-web/library/`
 - confirma que la ruta configurada en la interfaz es `/books`
 - valida permisos de lectura sobre la biblioteca
 
@@ -227,7 +227,7 @@ Por eso el Compose propuesto monta `/books` en solo lectura.
 
 Si más adelante quieres permitir subidas o cambios de metadatos directamente desde Calibre-Web:
 
-1. elimina `:ro` del bind mount `/mnt/hd2t/media/calibre-web/library:/books:ro`
+1. elimina `:ro` del bind mount `/media/hd2t/media/calibre-web/library:/books:ro`
 2. reinicia el stack
 3. establece una política clara de **un solo escritor a la vez** sobre esa biblioteca
 
@@ -250,9 +250,9 @@ Rutas persistentes del servicio:
 - Compose: `/home/<user>/homelab/compose/media-calibre-web/docker-compose.yml`
 - Variables del stack: `/home/<user>/homelab/compose/media-calibre-web/.env`
 - Configuración, base interna y estado del servicio: `/home/<user>/homelab/data/calibre-web/config`
-- Biblioteca de ebooks: `/mnt/hd2t/media/calibre-web/library`
-- Entrada manual opcional: `/mnt/hd2t/media/calibre-web/import`
-- Exportaciones manuales opcionales: `/mnt/hd2t/media/calibre-web/exports`
+- Biblioteca de ebooks: `/media/hd2t/media/calibre-web/library`
+- Entrada manual opcional: `/media/hd2t/media/calibre-web/import`
+- Exportaciones manuales opcionales: `/media/hd2t/media/calibre-web/exports`
 
 Criterio de almacenamiento:
 
@@ -268,7 +268,7 @@ Respaldar como mínimo:
 - `/home/<user>/homelab/compose/media-calibre-web/docker-compose.yml`
 - `/home/<user>/homelab/compose/media-calibre-web/.env`
 - `/home/<user>/homelab/data/calibre-web/config`
-- `/mnt/hd2t/media/calibre-web/library`
+- `/media/hd2t/media/calibre-web/library`
 
 Aquí conviene hacer una distinción importante:
 

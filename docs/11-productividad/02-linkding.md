@@ -231,9 +231,9 @@ ls -lh /home/<user>/homelab/data/linkding/backup-$(date +%F).zip
 Después puedes mover ese ZIP a tu ubicación de copias, por ejemplo:
 
 ```bash
-mkdir -p /mnt/hd2t/backups/exports/volumes/linkding
+mkdir -p /media/hd2t/backups/exports/volumes/linkding
 cp /home/<user>/homelab/data/linkding/backup-$(date +%F).zip \
-  /mnt/hd2t/backups/exports/volumes/linkding/
+  /media/hd2t/backups/exports/volumes/linkding/
 ```
 
 Antes de una copia manual consistente o de una restauración:
