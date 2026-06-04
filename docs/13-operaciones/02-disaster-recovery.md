@@ -20,7 +20,7 @@ Este procedimiento cubre el escenario principal definido por el proyecto:
 
 - **SSD NVMe**: sistema operativo, Docker, `compose`, configuración y datos persistentes
 - **`hd2t`**: backups locales y multimedia general
-- **`hd5t`**: contenido multimedia grande de **Stash**
+- **`hd5t`**: biblioteca multimedia dedicada
 
 ## Requisitos Previos
 

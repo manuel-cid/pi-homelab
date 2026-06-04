@@ -8,7 +8,7 @@ La política de este proyecto es estricta:
 
 - El **SSD NVMe** almacena sistema, configuraciones, archivos `compose`, `.env`, datos persistentes de servicios, bases de datos, uploads y logs.
 - **`/media/hd2t`** se dedica a multimedia general, descargas y copias de seguridad.
-- **`/media/hd5t`** se dedica en exclusiva a la biblioteca multimedia de **Stash**.
+- **`/media/hd5t`** se dedica en exclusiva a una **biblioteca multimedia dedicada** que requiera aislamiento de disco propio.
 
 En [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md) se validaron etiquetas, formato y montaje de los discos. Este documento **normaliza la estructura operativa final** y fija como puntos de montaje definitivos **`/media/hd2t`** y **`/media/hd5t`**.
 
@@ -61,15 +61,18 @@ Usa esta distribución como criterio estable del proyecto:
 | Ubicación | Disco | Uso |
 |-----------|-------|-----|
 | `/home/<user>/homelab/` | SSD NVMe | `compose`, configs, `.env`, volúmenes persistentes, bases de datos, uploads, logs y utilidades del homelab |
-| `/media/hd2t/media/` | `hd2t` | Bibliotecas multimedia de Jellyfin, Navidrome, Audiobookshelf y Calibre-Web |
+| `/media/hd2t/media/video/` | `hd2t` | Películas, series y vídeos |
+| `/media/hd2t/media/music/` | `hd2t` | Biblioteca musical |
+| `/media/hd2t/media/audiobooks/` | `hd2t` | Audiolibros y podcasts |
+| `/media/hd2t/media/books/` | `hd2t` | Ebooks y documentos |
 | `/media/hd2t/downloads/` | `hd2t` | Descargas temporales o procesadas |
 | `/media/hd2t/backups/` | `hd2t` | Backups del host, exports y copias de datos de servicios |
-| `/media/hd5t/stash/` | `hd5t` | Biblioteca multimedia dedicada de Stash |
+| `/media/hd5t/media/` | `hd5t` | Biblioteca multimedia dedicada |
 
 Reglas operativas:
 
 - No guardes bases de datos ni volúmenes críticos de aplicaciones en `hd2t` o `hd5t`.
-- No uses `hd5t` para descargas, backups ni otras bibliotecas ajenas a Stash.
+- No uses `hd5t` para descargas, backups ni otras bibliotecas ajenas a la que le haya sido asignada.
 - No llenes el SSD NVMe con contenido multimedia masivo.
 - Los siguientes documentos de servicios deben montar sus datos persistentes desde **`/home/<user>/homelab/data/<servicio>/`** salvo que se trate explícitamente de bibliotecas multimedia o backups.
 
@@ -170,34 +173,34 @@ Si más adelante necesitas más subdirectorios, añádelos sin romper esta idea 
 
 ### 7. Crear la estructura de `hd2t`
 
-Prepara el disco de 2 TB para su función mixta de media, descargas y backups:
+Prepara el disco de 2 TB para su función mixta de media, descargas y backups. La estructura se organiza por **tipo de contenido**, no por servicio:
 
 ```bash
-sudo mkdir -p /media/hd2t/media/{jellyfin,navidrome,audiobookshelf,calibre-web}
+sudo mkdir -p /media/hd2t/media/{video,music,audiobooks,books}
 sudo mkdir -p /media/hd2t/downloads
 sudo mkdir -p /media/hd2t/backups
 ```
 
-Ejemplo de lectura operativa:
+Criterio de uso:
 
-- `Jellyfin` podrá montar bibliotecas dentro de `/media/hd2t/media/jellyfin/`.
-- `Navidrome` usará `/media/hd2t/media/navidrome/`.
-- `Audiobookshelf` usará `/media/hd2t/media/audiobookshelf/`.
-- `Calibre-Web` trabajará sobre `/media/hd2t/media/calibre-web/`.
-- Las descargas temporales o finales vivirán en `/media/hd2t/downloads/`.
-- Los backups centralizados del homelab vivirán en `/media/hd2t/backups/`.
+- `/media/hd2t/media/video/` — películas, series y vídeos caseros.
+- `/media/hd2t/media/music/` — biblioteca musical.
+- `/media/hd2t/media/audiobooks/` — audiolibros y podcasts.
+- `/media/hd2t/media/books/` — ebooks y documentos.
+- `/media/hd2t/downloads/` — descargas temporales o finales.
+- `/media/hd2t/backups/` — backups centralizados del homelab.
 
-Si más adelante necesitas subcarpetas internas como `movies`, `series`, `music`, `incoming` o `exports`, créalas dentro de estos bloques sin cambiar los puntos de anclaje principales.
+Cada servicio multimedia que despliegues más adelante montará la categoría de contenido que le corresponda. Si necesitas subcarpetas internas como `movies/`, `series/`, `podcasts/` o `incoming/`, créalas dentro de estos bloques sin cambiar los puntos de anclaje principales.
 
 ### 8. Crear la estructura de `hd5t`
 
-El disco de 5 TB queda reservado exclusivamente a Stash:
+El disco de 5 TB queda reservado exclusivamente para una biblioteca multimedia dedicada:
 
 ```bash
-sudo mkdir -p /media/hd5t/stash
+sudo mkdir -p /media/hd5t/media
 ```
 
-Mantener este disco aislado simplifica permisos, evita mezclar catálogos y hace más predecible el crecimiento de almacenamiento de Stash.
+Mantener este disco aislado simplifica permisos, evita mezclar catálogos y hace más predecible el crecimiento de almacenamiento del servicio que lo utilice.
 
 ### 9. Ajustar propiedad y permisos base
 
@@ -242,11 +245,14 @@ Resumen de uso por tipo de dato:
   - `/home/<user>/homelab/data/<servicio>/`
   - `/home/<user>/homelab/logs/`
 - **`hd2t`**
-  - `/media/hd2t/media/`
+  - `/media/hd2t/media/video/`
+  - `/media/hd2t/media/music/`
+  - `/media/hd2t/media/audiobooks/`
+  - `/media/hd2t/media/books/`
   - `/media/hd2t/downloads/`
   - `/media/hd2t/backups/`
 - **`hd5t`**
-  - `/media/hd5t/stash/`
+  - `/media/hd5t/media/`
 
 Política importante:
 

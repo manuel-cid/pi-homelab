@@ -17,7 +17,7 @@ Esto encaja especialmente bien con una Raspberry Pi 5: simplifica actualizacione
 - Tener claros los puntos de montaje persistentes del proyecto:
   - **SSD NVMe** para `compose`, `.env`, configuración y datos persistentes
   - **`/media/hd2t`** para multimedia general, descargas y backups
-  - **`/media/hd5t`** para la librería de Stash
+  - **`/media/hd5t`** para la biblioteca multimedia dedicada
 - Puertos necesarios en esta fase:
   - ninguno obligatorio a nivel host
   - se recomienda reservar el nombre de la red compartida Docker `homelab_proxy`

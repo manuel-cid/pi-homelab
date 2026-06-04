@@ -8,7 +8,7 @@ La política de almacenamiento sigue siendo la misma que en el resto del proyect
 
 - el **SSD NVMe** se reserva para carpetas pequeñas o de trabajo frecuente
 - **`hd2t`** se usa para sincronizar contenidos más pesados o zonas de intercambio de ficheros grandes
-- **`hd5t`** no se usa por defecto con Syncthing; está reservado para la biblioteca de **Stash**
+- **`hd5t`** no se usa por defecto con Syncthing; está reservado para una biblioteca multimedia dedicada
 
 Syncthing **no sustituye a un backup** y tampoco es buena idea apuntarlo a bases de datos activas o directorios internos de aplicaciones Docker. Su papel aquí es sincronizar carpetas de usuario bien delimitadas.
 
@@ -269,7 +269,7 @@ Reglas operativas recomendadas:
 
 - usa el **SSD NVMe** para documentos, notas y conjuntos pequeños muy activos
 - usa **`hd2t`** para ficheros voluminosos o como zona de entrada multimedia
-- evita usar **`hd5t`** con Syncthing por defecto para no mezclar esta sincronización con la biblioteca de **Stash**
+- evita usar **`hd5t`** con Syncthing por defecto para no mezclar esta sincronización con la biblioteca multimedia dedicada de ese disco
 - no conviertas Syncthing en acceso indirecto a los datos internos de otros contenedores
 
 ## Backup

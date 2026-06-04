@@ -14,7 +14,7 @@ En este proyecto, la prioridad operativa es proteger:
 
 - el **SSD NVMe** como soporte del sistema, `compose`, configuración y datos persistentes
 - **`hd2t`** como destino local de backups y almacenamiento multimedia general
-- **`hd5t`** como biblioteca grande de **Stash**
+- **`hd5t`** como biblioteca multimedia dedicada
 
 ## Requisitos Previos
 
@@ -79,7 +79,7 @@ Qué debes confirmar:
 - el host sigue estable y sin reinicios inesperados
 - el **NVMe** no está cerca de llenarse
 - `hd2t` conserva espacio suficiente para backups y exports
-- `hd5t` no está al límite por crecimiento de Stash
+- `hd5t` no está al límite por crecimiento de su biblioteca multimedia
 - no hay unidades `systemd` fallidas ni contenedores reiniciando en bucle
 
 Umbrales prácticos recomendados:

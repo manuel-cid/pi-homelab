@@ -8,7 +8,7 @@ La política de almacenamiento no cambia:
 
 - los datos operativos y persistentes de servicios siguen viviendo en el **SSD NVMe**
 - **`hd2t`** sigue siendo el disco de bibliotecas multimedia y descargas
-- **`hd5t`** solo se comparte si quieres acceso SMB directo a la biblioteca de **Stash**
+- **`hd5t`** solo se comparte si quieres acceso SMB directo a la biblioteca multimedia dedicada de ese disco
 
 El objetivo de este documento es desplegar Samba como contenedor Docker con **un share por carpeta** en `hd2t`, de forma predecible y con permisos coherentes con la estructura definida en [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 
@@ -132,7 +132,7 @@ services:
       - /media/hd2t/media/audiobookshelf:/shares/audiobookshelf
       - /media/hd2t/media/calibre-web:/shares/calibre-web
       - /media/hd2t/downloads:/shares/downloads
-      - /media/hd5t/stash:/shares/stash
+      - /media/hd5t/media:/shares/stash
     labels:
       - com.centurylinklabs.watchtower.enable=true
 ```
@@ -148,7 +148,7 @@ Este Compose sigue la política general del proyecto:
 Si **no** quieres compartir `hd5t`, elimina estas dos líneas:
 
 - `SAMBA_VOLUME_CONFIG_stash`
-- `- /media/hd5t/stash:/shares/stash`
+- `- /media/hd5t/media:/shares/stash`
 
 ## Configuración
 
@@ -167,7 +167,7 @@ Si todavía faltan carpetas, créalas:
 ```bash
 sudo mkdir -p /media/hd2t/media/{jellyfin,navidrome,audiobookshelf,calibre-web}
 sudo mkdir -p /media/hd2t/downloads
-sudo mkdir -p /media/hd5t/stash
+sudo mkdir -p /media/hd5t/media
 ```
 
 ### 2. Alinear propiedad y permisos del host
@@ -178,14 +178,14 @@ Samba escribirá con el mismo `UID` y `GID` del usuario operativo del host. Usa 
 id <user>
 sudo chown -R <user>:<user> /media/hd2t/media
 sudo chown -R <user>:<user> /media/hd2t/downloads
-sudo chown -R <user>:<user> /media/hd5t/stash
+sudo chown -R <user>:<user> /media/hd5t/media
 
 sudo find /media/hd2t/media -type d -exec chmod 2775 {} \;
 sudo find /media/hd2t/media -type f -exec chmod 0664 {} \;
 sudo find /media/hd2t/downloads -type d -exec chmod 2775 {} \;
 sudo find /media/hd2t/downloads -type f -exec chmod 0664 {} \;
-sudo find /media/hd5t/stash -type d -exec chmod 2775 {} \;
-sudo find /media/hd5t/stash -type f -exec chmod 0664 {} \;
+sudo find /media/hd5t/media -type d -exec chmod 2775 {} \;
+sudo find /media/hd5t/media -type f -exec chmod 0664 {} \;
 ```
 
 Qué se consigue con esto:
@@ -319,7 +319,7 @@ Rutas implicadas en este despliegue:
 - share `audiobookshelf`: `/media/hd2t/media/audiobookshelf`
 - share `calibre-web`: `/media/hd2t/media/calibre-web`
 - share `downloads`: `/media/hd2t/downloads`
-- share opcional `stash`: `/media/hd5t/stash`
+- share opcional `stash`: `/media/hd5t/media`
 
 Reglas operativas recomendadas:
 
@@ -337,7 +337,7 @@ Para Samba no hay una base de datos propia importante dentro del contenedor. Lo 
 - el contenido real de las carpetas compartidas:
   - `/media/hd2t/media/`
   - `/media/hd2t/downloads/`
-  - `/media/hd5t/stash/` si se comparte
+  - `/media/hd5t/media/` si se comparte
 
 No hace falta respaldar estado interno efímero del contenedor si mantienes:
 

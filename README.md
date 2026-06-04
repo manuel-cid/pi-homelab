@@ -7,7 +7,7 @@ Documentación completa para montar y operar un **homelab self-hosted** sobre un
 - **Todo dockerizado**: cada servicio corre en contenedores gestionados por `docker compose`.
 - **Stacks funcionales**: un `docker-compose.yml` por grupo lógico de servicios, no un monolito.
 - **SSD NVMe para lo operativo**: sistema, configuraciones, bases de datos y volúmenes persistentes.
-- **Discos USB para lo masivo**: multimedia, descargas y backups en `hd2t` (2 TB); biblioteca Stash en `hd5t` (5 TB).
+- **Discos USB para lo masivo**: multimedia, descargas y backups en `hd2t` (2 TB); biblioteca multimedia dedicada en `hd5t` (5 TB).
 - **LAN + Tailscale**: sin puertos abiertos a internet. Acceso remoto seguro vía Tailscale.
 - **Backup 3-2-1**: datos en NVMe, copia local en `hd2t`, réplica cifrada offsite.
 
@@ -18,7 +18,7 @@ Documentación completa para montar y operar un **homelab self-hosted** sobre un
 | Raspberry Pi 5 | 8 GB RAM |
 | Almacenamiento principal | SSD NVMe M.2 500 GB (PCIe, carcasa integrada) |
 | Disco de datos `hd2t` | 2 TB USB 3.0 — multimedia, descargas, backups |
-| Disco de datos `hd5t` | 5 TB USB 3.0 — biblioteca Stash |
+| Disco de datos `hd5t` | 5 TB USB 3.0 — biblioteca multimedia dedicada |
 | Alimentación | Fuente oficial USB-C 27 W |
 | Red | Ethernet Gigabit |
 | Domótica (opcional) | Adaptador Zigbee USB |
@@ -36,12 +36,16 @@ SSD NVMe 500 GB
     └── .env
 
 hd2t (2 TB) → /media/hd2t/
-├── media/              # Jellyfin, Navidrome, Audiobookshelf, Calibre-Web
+├── media/
+│   ├── video/          # películas, series y vídeos
+│   ├── music/          # biblioteca musical
+│   ├── audiobooks/     # audiolibros y podcasts
+│   └── books/          # ebooks y documentos
 ├── downloads/          # descargas
 └── backups/            # copias de seguridad del homelab
 
 hd5t (5 TB) → /media/hd5t/
-└── stash/              # biblioteca multimedia Stash
+└── media/              # biblioteca multimedia dedicada
 ```
 
 ## Stack de servicios
@@ -72,7 +76,7 @@ hd5t (5 TB) → /media/hd5t/
 - **Navidrome** — servidor de música
 - **Audiobookshelf** — audiolibros y podcasts
 - **Calibre-Web** — biblioteca de ebooks
-- **Stash** — biblioteca multimedia dedicada (disco `hd5t`)
+- **Stash** — biblioteca multimedia dedicada
 
 ### Descargas
 - **Transmission** — cliente BitTorrent

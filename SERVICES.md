@@ -1,6 +1,6 @@
 # Servicios de un Homelab — Raspberry Pi 5
 
-Catálogo de servicios recomendados para un homelab doméstico corriendo sobre **Raspberry Pi 5** (8 GB RAM, ARM64) montada en una **carcasa con soporte NVMe** y un **SSD NVMe de 500 GB como almacenamiento principal** (SO, Docker, datos de servicios), junto con **dos discos duros externos conectados por USB**: **hd2t** (2 TB — contenidos multimedia y backups) y **hd5t** (5 TB — multimedia de Stash). El acceso es exclusivamente **LAN + Tailscale (VPN mesh)** — sin exposición a internet ni puertos abiertos en el router. Todos los servicios se despliegan como contenedores Docker gestionados con **Docker Compose**.
+Catálogo de servicios recomendados para un homelab doméstico corriendo sobre **Raspberry Pi 5** (8 GB RAM, ARM64) montada en una **carcasa con soporte NVMe** y un **SSD NVMe de 500 GB como almacenamiento principal** (SO, Docker, datos de servicios), junto con **dos discos duros externos conectados por USB**: **hd2t** (2 TB — contenidos multimedia y backups) y **hd5t** (5 TB — biblioteca multimedia dedicada). El acceso es exclusivamente **LAN + Tailscale (VPN mesh)** — sin exposición a internet ni puertos abiertos en el router. Todos los servicios se despliegan como contenedores Docker gestionados con **Docker Compose**.
 
 ---
 
@@ -142,7 +142,7 @@ LAN / Tailscale (VPN mesh)
           │
           ├─► HDD externo USB 2 TB — hd2t (contenidos multimedia + backups)
           │
-          └─► HDD externo USB 5 TB — hd5t (contenidos multimedia de Stash)
+          └─► HDD externo USB 5 TB — hd5t (biblioteca multimedia dedicada)
 ```
 
 ### Recomendaciones de Hardware
@@ -170,8 +170,8 @@ LAN / Tailscale (VPN mesh)
   - **Ventaja sobre microSD**: velocidad de lectura/escritura ×10, mayor durabilidad, sin problemas de corrupción por escrituras intensivas
 - **Almacenamiento**:
   - **SSD NVMe 500 GB**: sistema operativo (Raspberry Pi OS), Docker Engine, ficheros de configuración (`docker-compose.yml`, `.env`), y **datos persistentes de todos los servicios** (bases de datos, volúmenes, uploads, logs)
-  - **HDD externo USB 2 TB (hd2t)**: contenidos multimedia de Jellyfin, Navidrome, Audiobookshelf, Calibre-Web, descargas de Transmission/Sonarr/Radarr, y **backups** — montado en `/media/hd2t`
-  - **HDD externo USB 5 TB (hd5t)**: exclusivamente contenidos multimedia de **Stash** — montado en `/media/hd5t`
+  - **HDD externo USB 2 TB (hd2t)**: contenidos multimedia organizados por tipo (vídeo, música, audiolibros, ebooks), descargas y **backups** — montado en `/media/hd2t`
+  - **HDD externo USB 5 TB (hd5t)**: biblioteca multimedia dedicada — montado en `/media/hd5t`
   - Ambos discos HDD conectados vía **USB 3.0** a la Raspberry Pi 5 y montados de forma permanente (`/etc/fstab`)
   - Se mantiene una **microSD** solo para el arranque inicial (el bootloader de la Pi 5 permite arrancar directamente desde NVMe tras configurarlo)
 - **RAM**: Modelo de 8 GB imprescindible para correr múltiples servicios
@@ -204,34 +204,31 @@ LAN / Tailscale (VPN mesh)
 
 ```
 SSD NVMe (/home/<user>/homelab/)          ← Configs, composes, envs, datos de servicios
-├── docker-compose.yml                    ← Compose principal (o por servicio)
 ├── .env                                  ← Variables globales
-├── stash/
-│   ├── docker-compose.yml
-│   └── .env
-├── pihole/
-│   └── docker-compose.yml
-├── jellyfin/
-│   └── docker-compose.yml
-├── data/                                ← Datos persistentes de servicios
-│   ├── postgres/
-│   ├── vaultwarden/
-│   ├── paperless/
-│   ├── pihole/
+├── compose/                              ← docker-compose.yml por stack funcional
+│   ├── <stack>/
+│   │   ├── docker-compose.yml
+│   │   └── .env
 │   └── ...
+├── config/                               ← Configuraciones editables por servicio
+│   └── <servicio>/
+├── data/                                 ← Datos persistentes de servicios
+│   └── <servicio>/
+├── logs/
+└── scripts/
+
+/media/hd2t/                              ← Contenidos multimedia + backups
+├── media/
+│   ├── video/                            ← Películas, series y vídeos
+│   ├── music/                            ← Biblioteca musical
+│   ├── audiobooks/                       ← Audiolibros y podcasts
+│   └── books/                            ← Ebooks y documentos
+├── downloads/                            ← Descargas temporales o finales
+├── backups/                              ← Backups del homelab
 └── ...
 
-/media/hd2t/                                ← Contenidos multimedia + backups
-├── jellyfin/media/                      ← Películas, series
-├── navidrome/music/                     ← Música
-├── audiobookshelf/data/                 ← Audiolibros, podcasts
-├── calibre/library/                     ← Ebooks
-├── transmission/downloads/              ← Descargas
-├── backups/                             ← Backups de Borgmatic
-└── ...
-
-/media/hd5t/                                ← Multimedia de Stash
-└── stash/data/
+/media/hd5t/                              ← Biblioteca multimedia dedicada
+└── media/
 ```
 
-> **Política**: el **SSD NVMe** almacena todo lo necesario para que el homelab funcione (SO, Docker, configs, bases de datos, volúmenes de servicios). Los **HDDs externos** almacenan exclusivamente **contenidos multimedia** (hd2t: Jellyfin, Navidrome, Audiobookshelf, Calibre-Web, descargas; hd5t: Stash) y **backups** (hd2t). Los `docker-compose.yml` montan los volúmenes multimedia apuntando a `/media/hd2t/...` o `/media/hd5t/...`, y los volúmenes de datos de servicios al SSD.
+> **Política**: el **SSD NVMe** almacena todo lo necesario para que el homelab funcione (SO, Docker, configs, bases de datos, volúmenes de servicios). Los **HDDs externos** almacenan exclusivamente **contenidos multimedia** organizados por tipo de contenido (hd2t: vídeo, música, audiolibros, ebooks, descargas; hd5t: biblioteca dedicada) y **backups** (hd2t). Los `docker-compose.yml` montan las categorías de contenido que correspondan apuntando a `/media/hd2t/media/...` o `/media/hd5t/media/`, y los volúmenes de datos de servicios al SSD.
