@@ -51,8 +51,8 @@ services:
       - /home/<user>/homelab/config/homepage:/app/config
       - /home/<user>/homelab/config/homepage/images:/app/public/images
       - /home/<user>/homelab:/mnt/nvme:ro
-      - /mnt/hd2t:/mnt/hd2t:ro
-      - /mnt/hd5t:/mnt/hd5t:ro
+      - /media/hd2t:/media/hd2t:ro
+      - /media/hd5t:/media/hd5t:ro
     networks:
       - default
       - homelab_proxy
@@ -98,7 +98,7 @@ Notas sobre este Compose:
 - `HOMEPAGE_ALLOWED_HOSTS` debe incluir tanto el acceso directo por puerto como los hostnames que usarás detrás de Caddy
 - el bind mount de `/app/config` deja toda la configuración versionable en el **SSD NVMe**
 - el subdirectorio `images/` permite usar fondos o logos locales sin montar todo `/app/public`
-- los mounts de `/mnt/nvme`, `/mnt/hd2t` y `/mnt/hd5t` están pensados para que el widget `resources` pueda enseñar uso de disco real del host
+- los mounts de `/mnt/nvme`, `/media/hd2t` y `/media/hd5t` están pensados para que el widget `resources` pueda enseñar uso de disco real del host
 - si no quieres mostrar almacenamiento en Homepage, puedes quitar esos tres montajes de solo lectura
 
 ## Configuración
@@ -193,8 +193,8 @@ Archivo: `/home/<user>/homelab/config/homepage/widgets.yaml`
     memory: true
     disk:
       - /mnt/nvme
-      - /mnt/hd2t
-      - /mnt/hd5t
+      - /media/hd2t
+      - /media/hd5t
 
 - datetime:
     text_size: xl
@@ -423,7 +423,7 @@ Qué vive realmente en esa ruta:
 
 Qué **no** forma parte de la persistencia propia de Homepage:
 
-- `/mnt/nvme`, `/mnt/hd2t` y `/mnt/hd5t` montados en el contenedor solo para lectura
+- `/mnt/nvme`, `/media/hd2t` y `/media/hd5t` montados en el contenedor solo para lectura
 - los datos de los servicios enlazados desde la portada
 
 En otras palabras: Homepage es un servicio muy barato de reconstruir, pero solo si mantienes a salvo sus archivos YAML y el `.env` del stack.
@@ -446,17 +446,17 @@ Estrategia recomendada en este homelab:
 Copia simple del árbol de configuración:
 
 ```bash
-mkdir -p /mnt/hd2t/backups/exports/config/homepage
+mkdir -p /media/hd2t/backups/exports/config/homepage
 rsync -a /home/<user>/homelab/config/homepage/ \
-  /mnt/hd2t/backups/exports/config/homepage/
+  /media/hd2t/backups/exports/config/homepage/
 ```
 
 Copia del stack y sus secretos:
 
 ```bash
-mkdir -p /mnt/hd2t/backups/exports/compose/dashboards-homepage
+mkdir -p /media/hd2t/backups/exports/compose/dashboards-homepage
 rsync -a /home/<user>/homelab/compose/dashboards-homepage/ \
-  /mnt/hd2t/backups/exports/compose/dashboards-homepage/
+  /media/hd2t/backups/exports/compose/dashboards-homepage/
 ```
 
 Buenas practicas de restore:

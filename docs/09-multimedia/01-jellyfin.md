@@ -7,7 +7,7 @@
 La política de este proyecto se mantiene sin excepciones:
 
 - la configuración, la base de datos, la caché y el estado del servicio viven en `/home/<user>/homelab/data/jellyfin/` sobre el **SSD NVMe**
-- los archivos multimedia viven en `/mnt/hd2t/media/jellyfin/`
+- los archivos multimedia viven en `/media/hd2t/media/jellyfin/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
 - **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
@@ -22,7 +22,7 @@ En una **Raspberry Pi 5**, Jellyfin funciona bien si el objetivo principal es **
 - Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceso remoto seguro.
 - Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Jellyfin detrás del reverse proxy interno.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
-- Tener montado `hd2t` en `/mnt/hd2t`.
+- Tener montado `hd2t` en `/media/hd2t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:
   - `8096/tcp` para la interfaz web y API HTTP de Jellyfin
@@ -50,7 +50,7 @@ services:
     volumes:
       - /home/<user>/homelab/data/jellyfin/config:/config
       - /home/<user>/homelab/data/jellyfin/cache:/cache
-      - /mnt/hd2t/media/jellyfin:/media:ro
+      - /media/hd2t/media/jellyfin:/media:ro
     networks:
       - default
       - proxy
@@ -78,13 +78,13 @@ Notas sobre este Compose:
 ```bash
 mkdir -p /home/<user>/homelab/compose/media-jellyfin
 mkdir -p /home/<user>/homelab/data/jellyfin/{config,cache}
-sudo mkdir -p /mnt/hd2t/media/jellyfin/{movies,series,concerts,homevideos}
+sudo mkdir -p /media/hd2t/media/jellyfin/{movies,series,concerts,homevideos}
 ```
 
 Si quieres exponer también música desde Jellyfin, añade una carpeta más:
 
 ```bash
-sudo mkdir -p /mnt/hd2t/media/jellyfin/music
+sudo mkdir -p /media/hd2t/media/jellyfin/music
 ```
 
 ### 2. Ajustar propiedad y permisos
@@ -94,12 +94,12 @@ Usa el mismo usuario operativo del host que administra Docker y las carpetas del
 ```bash
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/jellyfin
-sudo chown -R <user>:<user> /mnt/hd2t/media/jellyfin
+sudo chown -R <user>:<user> /media/hd2t/media/jellyfin
 
 sudo find /home/<user>/homelab/data/jellyfin -type d -exec chmod 775 {} \;
 sudo find /home/<user>/homelab/data/jellyfin -type f -exec chmod 664 {} \;
-sudo find /mnt/hd2t/media/jellyfin -type d -exec chmod 755 {} \;
-sudo find /mnt/hd2t/media/jellyfin -type f -exec chmod 644 {} \;
+sudo find /media/hd2t/media/jellyfin -type d -exec chmod 755 {} \;
+sudo find /media/hd2t/media/jellyfin -type f -exec chmod 644 {} \;
 ```
 
 La idea es simple:
@@ -230,7 +230,7 @@ Rutas persistentes del servicio:
 - Variables del stack: `/home/<user>/homelab/compose/media-jellyfin/.env`
 - Configuración y base de datos: `/home/<user>/homelab/data/jellyfin/config`
 - Caché y temporales: `/home/<user>/homelab/data/jellyfin/cache`
-- Biblioteca multimedia: `/mnt/hd2t/media/jellyfin`
+- Biblioteca multimedia: `/media/hd2t/media/jellyfin`
 
 Criterio de almacenamiento:
 
@@ -252,7 +252,7 @@ Opcional según tu política de restauración:
 
 En general, la caché puede reconstruirse, así que no suele merecer la pena priorizarla frente a la configuración y la base de datos.
 
-La biblioteca de `/mnt/hd2t/media/jellyfin` no forma parte del backup de la aplicación en sí; es el **contenido multimedia** y debe tratarse según la estrategia general de copias del homelab.
+La biblioteca de `/media/hd2t/media/jellyfin` no forma parte del backup de la aplicación en sí; es el **contenido multimedia** y debe tratarse según la estrategia general de copias del homelab.
 
 Para una copia más consistente de la base de datos interna, detén brevemente el contenedor durante el backup:
 

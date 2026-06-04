@@ -7,7 +7,7 @@
 La política de este proyecto se mantiene igual que en el resto de servicios:
 
 - la configuración, el estado del cliente, la sesión y el fichero `settings.json` viven en `/home/<user>/homelab/data/transmission/` sobre el **SSD NVMe**
-- las descargas incompletas, completas y la carpeta de vigilancia viven en `/mnt/hd2t/downloads/transmission/`
+- las descargas incompletas, completas y la carpeta de vigilancia viven en `/media/hd2t/downloads/transmission/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
 - el stack se une a la red Docker compartida para facilitar la integración posterior con **Sonarr**, **Radarr** y **Prowlarr**
@@ -21,7 +21,7 @@ En este homelab hay una decisión de diseño importante: **no** se abren puertos
 - Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder a la interfaz fuera de la LAN.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar los puertos publicados por el servicio.
-- Tener montado `hd2t` en `/mnt/hd2t`.
+- Tener montado `hd2t` en `/media/hd2t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de integración entre stacks.
 - Puertos necesarios:
   - `15000/tcp` en el host para la interfaz web y RPC de Transmission
@@ -55,8 +55,8 @@ services:
       - "${TRANSMISSION_PEER_PORT}:${TRANSMISSION_PEER_PORT}/udp"
     volumes:
       - /home/<user>/homelab/data/transmission/config:/config
-      - /mnt/hd2t/downloads/transmission:/downloads
-      - /mnt/hd2t/downloads/transmission/watch:/watch
+      - /media/hd2t/downloads/transmission:/downloads
+      - /media/hd2t/downloads/transmission/watch:/watch
     networks:
       - default
       - proxy
@@ -86,7 +86,7 @@ Notas sobre este Compose:
 ```bash
 mkdir -p /home/<user>/homelab/compose/downloads-transmission
 mkdir -p /home/<user>/homelab/data/transmission/config
-sudo mkdir -p /mnt/hd2t/downloads/transmission/{complete,incomplete,watch}
+sudo mkdir -p /media/hd2t/downloads/transmission/{complete,incomplete,watch}
 ```
 
 Punto importante de diseño:
@@ -104,12 +104,12 @@ Usa el mismo usuario operativo del host que administra Docker y las carpetas del
 ```bash
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/transmission
-sudo chown -R <user>:<user> /mnt/hd2t/downloads/transmission
+sudo chown -R <user>:<user> /media/hd2t/downloads/transmission
 
 sudo find /home/<user>/homelab/data/transmission -type d -exec chmod 775 {} \;
 sudo find /home/<user>/homelab/data/transmission -type f -exec chmod 664 {} \;
-sudo find /mnt/hd2t/downloads/transmission -type d -exec chmod 775 {} \;
-sudo find /mnt/hd2t/downloads/transmission -type f -exec chmod 664 {} \;
+sudo find /media/hd2t/downloads/transmission -type d -exec chmod 775 {} \;
+sudo find /media/hd2t/downloads/transmission -type f -exec chmod 664 {} \;
 ```
 
 La lógica operativa es esta:
@@ -301,9 +301,9 @@ Rutas persistentes del servicio:
 - Compose: `/home/<user>/homelab/compose/downloads-transmission/docker-compose.yml`
 - Variables del stack: `/home/<user>/homelab/compose/downloads-transmission/.env`
 - Configuración, sesión y estado del cliente: `/home/<user>/homelab/data/transmission/config`
-- Descargas completas: `/mnt/hd2t/downloads/transmission/complete`
-- Descargas incompletas: `/mnt/hd2t/downloads/transmission/incomplete`
-- Watch directory opcional: `/mnt/hd2t/downloads/transmission/watch`
+- Descargas completas: `/media/hd2t/downloads/transmission/complete`
+- Descargas incompletas: `/media/hd2t/downloads/transmission/incomplete`
+- Watch directory opcional: `/media/hd2t/downloads/transmission/watch`
 
 Criterio de almacenamiento:
 
@@ -320,7 +320,7 @@ Respaldar como mínimo:
 - `/home/<user>/homelab/compose/downloads-transmission/.env`
 - `/home/<user>/homelab/data/transmission/config`
 
-Las carpetas de `/mnt/hd2t/downloads/transmission/` no forman parte del backup de la **aplicación** en sí; son el **contenido descargado** y deben tratarse como datos operativos o multimedia según tu política general del homelab.
+Las carpetas de `/media/hd2t/downloads/transmission/` no forman parte del backup de la **aplicación** en sí; son el **contenido descargado** y deben tratarse como datos operativos o multimedia según tu política general del homelab.
 
 Para una copia más consistente del estado del cliente, detén brevemente el contenedor durante el backup:
 

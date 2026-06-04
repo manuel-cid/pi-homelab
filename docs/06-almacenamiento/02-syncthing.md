@@ -17,7 +17,7 @@ Syncthing **no sustituye a un backup** y tampoco es buena idea apuntarlo a bases
 - Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 - Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
 - Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
-- Tener montado `hd2t` en `/mnt/hd2t`.
+- Tener montado `hd2t` en `/media/hd2t`.
 - Poder administrar el firewall del host según [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 - Tener identificados los dispositivos que se van a parear con la Raspberry Pi.
 - Puertos necesarios para Syncthing:
@@ -64,7 +64,7 @@ services:
       - ${DATA_ROOT}/syncthing/config:/config
       - ${SSD_SYNC_ROOT}/documents:/data/documents
       - ${SSD_SYNC_ROOT}/notes:/data/notes
-      - /mnt/hd2t/syncthing/media-drop:/data/media-drop
+      - /media/hd2t/syncthing/media-drop:/data/media-drop
     labels:
       - com.centurylinklabs.watchtower.enable=true
 ```
@@ -87,7 +87,7 @@ Si no quieres crear alguna de las carpetas de ejemplo, elimina su volumen del Co
 mkdir -p /home/<user>/homelab/compose/files-syncthing
 mkdir -p /home/<user>/homelab/data/syncthing/config
 mkdir -p /home/<user>/homelab/sync/{documents,notes}
-sudo mkdir -p /mnt/hd2t/syncthing/media-drop
+sudo mkdir -p /media/hd2t/syncthing/media-drop
 ```
 
 ### 2. Alinear propiedad y permisos del host
@@ -98,10 +98,10 @@ Usa el mismo usuario operativo del host que ya gestiona Docker y el resto del ho
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/syncthing
 sudo chown -R <user>:<user> /home/<user>/homelab/sync
-sudo chown -R <user>:<user> /mnt/hd2t/syncthing
+sudo chown -R <user>:<user> /media/hd2t/syncthing
 
 sudo find /home/<user>/homelab/sync -type d -exec chmod 2775 {} \;
-sudo find /mnt/hd2t/syncthing -type d -exec chmod 2775 {} \;
+sudo find /media/hd2t/syncthing -type d -exec chmod 2775 {} \;
 ```
 
 Qué se busca con esto:
@@ -263,7 +263,7 @@ Rutas implicadas en este despliegue:
 - `.env`: `/home/<user>/homelab/compose/files-syncthing/.env`
 - configuración persistente: `/home/<user>/homelab/data/syncthing/config`
 - carpetas sincronizadas en SSD: `/home/<user>/homelab/sync/`
-- carpeta sincronizada en `hd2t`: `/mnt/hd2t/syncthing/media-drop`
+- carpeta sincronizada en `hd2t`: `/media/hd2t/syncthing/media-drop`
 
 Reglas operativas recomendadas:
 
@@ -281,7 +281,7 @@ Syncthing no reemplaza una estrategia de copias de seguridad. Lo que debes respa
 - `/home/<user>/homelab/data/syncthing/config/`
 - las carpetas cuyo contenido sea autoritativo en la Raspberry Pi:
   - `/home/<user>/homelab/sync/`
-  - `/mnt/hd2t/syncthing/`
+  - `/media/hd2t/syncthing/`
 
 Motivos:
 

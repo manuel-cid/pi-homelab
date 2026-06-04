@@ -7,8 +7,8 @@
 En esta arquitectura, Sonarr sigue la misma política general del proyecto:
 
 - la configuración, la base de datos SQLite, los logs y el estado del servicio viven en `/home/<user>/homelab/data/sonarr/` sobre el **SSD NVMe**
-- las descargas de entrada llegan desde `/mnt/hd2t/downloads/transmission/`
-- la biblioteca final de series vive en `/mnt/hd2t/media/jellyfin/series/`
+- las descargas de entrada llegan desde `/media/hd2t/downloads/transmission/`
+- la biblioteca final de series vive en `/media/hd2t/media/jellyfin/series/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
 - el stack se une a la red Docker compartida `homelab_proxy` para comunicarse por nombre interno con **Transmission**, **Prowlarr** y, si lo necesitas, **Caddy**
@@ -33,7 +33,7 @@ Como la zona de descargas y la biblioteca final están en el mismo disco `hd2t`,
 - Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder a la interfaz fuera de la LAN.
 - Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Sonarr detrás del reverse proxy interno.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
-- Tener montado `hd2t` en `/mnt/hd2t`.
+- Tener montado `hd2t` en `/media/hd2t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de integración entre stacks.
 - Puertos necesarios:
   - `15002/tcp` en el host para acceso web y API desde LAN o Tailscale
@@ -61,8 +61,8 @@ services:
       - "${SONARR_BIND_IP}:${SONARR_HTTP_PORT}:8989"
     volumes:
       - /home/<user>/homelab/data/sonarr/config:/config
-      - /mnt/hd2t/media/jellyfin/series:/tv
-      - /mnt/hd2t/downloads/transmission:/downloads
+      - /media/hd2t/media/jellyfin/series:/tv
+      - /media/hd2t/downloads/transmission:/downloads
     networks:
       - default
       - proxy
@@ -81,7 +81,7 @@ Notas sobre este Compose:
 - la base de datos y toda la persistencia del servicio viven en el **SSD NVMe**
 - Sonarr monta la biblioteca final y la carpeta de descargas del mismo modo que las necesita para importar sin traducciones extra de rutas
 - el servicio se conecta también a `homelab_proxy` para que **Prowlarr**, **Transmission** y **Caddy** puedan alcanzarlo por nombre interno Docker
-- montar `/mnt/hd2t/downloads/transmission` como `/downloads` evita depender de `Remote Path Mappings` en el caso base
+- montar `/media/hd2t/downloads/transmission` como `/downloads` evita depender de `Remote Path Mappings` en el caso base
 
 ## Configuración
 
@@ -90,7 +90,7 @@ Notas sobre este Compose:
 ```bash
 mkdir -p /home/<user>/homelab/compose/downloads-sonarr
 mkdir -p /home/<user>/homelab/data/sonarr/config
-sudo mkdir -p /mnt/hd2t/media/jellyfin/series
+sudo mkdir -p /media/hd2t/media/jellyfin/series
 ```
 
 La carpeta de descargas ya debe existir si has seguido [01-transmission.md](01-transmission.md). No la recrees con otra estructura distinta, porque Sonarr y Transmission deben ver la misma jerarquía de archivos.
@@ -102,15 +102,15 @@ Usa el mismo usuario operativo del host que administra Docker y las carpetas del
 ```bash
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/sonarr
-sudo chown -R <user>:<user> /mnt/hd2t/media/jellyfin/series
-sudo chown -R <user>:<user> /mnt/hd2t/downloads/transmission
+sudo chown -R <user>:<user> /media/hd2t/media/jellyfin/series
+sudo chown -R <user>:<user> /media/hd2t/downloads/transmission
 
 sudo find /home/<user>/homelab/data/sonarr -type d -exec chmod 775 {} \;
 sudo find /home/<user>/homelab/data/sonarr -type f -exec chmod 664 {} \;
-sudo find /mnt/hd2t/media/jellyfin/series -type d -exec chmod 775 {} \;
-sudo find /mnt/hd2t/media/jellyfin/series -type f -exec chmod 664 {} \;
-sudo find /mnt/hd2t/downloads/transmission -type d -exec chmod 775 {} \;
-sudo find /mnt/hd2t/downloads/transmission -type f -exec chmod 664 {} \;
+sudo find /media/hd2t/media/jellyfin/series -type d -exec chmod 775 {} \;
+sudo find /media/hd2t/media/jellyfin/series -type f -exec chmod 664 {} \;
+sudo find /media/hd2t/downloads/transmission -type d -exec chmod 775 {} \;
+sudo find /media/hd2t/downloads/transmission -type f -exec chmod 664 {} \;
 ```
 
 La lógica operativa es esta:
@@ -311,8 +311,8 @@ Rutas persistentes del servicio:
 - Compose: `/home/<user>/homelab/compose/downloads-sonarr/docker-compose.yml`
 - Variables del stack: `/home/<user>/homelab/compose/downloads-sonarr/.env`
 - Configuración, base de datos y logs: `/home/<user>/homelab/data/sonarr/config`
-- Biblioteca final de series: `/mnt/hd2t/media/jellyfin/series`
-- Descargas observadas para importación: `/mnt/hd2t/downloads/transmission`
+- Biblioteca final de series: `/media/hd2t/media/jellyfin/series`
+- Descargas observadas para importación: `/media/hd2t/downloads/transmission`
 
 Criterio de almacenamiento:
 
@@ -337,7 +337,7 @@ Eso cubre:
 - clientes de descarga
 - configuración de indexadores recibida desde Prowlarr
 
-La biblioteca final en `/mnt/hd2t/media/jellyfin/series` forma parte de la estrategia general de backup del contenido multimedia, no del backup de la **aplicación** Sonarr en sí.
+La biblioteca final en `/media/hd2t/media/jellyfin/series` forma parte de la estrategia general de backup del contenido multimedia, no del backup de la **aplicación** Sonarr en sí.
 
 Para una copia más consistente, detén brevemente el contenedor durante el backup:
 

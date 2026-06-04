@@ -17,7 +17,7 @@ El objetivo de este documento es desplegar Samba como contenedor Docker con **un
 - Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 - Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
 - Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
-- Tener montados `hd2t` y `hd5t` en `/mnt/hd2t` y `/mnt/hd5t`.
+- Tener montados `hd2t` y `hd5t` en `/media/hd2t` y `/media/hd5t`.
 - Poder administrar el firewall del host según [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 - Haber decidido qué usuario local del host será el propietario real de las carpetas compartidas.
 - Puertos necesarios para Samba:
@@ -127,12 +127,12 @@ services:
         create mask = 0664
         directory mask = 2775
     volumes:
-      - /mnt/hd2t/media/jellyfin:/shares/jellyfin
-      - /mnt/hd2t/media/navidrome:/shares/navidrome
-      - /mnt/hd2t/media/audiobookshelf:/shares/audiobookshelf
-      - /mnt/hd2t/media/calibre-web:/shares/calibre-web
-      - /mnt/hd2t/downloads:/shares/downloads
-      - /mnt/hd5t/stash:/shares/stash
+      - /media/hd2t/media/jellyfin:/shares/jellyfin
+      - /media/hd2t/media/navidrome:/shares/navidrome
+      - /media/hd2t/media/audiobookshelf:/shares/audiobookshelf
+      - /media/hd2t/media/calibre-web:/shares/calibre-web
+      - /media/hd2t/downloads:/shares/downloads
+      - /media/hd5t/stash:/shares/stash
     labels:
       - com.centurylinklabs.watchtower.enable=true
 ```
@@ -148,7 +148,7 @@ Este Compose sigue la política general del proyecto:
 Si **no** quieres compartir `hd5t`, elimina estas dos líneas:
 
 - `SAMBA_VOLUME_CONFIG_stash`
-- `- /mnt/hd5t/stash:/shares/stash`
+- `- /media/hd5t/stash:/shares/stash`
 
 ## Configuración
 
@@ -157,17 +157,17 @@ Si **no** quieres compartir `hd5t`, elimina estas dos líneas:
 Comprueba que las rutas del proyecto existen realmente:
 
 ```bash
-find /mnt/hd2t/media -maxdepth 2 -type d | sort
-find /mnt/hd2t/downloads -maxdepth 1 -type d | sort
-find /mnt/hd5t -maxdepth 2 -type d | sort
+find /media/hd2t/media -maxdepth 2 -type d | sort
+find /media/hd2t/downloads -maxdepth 1 -type d | sort
+find /media/hd5t -maxdepth 2 -type d | sort
 ```
 
 Si todavía faltan carpetas, créalas:
 
 ```bash
-sudo mkdir -p /mnt/hd2t/media/{jellyfin,navidrome,audiobookshelf,calibre-web}
-sudo mkdir -p /mnt/hd2t/downloads
-sudo mkdir -p /mnt/hd5t/stash
+sudo mkdir -p /media/hd2t/media/{jellyfin,navidrome,audiobookshelf,calibre-web}
+sudo mkdir -p /media/hd2t/downloads
+sudo mkdir -p /media/hd5t/stash
 ```
 
 ### 2. Alinear propiedad y permisos del host
@@ -176,16 +176,16 @@ Samba escribirá con el mismo `UID` y `GID` del usuario operativo del host. Usa 
 
 ```bash
 id <user>
-sudo chown -R <user>:<user> /mnt/hd2t/media
-sudo chown -R <user>:<user> /mnt/hd2t/downloads
-sudo chown -R <user>:<user> /mnt/hd5t/stash
+sudo chown -R <user>:<user> /media/hd2t/media
+sudo chown -R <user>:<user> /media/hd2t/downloads
+sudo chown -R <user>:<user> /media/hd5t/stash
 
-sudo find /mnt/hd2t/media -type d -exec chmod 2775 {} \;
-sudo find /mnt/hd2t/media -type f -exec chmod 0664 {} \;
-sudo find /mnt/hd2t/downloads -type d -exec chmod 2775 {} \;
-sudo find /mnt/hd2t/downloads -type f -exec chmod 0664 {} \;
-sudo find /mnt/hd5t/stash -type d -exec chmod 2775 {} \;
-sudo find /mnt/hd5t/stash -type f -exec chmod 0664 {} \;
+sudo find /media/hd2t/media -type d -exec chmod 2775 {} \;
+sudo find /media/hd2t/media -type f -exec chmod 0664 {} \;
+sudo find /media/hd2t/downloads -type d -exec chmod 2775 {} \;
+sudo find /media/hd2t/downloads -type f -exec chmod 0664 {} \;
+sudo find /media/hd5t/stash -type d -exec chmod 2775 {} \;
+sudo find /media/hd5t/stash -type f -exec chmod 0664 {} \;
 ```
 
 Qué se consigue con esto:
@@ -314,17 +314,17 @@ Rutas implicadas en este despliegue:
 
 - `docker-compose.yml`: `/home/<user>/homelab/compose/files-samba/docker-compose.yml`
 - `.env`: `/home/<user>/homelab/compose/files-samba/.env`
-- share `jellyfin`: `/mnt/hd2t/media/jellyfin`
-- share `navidrome`: `/mnt/hd2t/media/navidrome`
-- share `audiobookshelf`: `/mnt/hd2t/media/audiobookshelf`
-- share `calibre-web`: `/mnt/hd2t/media/calibre-web`
-- share `downloads`: `/mnt/hd2t/downloads`
-- share opcional `stash`: `/mnt/hd5t/stash`
+- share `jellyfin`: `/media/hd2t/media/jellyfin`
+- share `navidrome`: `/media/hd2t/media/navidrome`
+- share `audiobookshelf`: `/media/hd2t/media/audiobookshelf`
+- share `calibre-web`: `/media/hd2t/media/calibre-web`
+- share `downloads`: `/media/hd2t/downloads`
+- share opcional `stash`: `/media/hd5t/stash`
 
 Reglas operativas recomendadas:
 
 - no compartas por SMB los directorios persistentes de aplicaciones en `/home/<user>/homelab/data/`
-- no expongas `/mnt/hd2t/backups` por defecto; las copias de seguridad deben permanecer menos expuestas que la biblioteca multimedia
+- no expongas `/media/hd2t/backups` por defecto; las copias de seguridad deben permanecer menos expuestas que la biblioteca multimedia
 - usa el mismo `PUID` y `PGID` en Samba que en el resto del homelab para evitar archivos con propietarios incoherentes
 - si más adelante creas nuevas carpetas multimedia en `hd2t`, añade un share nuevo en lugar de reutilizar uno ambiguo
 
@@ -335,9 +335,9 @@ Para Samba no hay una base de datos propia importante dentro del contenedor. Lo 
 - `/home/<user>/homelab/compose/files-samba/docker-compose.yml`
 - `/home/<user>/homelab/compose/files-samba/.env`
 - el contenido real de las carpetas compartidas:
-  - `/mnt/hd2t/media/`
-  - `/mnt/hd2t/downloads/`
-  - `/mnt/hd5t/stash/` si se comparte
+  - `/media/hd2t/media/`
+  - `/media/hd2t/downloads/`
+  - `/media/hd5t/stash/` si se comparte
 
 No hace falta respaldar estado interno efímero del contenedor si mantienes:
 

@@ -31,8 +31,8 @@ En este proyecto, la prioridad operativa es proteger:
 - Tener acceso administrativo por **SSH** al host.
 - Tener montados correctamente:
   - `SSD NVMe` como disco principal del sistema
-  - `hd2t` en `/mnt/hd2t`
-  - `hd5t` en `/mnt/hd5t`
+  - `hd2t` en `/media/hd2t`
+  - `hd5t` en `/media/hd5t`
 
 Puertos necesarios en esta fase:
 
@@ -68,8 +68,8 @@ date
 hostnamectl
 uptime
 df -h /
-df -h /mnt/hd2t
-df -h /mnt/hd5t
+df -h /media/hd2t
+df -h /media/hd5t
 docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 systemctl --failed
 ```
@@ -105,9 +105,9 @@ docker compose exec borgmatic borgmatic info --repository /mnt/borg-repository/$
 Además, revisa el directorio de exports:
 
 ```bash
-find /mnt/hd2t/backups/exports -maxdepth 2 -type f -mtime -7 | sort
-du -sh /mnt/hd2t/backups/borg
-du -sh /mnt/hd2t/backups/exports
+find /media/hd2t/backups/exports -maxdepth 2 -type f -mtime -7 | sort
+du -sh /media/hd2t/backups/borg
+du -sh /media/hd2t/backups/exports
 ```
 
 Qué debes validar cada semana:
@@ -127,7 +127,7 @@ docker compose exec borgmatic borgmatic check --only repository --only archives
 Y una vez por trimestre, restaura una muestra en la ruta de prueba:
 
 ```bash
-mkdir -p /mnt/hd2t/backups/restore-test
+mkdir -p /media/hd2t/backups/restore-test
 ```
 
 La restauración detallada de datos y volúmenes se documenta en [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md).
@@ -310,9 +310,9 @@ Esta disciplina evita depender de memoria informal cuando pasan varias semanas e
 Rutas y soportes que deben vigilarse durante el mantenimiento:
 
 - sistema, `compose`, `config`, `data` y logs operativos en el **SSD NVMe**
-- repositorio Borg, exports y restore tests en **`/mnt/hd2t/backups/`**
-- media general y descargas en **`/mnt/hd2t/`**
-- biblioteca de **Stash** en **`/mnt/hd5t/`**
+- repositorio Borg, exports y restore tests en **`/media/hd2t/backups/`**
+- media general y descargas en **`/media/hd2t/`**
+- biblioteca de **Stash** en **`/media/hd5t/`**
 
 Puntos a vigilar:
 

@@ -19,7 +19,7 @@ En este homelab, la opción preferida para datos persistentes es usar **bind mou
 - Haber completado [02-borgmatic.md](02-borgmatic.md).
 - Tener desplegados los servicios que se van a respaldar.
 - Tener identificados los contenedores de bases de datos y las rutas persistentes de cada servicio.
-- Tener disponible `/mnt/hd2t/backups/exports/` para dumps lógicos y `/mnt/hd2t/backups/restore-test/` para pruebas de restauración.
+- Tener disponible `/media/hd2t/backups/exports/` para dumps lógicos y `/media/hd2t/backups/restore-test/` para pruebas de restauración.
 - Poder ejecutar `docker exec`, `docker inspect` y `docker compose` en el host.
 - Conocer los `UID/GID` esperados por cada servicio crítico antes de restaurar datos.
 
@@ -105,7 +105,7 @@ Si un servicio usa bind mounts en el NVMe, el flujo correcto es:
 Rutas recomendadas para dumps previos:
 
 ```text
-/mnt/hd2t/backups/exports/
+/media/hd2t/backups/exports/
 ├── mariadb/
 ├── postgres/
 ├── sqlite/
@@ -127,7 +127,7 @@ Ejemplo de backup:
 ```bash
 VOLUME=portainer_data
 STAMP=$(date +%F_%H%M%S)
-DEST=/mnt/hd2t/backups/exports/volumes/${VOLUME}
+DEST=/media/hd2t/backups/exports/volumes/${VOLUME}
 
 mkdir -p "${DEST}"
 
@@ -143,7 +143,7 @@ Ejemplo de restore:
 ```bash
 VOLUME=portainer_data
 ARCHIVE=portainer_data_2026-05-07_023000.tar.gz
-SRC=/mnt/hd2t/backups/exports/volumes/${VOLUME}
+SRC=/media/hd2t/backups/exports/volumes/${VOLUME}
 
 docker run --rm \
   -v "${VOLUME}:/target" \
@@ -166,7 +166,7 @@ Ejemplo para toda la instancia:
 
 ```bash
 STAMP=$(date +%F_%H%M%S)
-DEST=/mnt/hd2t/backups/exports/mariadb
+DEST=/media/hd2t/backups/exports/mariadb
 
 mkdir -p "${DEST}"
 
@@ -203,7 +203,7 @@ Flujo recomendado:
 Ejemplo de restore:
 
 ```bash
-SQL=/mnt/hd2t/backups/exports/mariadb/mariadb_2026-05-07_023000.sql
+SQL=/media/hd2t/backups/exports/mariadb/mariadb_2026-05-07_023000.sql
 
 docker exec -i mariadb sh -c \
   'exec mariadb -uroot -p"$MARIADB_ROOT_PASSWORD"' \
@@ -229,7 +229,7 @@ Ejemplo para una base de datos concreta en formato `custom`:
 
 ```bash
 STAMP=$(date +%F_%H%M%S)
-DEST=/mnt/hd2t/backups/exports/postgres
+DEST=/media/hd2t/backups/exports/postgres
 
 mkdir -p "${DEST}"
 
@@ -257,7 +257,7 @@ Flujo recomendado:
 Ejemplo de restore de objetos globales:
 
 ```bash
-GLOBALS=/mnt/hd2t/backups/exports/postgres/globals_2026-05-07_023000.sql
+GLOBALS=/media/hd2t/backups/exports/postgres/globals_2026-05-07_023000.sql
 
 docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
   psql -U postgres -d postgres \
@@ -267,7 +267,7 @@ docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
 Ejemplo de restore de una base de datos en formato `custom`:
 
 ```bash
-DUMP=/mnt/hd2t/backups/exports/postgres/appdb_2026-05-07_023000.dump
+DUMP=/media/hd2t/backups/exports/postgres/appdb_2026-05-07_023000.dump
 
 docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
   dropdb -U postgres --if-exists appdb
@@ -299,7 +299,7 @@ Ejemplo típico:
 ```bash
 docker compose stop vaultwarden
 sudo rsync -aHAX --delete \
-  /mnt/hd2t/backups/restore-test/vaultwarden/ \
+  /media/hd2t/backups/restore-test/vaultwarden/ \
   /home/<user>/homelab/data/vaultwarden/
 docker compose start vaultwarden
 ```
@@ -345,7 +345,7 @@ Si una aplicación necesita además su propio `pg_dump`, añádelo aquí o usa l
 
 El restore correcto no consiste en extraer directamente encima del directorio activo. La secuencia recomendada es:
 
-1. restaurar primero a `/mnt/hd2t/backups/restore-test/<servicio>/`
+1. restaurar primero a `/media/hd2t/backups/restore-test/<servicio>/`
 2. inspeccionar contenido, tamaños y fecha esperada
 3. detener el contenedor afectado
 4. hacer copia del estado actual si aún no existe una
@@ -362,7 +362,7 @@ SERVICE=vaultwarden
 docker compose stop "${SERVICE}"
 
 sudo rsync -aHAX --delete \
-  "/mnt/hd2t/backups/restore-test/${SERVICE}/" \
+  "/media/hd2t/backups/restore-test/${SERVICE}/" \
   "/home/<user>/homelab/data/${SERVICE}/"
 
 docker compose start "${SERVICE}"
@@ -382,12 +382,12 @@ Distribución recomendada para este procedimiento:
 - **Datos persistentes en producción**
   - `/home/<user>/homelab/data/<servicio>/`
 - **Exports lógicos temporales o retenidos**
-  - `/mnt/hd2t/backups/exports/mariadb/`
-  - `/mnt/hd2t/backups/exports/postgres/`
-  - `/mnt/hd2t/backups/exports/sqlite/`
-  - `/mnt/hd2t/backups/exports/volumes/`
+  - `/media/hd2t/backups/exports/mariadb/`
+  - `/media/hd2t/backups/exports/postgres/`
+  - `/media/hd2t/backups/exports/sqlite/`
+  - `/media/hd2t/backups/exports/volumes/`
 - **Restauraciones de prueba**
-  - `/mnt/hd2t/backups/restore-test/<servicio>/`
+  - `/media/hd2t/backups/restore-test/<servicio>/`
 
 Reglas importantes:
 

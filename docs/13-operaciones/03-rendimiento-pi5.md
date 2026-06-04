@@ -79,8 +79,8 @@ uptime
 free -h
 swapon --show
 df -h /
-df -h /mnt/hd2t
-df -h /mnt/hd5t
+df -h /media/hd2t
+df -h /media/hd5t
 vcgencmd measure_temp
 vcgencmd get_throttled
 vcgencmd measure_clock arm
@@ -479,7 +479,7 @@ Rutas y ficheros relevantes para esta fase:
 - `/etc/systemd/zram-generator.conf` y `/etc/sysctl.d/99-homelab-memory.conf` para la política de memoria del host
 - `/home/<user>/homelab/compose/` para `docker-compose.yml` con `mem_limit` y `cpus`
 - **SSD NVMe** para sistema, Docker, `compose`, datos persistentes y métricas
-- `/mnt/hd2t` y `/mnt/hd5t` para bibliotecas y cargas pesadas que influyen en el rendimiento global
+- `/media/hd2t` y `/media/hd5t` para bibliotecas y cargas pesadas que influyen en el rendimiento global
 
 Reglas importantes:
 

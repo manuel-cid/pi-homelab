@@ -321,11 +321,11 @@ ls -lah /home/<user>/homelab/data/paperless/export
 Dump lógico de PostgreSQL hacia la zona de backups:
 
 ```bash
-mkdir -p /mnt/hd2t/backups/exports/postgres
+mkdir -p /media/hd2t/backups/exports/postgres
 cd /home/<user>/homelab/compose/paperless-ngx
 docker compose exec -T db pg_dump -U paperless -d paperless | gzip \
-  > /mnt/hd2t/backups/exports/postgres/paperless-$(date +%F).sql.gz
-ls -lh /mnt/hd2t/backups/exports/postgres/paperless-$(date +%F).sql.gz
+  > /media/hd2t/backups/exports/postgres/paperless-$(date +%F).sql.gz
+ls -lh /media/hd2t/backups/exports/postgres/paperless-$(date +%F).sql.gz
 ```
 
 Para una copia fría consistente del árbol completo:

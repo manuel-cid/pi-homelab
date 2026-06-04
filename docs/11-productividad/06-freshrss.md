@@ -234,19 +234,19 @@ docker compose start freshrss
 Ejemplo de copia hacia la zona de backups de `hd2t`:
 
 ```bash
-mkdir -p /mnt/hd2t/backups/exports/volumes/freshrss
+mkdir -p /media/hd2t/backups/exports/volumes/freshrss
 rsync -a /home/<user>/homelab/data/freshrss/ \
-  /mnt/hd2t/backups/exports/volumes/freshrss/
+  /media/hd2t/backups/exports/volumes/freshrss/
 ```
 
 Ejemplo de exportación OPML por CLI:
 
 ```bash
-mkdir -p /mnt/hd2t/backups/exports/freshrss
+mkdir -p /media/hd2t/backups/exports/freshrss
 cd /home/<user>/homelab/compose/productivity-freshrss
 docker compose exec -T -u www-data freshrss php cli/export-opml-for-user.php --user <usuario> \
-  > /mnt/hd2t/backups/exports/freshrss/<usuario>-feeds-$(date +%F).opml
-ls -lh /mnt/hd2t/backups/exports/freshrss/<usuario>-feeds-$(date +%F).opml
+  > /media/hd2t/backups/exports/freshrss/<usuario>-feeds-$(date +%F).opml
+ls -lh /media/hd2t/backups/exports/freshrss/<usuario>-feeds-$(date +%F).opml
 ```
 
 Buenas prácticas de restore:

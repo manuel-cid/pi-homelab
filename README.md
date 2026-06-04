@@ -35,12 +35,12 @@ SSD NVMe 500 GB
     ├── scripts/
     └── .env
 
-hd2t (2 TB) → /mnt/hd2t/
+hd2t (2 TB) → /media/hd2t/
 ├── media/              # Jellyfin, Navidrome, Audiobookshelf, Calibre-Web
 ├── downloads/          # descargas
 └── backups/            # copias de seguridad del homelab
 
-hd5t (5 TB) → /mnt/hd5t/
+hd5t (5 TB) → /media/hd5t/
 └── stash/              # biblioteca multimedia Stash
 ```
 

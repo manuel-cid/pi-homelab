@@ -7,7 +7,7 @@
 La política de este proyecto se mantiene igual que en el resto de servicios multimedia:
 
 - la configuración, la base de datos, la caché y el estado del servicio viven en `/home/<user>/homelab/data/navidrome/` sobre el **SSD NVMe**
-- la música vive en `/mnt/hd2t/media/navidrome/music/`
+- la música vive en `/media/hd2t/media/navidrome/music/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
 - **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
@@ -22,7 +22,7 @@ Navidrome encaja especialmente bien en este homelab porque expone su biblioteca 
 - Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceso remoto seguro.
 - Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Navidrome detrás del reverse proxy interno.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
-- Tener montado `hd2t` en `/mnt/hd2t`.
+- Tener montado `hd2t` en `/media/hd2t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:
   - `14001/tcp` en el host para acceso web y API desde LAN o Tailscale
@@ -55,7 +55,7 @@ services:
     volumes:
       - /home/<user>/homelab/data/navidrome/data:/data
       - /home/<user>/homelab/data/navidrome/cache:/cache
-      - /mnt/hd2t/media/navidrome/music:/music:ro
+      - /media/hd2t/media/navidrome/music:/music:ro
     networks:
       - default
       - proxy
@@ -83,13 +83,13 @@ Notas sobre este Compose:
 ```bash
 mkdir -p /home/<user>/homelab/compose/media-navidrome
 mkdir -p /home/<user>/homelab/data/navidrome/{data,cache}
-sudo mkdir -p /mnt/hd2t/media/navidrome/music
+sudo mkdir -p /media/hd2t/media/navidrome/music
 ```
 
 Una organización razonable de la biblioteca puede ser:
 
 ```bash
-sudo mkdir -p /mnt/hd2t/media/navidrome/music/{artists,compilations,soundtracks}
+sudo mkdir -p /media/hd2t/media/navidrome/music/{artists,compilations,soundtracks}
 ```
 
 No es obligatorio seguir ese esquema exacto, pero sí conviene mantener una estructura estable y metadatos bien etiquetados para que el escaneo de Navidrome sea predecible.
@@ -101,12 +101,12 @@ Usa el mismo usuario operativo del host que administra Docker y las carpetas del
 ```bash
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/navidrome
-sudo chown -R <user>:<user> /mnt/hd2t/media/navidrome
+sudo chown -R <user>:<user> /media/hd2t/media/navidrome
 
 sudo find /home/<user>/homelab/data/navidrome -type d -exec chmod 775 {} \;
 sudo find /home/<user>/homelab/data/navidrome -type f -exec chmod 664 {} \;
-sudo find /mnt/hd2t/media/navidrome -type d -exec chmod 755 {} \;
-sudo find /mnt/hd2t/media/navidrome -type f -exec chmod 644 {} \;
+sudo find /media/hd2t/media/navidrome -type d -exec chmod 755 {} \;
+sudo find /media/hd2t/media/navidrome -type f -exec chmod 644 {} \;
 ```
 
 La lógica es la misma que en otros servicios multimedia:
@@ -230,7 +230,7 @@ Rutas persistentes del servicio:
 - Configuración opcional avanzada: `/home/<user>/homelab/data/navidrome/data/navidrome.toml`
 - Base de datos y datos del servicio: `/home/<user>/homelab/data/navidrome/data`
 - Caché y temporales: `/home/<user>/homelab/data/navidrome/cache`
-- Biblioteca musical: `/mnt/hd2t/media/navidrome/music`
+- Biblioteca musical: `/media/hd2t/media/navidrome/music`
 
 Criterio de almacenamiento:
 
@@ -252,7 +252,7 @@ Opcional según tu política de restauración:
 
 En general, la caché puede reconstruirse. Lo realmente importante es conservar la configuración efectiva, la base de datos y el estado del servicio.
 
-La biblioteca de `/mnt/hd2t/media/navidrome/music` no forma parte del backup de la aplicación en sí; es el **contenido musical** y debe tratarse según la estrategia general de copias del homelab.
+La biblioteca de `/media/hd2t/media/navidrome/music` no forma parte del backup de la aplicación en sí; es el **contenido musical** y debe tratarse según la estrategia general de copias del homelab.
 
 Para una copia más consistente de la base de datos interna, detén brevemente el contenedor durante el backup:
 

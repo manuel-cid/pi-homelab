@@ -254,7 +254,7 @@ Procedimiento manual consistente para copia de filesystem:
 ```bash
 cd /home/<user>/homelab/compose/productivity-mealie
 docker compose stop mealie
-rsync -a /home/<user>/homelab/data/mealie/ /mnt/hd2t/backups/exports/volumes/mealie/
+rsync -a /home/<user>/homelab/data/mealie/ /media/hd2t/backups/exports/volumes/mealie/
 docker compose start mealie
 ```
 
