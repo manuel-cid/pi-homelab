@@ -104,14 +104,23 @@ Abre el fichero:
 sudo nano /etc/fstab
 ```
 
-Las entradas finales deben quedar así:
+El formato de las entradas depende de cómo se prepararon los discos:
+
+- **Discos nuevos** formateados según [03-preparacion-discos.md](../../docs/00-hardware/03-preparacion-discos.md), que ya tienen etiqueta asignada con `e2label`:
 
 ```fstab
 LABEL=hd2t  /media/hd2t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
 LABEL=hd5t  /media/hd5t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
 ```
 
-Si en `fstab` todavía aparecen rutas anteriores como `/srv/storage/hd2t` o `/srv/storage/hd5t`, **sustitúyelas** por las rutas nuevas en `/media/...`. No dejes entradas duplicadas para la misma etiqueta.
+- **Discos reutilizados** con datos existentes según [04-discos-con-datos.md](../../docs/00-hardware/04-discos-con-datos.md), donde se recomienda usar **UUID** para evitar ambigüedades (consulta el UUID real con `sudo blkid`):
+
+```fstab
+UUID=<uuid-de-hd2t>  /media/hd2t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
+UUID=<uuid-de-hd5t>  /media/hd5t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
+```
+
+Si en `fstab` todavía aparecen rutas anteriores como `/srv/storage/hd2t` o `/srv/storage/hd5t`, **sustitúyelas** por las rutas nuevas en `/media/...`. No dejes entradas duplicadas para el mismo disco.
 
 ### 5. Montar y validar los discos en las rutas finales
 
