@@ -74,20 +74,21 @@ HOMEPAGE_PORT=17000
 HOMEPAGE_ALLOWED_HOSTS=localhost,127.0.0.1,<ip-lan-de-la-pi>:17000,homepage.lan,pi-homelab.<tailnet>.ts.net,pi-homelab.<tailnet>.ts.net:17000
 
 HOMEPAGE_VAR_PORTAINER_URL=http://portainer.lan
-HOMEPAGE_VAR_GRAFANA_URL=http://grafana.lan
-HOMEPAGE_VAR_UPTIME_URL=http://uptime-kuma.lan
 HOMEPAGE_VAR_PIHOLE_URL=http://192.168.1.194/admin
 HOMEPAGE_VAR_JELLYFIN_URL=http://jellyfin.lan
 HOMEPAGE_VAR_NAVIDROME_URL=http://navidrome.lan
 HOMEPAGE_VAR_AUDIOBOOKSHELF_URL=http://audiobookshelf.lan
 HOMEPAGE_VAR_CALIBRE_URL=http://calibre-web.lan
-HOMEPAGE_VAR_TRANSMISSION_URL=http://transmission.lan
-HOMEPAGE_VAR_PROWLARR_URL=http://prowlarr.lan
+HOMEPAGE_VAR_TRANSMISSION_URL=http://<ip-lan-de-la-pi>:15000
+HOMEPAGE_VAR_PROWLARR_URL=http://<ip-lan-de-la-pi>:15001
 HOMEPAGE_VAR_VAULTWARDEN_URL=https://pi-homelab.<tailnet>.ts.net/vaultwarden/
 HOMEPAGE_VAR_LINKDING_URL=http://<ip-lan-de-la-pi>:9090
-HOMEPAGE_VAR_PAPERLESS_URL=http://paperless.lan
-HOMEPAGE_VAR_FRESHRSS_URL=http://<ip-lan-de-la-pi>:16005
-HOMEPAGE_VAR_HOMEASSISTANT_URL=http://homeassistant.lan
+HOMEPAGE_VAR_PAPERLESS_URL=http://<ip-lan-de-la-pi>:16002
+HOMEPAGE_VAR_HOMEASSISTANT_URL=http://<ip-lan-de-la-pi>:8123
+
+# TODO: verificar la URL canónica final de Grafana, Uptime Kuma y FreshRSS si decides
+# mostrarlos en Homepage; sus documentos base los dejan detrás de 127.0.0.1 o de Caddy,
+# así que no conviene añadir aquí enlaces de ejemplo no documentados todavía.
 
 HOMEPAGE_VAR_JELLYFIN_API_KEY=REEMPLAZAR_SI_USAS_WIDGET_DE_JELLYFIN
 ```
@@ -212,16 +213,6 @@ Archivo: `/home/<user>/homelab/config/homepage/services.yaml`
         href: "{{HOMEPAGE_VAR_PORTAINER_URL}}"
         description: Gestion de contenedores y stacks
         siteMonitor: "{{HOMEPAGE_VAR_PORTAINER_URL}}"
-    - Grafana:
-        icon: grafana.png
-        href: "{{HOMEPAGE_VAR_GRAFANA_URL}}"
-        description: Metricas y dashboards
-        siteMonitor: "{{HOMEPAGE_VAR_GRAFANA_URL}}"
-    - Uptime Kuma:
-        icon: uptime-kuma.png
-        href: "{{HOMEPAGE_VAR_UPTIME_URL}}"
-        description: Disponibilidad del homelab
-        siteMonitor: "{{HOMEPAGE_VAR_UPTIME_URL}}"
     - Pi-hole:
         icon: pi-hole.png
         href: "{{HOMEPAGE_VAR_PIHOLE_URL}}"
@@ -281,11 +272,6 @@ Archivo: `/home/<user>/homelab/config/homepage/services.yaml`
         href: "{{HOMEPAGE_VAR_PAPERLESS_URL}}"
         description: Gestion documental
         siteMonitor: "{{HOMEPAGE_VAR_PAPERLESS_URL}}"
-    - FreshRSS:
-        icon: freshrss.png
-        href: "{{HOMEPAGE_VAR_FRESHRSS_URL}}"
-        description: Lector RSS
-        siteMonitor: "{{HOMEPAGE_VAR_FRESHRSS_URL}}"
 
 - Domotica:
     - Home Assistant:
@@ -302,6 +288,8 @@ Archivo: `/home/<user>/homelab/config/homepage/bookmarks.yaml`
 ```
 
 Con esa base ya tienes un panel funcional y fácil de mantener. La idea no es rellenar todos los servicios el primer día, sino arrancar con los imprescindibles y refinar la portada según el uso real.
+
+Si más adelante quieres añadir tarjetas para servicios como **Grafana**, **Uptime Kuma** o **FreshRSS**, define primero su URL canónica real en **Caddy** o el método de acceso operativo que vayas a mantener. Evita poner en Homepage enlaces de ejemplo a hostnames o rutas que todavía no existan en el resto de la documentación.
 
 ### 4. Personalizar sin complicar el mantenimiento
 

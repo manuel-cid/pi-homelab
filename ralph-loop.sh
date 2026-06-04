@@ -1,612 +1,799 @@
 #!/usr/bin/env bash
-#
-# ralph-loop.sh v2.1 — "Ralph Loop" con soporte multi-backend
-#
-# Recorre las tareas pendientes (- [ ]) de un documento markdown y para cada
-# una ejecuta un agente CLI con el contexto mínimo necesario (solo la fase,
-# la descripción de la tarea y las convenciones de documentación).
-#
-# Backends soportados:
-#   - codex  (defecto)  — OpenAI Codex CLI (codex exec --dangerously-bypass-approvals-and-sandbox)
-#   - devin  (--devin)  — Devin CLI (devin --permission-mode dangerous -p)
-#
-# v2.0 mejoras sobre v1.0:
-#   - Contexto mínimo por tarea: extrae solo la sección relevante del plan
-#     en lugar de pedir a Devin que lea el plan completo (~285 líneas).
-#     Esto evita que Devin lea todos los docs ya creados para "entender el
-#     contexto", reduciendo el tamaño de contexto de ~700KB a ~5KB por tarea.
-#   - Timeout configurable por tarea (--timeout, defecto 20 min). Detecta bloqueos
-#     por TLS disconnect o API sin respuesta.
-#   - Máximo de iteraciones configurable (--max-iter, defecto 200) para evitar
-#     bucles infinitos.
-#   - Todos los logs llevan timestamp (fecha y hora).
-#   - Log estructurado a fichero (ralph-loop.log junto al plan).
-#   - Métricas por tarea: duración, intentos, estado.
-#   - Exit codes: 0 = bucle completado correctamente, 2 = error fatal.
-#
-# Requisitos:
-#   - Codex CLI instalado (npm install -g @openai/codex) — o —
-#   - Devin CLI instalado (https://cli.devin.ai/install.sh) si se usa --devin
-#
-# Uso:
-#   ./ralph-loop.sh <plan.md>                          # ejecuta el bucle
-#   ./ralph-loop.sh <plan.md> --status                 # muestra progreso
-#   ./ralph-loop.sh <plan.md> --timeout 25 --max-iter 100 # personalizar
-#
-set -euo pipefail
 
-# ── Configuración por defecto ────────────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-TASK_TIMEOUT_MIN=20      # minutos máximos por intento de tarea
-MAX_ITERATIONS=200       # máximo de iteraciones del bucle
-LOG_FILE="/dev/null"     # se sobreescribe tras parsear argumentos
-BACKEND="codex"          # backend por defecto (codex | devin)
+# Configuration
+# -------------
+# All configuration lives in .ralph/.env (relative to the invocation directory).
+# It is the only configuration source: the shell environment is never consulted
+# for RALPH_* settings. The file is created with defaults on first run if it does
+# not exist (write_default_env_file).
+#
+# The file is sourced before every iteration (load_env_file) and the config is
+# then recomputed (resolve_config), so editing it mid-run takes effect on the
+# next iteration.
+#   - It is sourced without "set -a", so RALPH_* become plain shell variables,
+#     not exported environment variables. RALPH_LOCAL_DIR is the only exported
+#     variable (the script-managed .ralph directory).
+#   - Plain "KEY=value" lines work; quote values that contain spaces.
+#   - An invalid value is reported and the previous good config is kept, so a
+#     typo will not abort the loop.
 
-# ── Colores ──────────────────────────────────────────────────────────────────
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-DIM='\033[2m'
-RESET='\033[0m'
+set -u
 
-# ── Funciones auxiliares ─────────────────────────────────────────────────────
+usage() {
+  cat <<'EOF'
+Usage: ./ralph-loop.sh MAX_ITERATIONS PROMPT_FILE
 
-ts() { date '+%Y-%m-%d %H:%M:%S'; }
+Runs fresh AI CLI sessions in a loop from the directory where this script was
+invoked. The invocation directory is treated as the user's workspace.
 
-die()  { echo -e "$(ts) ${RED}[ERROR]${RESET} $*" >&2; log_file "ERROR" "$*"; exit 2; }
-info() { echo -e "$(ts) ${CYAN}[ralph]${RESET} $*"; log_file "INFO" "$*"; }
-warn() { echo -e "$(ts) ${YELLOW}[ralph]${RESET} $*"; log_file "WARN" "$*"; }
-ok()   { echo -e "$(ts) ${GREEN}[ralph]${RESET} $*"; log_file "OK" "$*"; }
+Arguments:
+  MAX_ITERATIONS  Positive integer.
+  PROMPT_FILE     Existing regular file. Its contents are sent to the selected
+                  AI CLI as the prompt.
 
-log_file() {
-  local level="$1"; shift
-  # Eliminar códigos ANSI para el fichero de log
-  local clean
-  clean=$(echo -e "$*" | sed 's/\x1b\[[0-9;]*m//g')
-  echo "$(ts) [${level}] ${clean}" >> "$LOG_FILE" 2>/dev/null || true
+Configuration (.ralph/.env):
+  All settings live in .ralph/.env in the invocation directory. It is the only
+  configuration source; the shell environment is ignored. The file is created
+  with these defaults on first run. Quote values that contain spaces.
+
+  RALPH_TOOL             AI CLI to run. Allowed values: codex, claude, gemini.
+                         Default: codex
+  RALPH_MODEL_CAPABILITY Normalized model capability: low, med, or high.
+                         Default: med
+  RALPH_THINKING         Best-effort thinking/reasoning toggle: true or false.
+                         Default: false
+  RALPH_SWITCH_ON_EXHAUSTION
+                         On a non-zero iteration, ask the next tool in the
+                         rotation (codex -> claude -> gemini -> codex) whether
+                         the failure was token/quota exhaustion of the failed
+                         tool; if so, rewrite RALPH_TOOL in .ralph/.env so the
+                         next iteration switches agent. true or false.
+                         Default: true
+
+  RALPH_MEMORY_MAX       Hard RAM limit for the agent process, enforced by the
+                         Linux kernel via a transient systemd user scope
+                         (systemd-run --user --scope -p MemoryMax=... with swap
+                         disabled). When the agent exceeds the limit it is
+                         OOM-killed and the iteration exits non-zero. Accepts a
+                         systemd memory value (e.g. 8G, 512M, raw bytes, or a
+                         percentage). Set to empty to disable the limit. If
+                         systemd-run user scopes are unavailable, the agent runs
+                         without a limit and a warning is printed.
+                         Default: 8G
+
+  RALPH_CODEX_COMMAND    Command name/path for Codex.
+                         Default: codex
+  RALPH_CODEX_FLAGS      Whitespace-separated flags for "codex exec".
+                         Default: --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check
+  RALPH_CODEX_MODEL_LOW  Codex low-capability model.
+                         Default: gpt-5.4-mini
+  RALPH_CODEX_MODEL_MED  Codex medium-capability model.
+                         Default: gpt-5.4
+  RALPH_CODEX_MODEL_HIGH Codex high-capability model.
+                         Default: gpt-5.5
+
+  RALPH_CLAUDE_COMMAND   Command name/path for Claude.
+                         Default: claude
+  RALPH_CLAUDE_FLAGS     Whitespace-separated flags for "claude -p".
+                         Default: --permission-mode bypassPermissions
+  RALPH_CLAUDE_MODEL_LOW Claude low-capability model.
+                         Default: haiku
+  RALPH_CLAUDE_MODEL_MED Claude medium-capability model.
+                         Default: sonnet
+  RALPH_CLAUDE_MODEL_HIGH Claude high-capability model.
+                         Default: opus
+
+  RALPH_GEMINI_COMMAND   Command name/path for Gemini.
+                         Default: gemini
+  RALPH_GEMINI_FLAGS     Whitespace-separated flags for "gemini".
+                         Default: --approval-mode=yolo --skip-trust
+  RALPH_GEMINI_MODEL_LOW Gemini low-capability model.
+                         Default: gemini-2.5-flash-lite
+  RALPH_GEMINI_MODEL_MED Gemini medium-capability model.
+                         Default: gemini-2.5-flash
+  RALPH_GEMINI_MODEL_HIGH Gemini high-capability model.
+                         Default: gemini-2.5-pro
+
+  RALPH_LOOP_MAX_LOGS    Positive integer max logs to retain in .ralph/logs.
+                         Default: min(MAX_ITERATIONS, 50)
+
+Live reload:
+  .ralph/.env is sourced before every iteration, so editing it while the loop
+  runs takes effect on the next iteration. An invalid value is reported and the
+  previous good configuration is kept.
+
+Stop control:
+  Create stop.md in the invocation directory, or any stop.md inside the plan/
+  subtree, to stop before the next iteration. If a matching file exists at
+  startup, the script exits without deleting it.
+EOF
 }
 
-# Extraer y registrar métricas de tokens/contexto de la salida del agente
-#
-# NOTA: Codex CLI --json reporta tokens ACUMULADOS en cada turn.completed,
-# no por turno individual (ver https://github.com/openai/codex/issues/17539).
-# Para obtener el uso real de la ventana de contexto, calculamos el delta
-# de input_tokens entre los dos últimos turnos: eso refleja cuánto contexto
-# ocupó la última llamada al modelo.
-log_token_usage() {
-  local task="$1"
-  local json_file="${AGENT_JSON_FILE:-}"
-  local output_file="${AGENT_OUTPUT_FILE:-}"
+is_positive_integer() {
+  case "${1:-}" in
+    ''|*[!0-9]*)
+      return 1
+      ;;
+  esac
 
-  # ── Codex con --json: parsear eventos JSON para tokens reales ──
-  if [[ "$BACKEND" == "codex" && -f "$json_file" && -s "$json_file" ]]; then
-    local ctx_window=200000
+  [ "$1" -gt 0 ] 2>/dev/null
+}
 
-    # Extraer todos los valores de input_tokens (acumulativos por turno)
-    local all_input all_output
-    all_input=$(grep -o '"input_tokens":[0-9]*' "$json_file" | cut -d: -f2)
-    all_output=$(grep -o '"output_tokens":[0-9]*' "$json_file" | cut -d: -f2)
-    # Fallback: patrones alternativos de Codex JSON
-    if [[ -z "$all_input" ]]; then
-      all_input=$(grep -o '"prompt_tokens":[0-9]*' "$json_file" | cut -d: -f2)
-    fi
-    if [[ -z "$all_output" ]]; then
-      all_output=$(grep -o '"completion_tokens":[0-9]*' "$json_file" | cut -d: -f2)
-    fi
-    if [[ -z "$all_input" ]]; then
-      all_input=$(grep -o '"total_input_tokens":[0-9]*' "$json_file" | cut -d: -f2)
-    fi
-    if [[ -z "$all_output" ]]; then
-      all_output=$(grep -o '"total_output_tokens":[0-9]*' "$json_file" | cut -d: -f2)
-    fi
+normalize_capability() {
+  case "${1:-med}" in
+    low|med|high)
+      printf '%s\n' "$1"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
 
-    # Totales acumulados (último valor = suma de toda la sesión)
-    local cum_input cum_output cum_total
-    cum_input=$(echo "$all_input" | tail -1)
-    cum_output=$(echo "$all_output" | tail -1)
-    cum_input=${cum_input:-0}
-    cum_output=${cum_output:-0}
-    cum_total=$(( cum_input + cum_output ))
+normalize_bool() {
+  case "${1:-false}" in
+    true|false)
+      printf '%s\n' "$1"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
 
-    if (( cum_total > 0 )); then
-      # Delta del último turno: último acumulado - penúltimo acumulado
-      local prev_input last_input_delta num_turns
-      num_turns=$(echo "$all_input" | wc -l | tr -d ' ')
-      if (( num_turns >= 2 )); then
-        prev_input=$(echo "$all_input" | tail -2 | head -1)
-        last_input_delta=$(( cum_input - prev_input ))
-      else
-        # Solo un turno: el acumulado ES el turno
-        last_input_delta=$cum_input
-      fi
+normalize_memory_max() {
+  # Accept an empty value (limit disabled), "infinity", an integer count of
+  # bytes, an integer with a systemd unit suffix (K/M/G/T/P/E, base-1024), or an
+  # integer percentage. Anything else is rejected so a typo cannot silently
+  # disable the limit or be passed verbatim to systemd-run.
+  local value=${1:-}
 
-      local pct_context pct_cumulative
-      pct_context=$(awk "BEGIN {printf \"%.1f\", ($last_input_delta / $ctx_window) * 100}")
-      pct_cumulative=$(awk "BEGIN {printf \"%.1f\", ($cum_total / $ctx_window) * 100}")
-      log_file "TOKENS" "${task} | last_turn_input=${last_input_delta} (~${pct_context}% ventana ${ctx_window}) | acumulado: in=${cum_input} out=${cum_output} total=${cum_total} (~${pct_cumulative}% coste) | turnos=${num_turns}"
+  case "$value" in
+    ''|infinity)
+      printf '%s\n' "$value"
+      ;;
+    *%)
+      case "${value%\%}" in ''|*[!0-9]*) return 1 ;; esac
+      printf '%s\n' "$value"
+      ;;
+    *[KMGTPE])
+      case "${value%?}" in ''|*[!0-9]*) return 1 ;; esac
+      printf '%s\n' "$value"
+      ;;
+    *)
+      case "$value" in *[!0-9]*) return 1 ;; esac
+      printf '%s\n' "$value"
+      ;;
+  esac
+}
+
+rotate_logs() {
+  local log_dir=$1
+  local max_logs=$2
+
+  ls -t "$log_dir"/*.log 2>/dev/null | tail -n +"$((max_logs + 1))" | xargs -r rm -f --
+}
+
+find_stop_file() {
+  local file
+
+  if [ -e "$initial_cwd/stop.md" ]; then
+    printf '%s\n' "$initial_cwd/stop.md"
+    return 0
+  fi
+
+  if [ -d "$initial_cwd/plan" ]; then
+    file=$(find "$initial_cwd/plan" -type f -name 'stop.md' -print -quit 2>/dev/null)
+    if [ -n "$file" ]; then
+      printf '%s\n' "$file"
       return 0
     fi
   fi
 
-  # ── Fallback para Devin o si el JSON no tuvo datos ──
-  [[ -f "$output_file" && -s "$output_file" ]] || return 0
-
-  local clean_output token_lines
-  clean_output=$(sed $'s/\r/\n/g' "$output_file" | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g')
-  token_lines=$(echo "$clean_output" | grep -oE '[0-9,]+[[:space:]]*tokens?[[:space:]]*(used|input|output|total|consumed)' | tail -5)
-
-  if [[ -n "$token_lines" ]]; then
-    log_file "TOKENS" "${task}"
-    while IFS= read -r _tline; do
-      log_file "TOKENS" "  $_tline"
-    done <<< "$token_lines"
-  else
-    # Estimar tokens a partir del tamaño de la salida (~4 chars por token)
-    local file_size est_tokens pct_context
-    file_size=$(wc -c < "$output_file" | tr -d ' ')
-    est_tokens=$(( file_size / 4 ))
-    local ctx_window=200000
-    pct_context=$(awk "BEGIN {printf \"%.1f\", ($est_tokens / $ctx_window) * 100}")
-    log_file "TOKENS" "${task} | estimado: ~${est_tokens} tokens (~${pct_context}% de ${ctx_window}) [sin datos reales del agente]"
-  fi
+  return 1
 }
 
-usage() {
-  cat <<EOF
-Uso: $(basename "$0") <plan.md> [opciones]
-
-  <plan.md>    Documento markdown con tareas en formato checkbox (- [ ] tarea)
-
-Opciones:
-  --timeout N   Minutos máximos por intento de tarea (defecto: ${TASK_TIMEOUT_MIN})
-  --max-iter N  Máximo de iteraciones del bucle (defecto: ${MAX_ITERATIONS})
-  --devin       Usar Devin CLI en lugar de Codex (defecto: codex)
-  --status      Muestra resumen de progreso y sale
-  -h, --help    Muestra esta ayuda
-
-Requisitos:
-  Codex CLI (defecto) o Devin CLI (con --devin)
-
-Ejemplo:
-  ./$(basename "$0") plans/PLAN.md
-  ./$(basename "$0") plans/PLAN.md --timeout 25 --max-iter 100
-  ./$(basename "$0") plans/PLAN.md --status
-EOF
-  exit 0
+model_for_tool() {
+  case "$1:$2" in
+    codex:low) printf '%s\n' "${RALPH_CODEX_MODEL_LOW:-gpt-5.4-mini}" ;;
+    codex:med) printf '%s\n' "${RALPH_CODEX_MODEL_MED:-gpt-5.4}" ;;
+    codex:high) printf '%s\n' "${RALPH_CODEX_MODEL_HIGH:-gpt-5.5}" ;;
+    claude:low) printf '%s\n' "${RALPH_CLAUDE_MODEL_LOW:-haiku}" ;;
+    claude:med) printf '%s\n' "${RALPH_CLAUDE_MODEL_MED:-sonnet}" ;;
+    claude:high) printf '%s\n' "${RALPH_CLAUDE_MODEL_HIGH:-opus}" ;;
+    gemini:low) printf '%s\n' "${RALPH_GEMINI_MODEL_LOW:-gemini-2.5-flash-lite}" ;;
+    gemini:med) printf '%s\n' "${RALPH_GEMINI_MODEL_MED:-gemini-2.5-flash}" ;;
+    gemini:high) printf '%s\n' "${RALPH_GEMINI_MODEL_HIGH:-gemini-2.5-pro}" ;;
+  esac
 }
 
-progress_bar() {
-  local pct=$1 bar_width=40
-  local filled=$(( pct * bar_width / 100 ))
-  local empty=$(( bar_width - filled ))
-  printf "  ["
-  for (( j=0; j<filled; j++ )); do printf "${GREEN}█${RESET}"; done
-  for (( j=0; j<empty;  j++ )); do printf "${RED}░${RESET}"; done
-  printf "]  %d%%\n" "$pct"
-}
+effort_level() {
+  local capability=$1
+  local thinking=$2
 
-# ── Funciones de plan ────────────────────────────────────────────────────────
-
-count_tasks() {
-  local n
-  n=$(grep -cE '^\s*- \[[ x]\]' "$1" 2>/dev/null) || true
-  echo "${n:-0}"
-}
-
-count_done() {
-  local n
-  n=$(grep -cE '^\s*- \[x\]' "$1" 2>/dev/null) || true
-  echo "${n:-0}"
-}
-
-count_pending() {
-  local n
-  n=$(grep -cE '^\s*- \[ \]' "$1" 2>/dev/null) || true
-  echo "${n:-0}"
-}
-
-show_status() {
-  local total done_count pending pct
-  total=$(count_tasks "$PLAN_FILE")
-  done_count=$(count_done "$PLAN_FILE")
-  pending=$(count_pending "$PLAN_FILE")
-  pct=0
-  (( total > 0 )) && pct=$(( done_count * 100 / total ))
-
-  echo ""
-  echo -e "${BOLD}══════════════════════════════════════${RESET}"
-  echo -e "${BOLD}       Ralph Loop v2.1 — Progreso${RESET}"
-  echo -e "${BOLD}══════════════════════════════════════${RESET}"
-  echo ""
-  echo -e "  ${GREEN}Completadas${RESET}: ${done_count}/${total}  (${pct}%)"
-  echo -e "  ${YELLOW}Pendientes${RESET} : ${pending}"
-  echo ""
-  progress_bar "$pct"
-  echo ""
-}
-
-get_next_pending_task() {
-  # Devuelve la primera tarea pendiente que no esté en la lista de saltadas
-  while IFS= read -r line; do
-    local task_text
-    task_text=$(echo "$line" | sed 's/^\s*- \[ \] //')
-    local is_skipped=false
-    if (( ${#skipped_lines[@]} > 0 )); then
-      for s in "${skipped_lines[@]}"; do
-        if [[ "$s" == "$task_text" ]]; then
-          is_skipped=true
-          break
-        fi
-      done
-    fi
-    if [[ "$is_skipped" == "false" ]]; then
-      echo "$task_text"
-      return
-    fi
-  done < <(grep -E '^\s*- \[ \]' "$PLAN_FILE")
-}
-
-get_next_pending_line() {
-  # Devuelve el número de línea de la primera tarea pendiente no saltada
-  while IFS= read -r match; do
-    local lnum task_text
-    lnum=$(echo "$match" | cut -d: -f1)
-    task_text=$(echo "$match" | sed 's/^[0-9]*:\s*- \[ \] //')
-    local is_skipped=false
-    if (( ${#skipped_lines[@]} > 0 )); then
-      for s in "${skipped_lines[@]}"; do
-        if [[ "$s" == "$task_text" ]]; then
-          is_skipped=true
-          break
-        fi
-      done
-    fi
-    if [[ "$is_skipped" == "false" ]]; then
-      echo "$lnum"
-      return
-    fi
-  done < <(grep -n -E '^\s*- \[ \]' "$PLAN_FILE")
-}
-
-mark_done() {
-  local line_num="$1"
-  if sed --version 2>/dev/null | grep -q GNU; then
-    sed -i "${line_num}s/- \[ \]/- [x]/" "$PLAN_FILE"
-  else
-    sed -i '' "${line_num}s/- \[ \]/- [x]/" "$PLAN_FILE"
-  fi
-}
-
-# ── Extracción de contexto mínimo ───────────────────────────────────────────
-#
-# En lugar de decirle a Devin "lee el plan completo", extraemos:
-#   1. Cabecera del plan (líneas 1-8: título, hardware, alcance de red)
-#   2. La sección de la fase que contiene la tarea (título + tabla con descripciones)
-#   3. Las convenciones de documentación
-# Esto reduce el contexto de ~285 líneas (+ todos los docs que Devin leía)
-# a ~30-50 líneas de texto puro embebido en el prompt.
-
-extract_plan_header() {
-  # Líneas desde el inicio hasta el primer "---" (cabecera del plan)
-  awk '/^---$/{exit} {print}' "$PLAN_FILE"
-}
-
-extract_phase_section() {
-  local task_line="$1"
-  # Los checkboxes están bajo "### Fase N" pero las descripciones bajo "## Fase N".
-  # Extraemos el número de fase del header ### más cercano por encima de la tarea,
-  # y luego buscamos la sección ## Fase N correspondiente (con la tabla de descripciones).
-  local phase_num phase_start phase_end
-
-  # 1. Encontrar "### Fase N" más cercano por encima de la tarea
-  local phase_header
-  phase_header=$(head -n "$task_line" "$PLAN_FILE" | grep -n '^### Fase' | tail -1)
-  phase_num=$(echo "$phase_header" | sed 's/.*Fase \([0-9]*\).*/\1/')
-
-  if [[ -z "$phase_num" ]]; then
-    # Fallback: extraer de la ruta del doc (docs/NN-xxx/)
-    local doc_line
-    doc_line=$(sed -n "${task_line}p" "$PLAN_FILE")
-    phase_num=$(echo "$doc_line" | grep -oE 'docs/[0-9]+' | sed 's/docs//' | sed 's/\///')
-  fi
-
-  # 2. Buscar "## Fase <N>" (sección con la tabla de descripciones, no la de checkboxes)
-  phase_start=$(grep -n "^## Fase ${phase_num} " "$PLAN_FILE" | head -1 | cut -d: -f1)
-
-  if [[ -z "$phase_start" ]]; then
-    echo "(No se encontró la sección de la Fase ${phase_num:-?})"
+  # Codex exposes web_search in some environments, and the API rejects that
+  # tool set with reasoning.effort=minimal. Use low as the floor.
+  if [ "$thinking" = false ]; then
+    printf '%s\n' low
     return 0
   fi
 
-  # 3. Desde phase_start, hasta el siguiente "---"
-  phase_end=$(tail -n +"$phase_start" "$PLAN_FILE" | grep -n '^---$' | head -1 | cut -d: -f1)
-  if [[ -n "$phase_end" ]]; then
-    phase_end=$(( phase_start + phase_end - 2 ))
-  else
-    phase_end=$(wc -l < "$PLAN_FILE")
+  case "$capability" in
+    low) printf '%s\n' low ;;
+    med) printf '%s\n' medium ;;
+    high) printf '%s\n' high ;;
+  esac
+}
+
+gemini_thinking_budget() {
+  local model=$1
+  local capability=$2
+  local thinking=$3
+
+  if [ "$thinking" = false ]; then
+    case "$model" in
+      *pro*) printf '%s\n' 128 ;;
+      *) printf '%s\n' 0 ;;
+    esac
+    return 0
   fi
 
-  sed -n "${phase_start},${phase_end}p" "$PLAN_FILE"
+  case "$capability" in
+    low) printf '%s\n' 1024 ;;
+    med) printf '%s\n' -1 ;;
+    high) printf '%s\n' 8192 ;;
+  esac
 }
 
-extract_task_description() {
-  # Busca la fila de la tabla que contiene el path del doc de la tarea
-  local task="$1"
-  # El task viene como `docs/xx-foo/yy-bar.md` (con backticks)
-  local doc_path
-  doc_path=$(echo "$task" | sed 's/`//g')
-  grep -F "$doc_path" "$PLAN_FILE" | head -1
-}
+build_mem_limit_prefix() {
+  # Set the global array mem_limit_prefix to the command wrapper that enforces
+  # the hard RAM limit, or to an empty array when no limit applies. The wrapper
+  # is a transient systemd user scope: the kernel OOM-kills the agent if it
+  # exceeds MemoryMax, and MemorySwapMax=0 keeps the cap on RAM rather than swap.
+  mem_limit_prefix=()
 
-extract_conventions() {
-  # Sección "Convenciones para la Documentación"
-  local start end
-  start=$(grep -n '## Convenciones' "$PLAN_FILE" | head -1 | cut -d: -f1)
-  if [[ -n "$start" ]]; then
-    end=$(tail -n +"$start" "$PLAN_FILE" | grep -n '^---$' | head -1 | cut -d: -f1)
-    if [[ -n "$end" ]]; then
-      end=$(( start + end - 2 ))
+  [ -z "$ralph_memory_max" ] && return 0
+
+  # Probe systemd-run --user scopes once and cache the result across iterations.
+  if [ -z "${mem_limit_supported:-}" ]; then
+    if command -v systemd-run >/dev/null 2>&1 \
+      && systemd-run --user --scope -q true >/dev/null 2>&1; then
+      mem_limit_supported=yes
     else
-      # Hasta "## Lista de Tareas"
-      end=$(grep -n '## Lista de Tareas' "$PLAN_FILE" | head -1 | cut -d: -f1)
-      [[ -n "$end" ]] && end=$(( end - 1 ))
+      mem_limit_supported=no
     fi
-    [[ -n "$end" ]] && sed -n "${start},${end}p" "$PLAN_FILE"
+  fi
+
+  if [ "$mem_limit_supported" = yes ]; then
+    mem_limit_prefix=(systemd-run --user --scope -q \
+      -p MemoryMax="$ralph_memory_max" -p MemorySwapMax=0 --)
+  elif [ -z "${mem_limit_warned:-}" ]; then
+    echo "Warning: RALPH_MEMORY_MAX is set ($ralph_memory_max) but systemd-run --user scopes are unavailable; running the agent without a RAM limit." >&2
+    mem_limit_warned=yes
   fi
 }
 
-# ── Prompt para Devin (v2.0: contexto mínimo) ───────────────────────────────
+run_tool() {
+  local gemini_settings_dir
+  local gemini_settings_file
+  local run_exit_code
 
-build_prompt() {
-  local task="$1"
-  local task_line="$2"
-  local plan_header phase_section task_desc conventions
+  local extra_flags=()
 
-  plan_header=$(extract_plan_header)
-  phase_section=$(extract_phase_section "$task_line")
-  task_desc=$(extract_task_description "$task")
-  conventions=$(extract_conventions)
+  build_mem_limit_prefix
 
-  cat <<PROMPT
-Eres un redactor técnico. Tu trabajo es crear UN ÚNICO documento de documentación para un homelab.
+  case "$ralph_tool" in
+    codex)
+      if [ "$ralph_thinking" = false ]; then
+        extra_flags=(-c 'model_reasoning_summary="none"' -c hide_agent_reasoning=true)
+      fi
+      ${mem_limit_prefix[@]+"${mem_limit_prefix[@]}"} "$tool_command" exec "${tool_flags[@]}" \
+        -m "$tool_model" \
+        -o "$current_console_output" \
+        -c "model_reasoning_effort=\"$tool_reasoning_effort\"" \
+        ${extra_flags[@]+"${extra_flags[@]}"} \
+        - <"$prompt_path"
+      ;;
+    claude)
+      local -a env_prefix
+      if [ "$ralph_thinking" = false ]; then
+        env_prefix=(env CLAUDE_CODE_DISABLE_THINKING=1 "CLAUDE_CODE_EFFORT_LEVEL=$tool_reasoning_effort")
+      else
+        env_prefix=(env -u CLAUDE_CODE_DISABLE_THINKING "CLAUDE_CODE_EFFORT_LEVEL=$tool_reasoning_effort")
+      fi
+      ${mem_limit_prefix[@]+"${mem_limit_prefix[@]}"} "${env_prefix[@]}" "$tool_command" "${tool_flags[@]}" --model "$tool_model" --effort "$tool_reasoning_effort" -p <"$prompt_path"
+      ;;
+    gemini)
+      gemini_settings_dir=$(mktemp -d "$RALPH_LOCAL_DIR/gemini-settings.XXXXXX") || return 1
+      gemini_settings_file="$gemini_settings_dir/settings.json"
+      {
+        printf '{\n'
+        printf '  "modelConfigs": {\n'
+        printf '    "customAliases": {\n'
+        printf '      "ralph-selected": {\n'
+        printf '        "modelConfig": {\n'
+        printf '          "model": "%s",\n' "$tool_model"
+        printf '          "generateContentConfig": {\n'
+        printf '            "thinkingConfig": {\n'
+        printf '              "thinkingBudget": %s\n' "$tool_thinking_budget"
+        printf '            }\n'
+        printf '          }\n'
+        printf '        }\n'
+        printf '      }\n'
+        printf '    }\n'
+        printf '  }\n'
+        printf '}\n'
+      } >"$gemini_settings_file"
 
-══ CONTEXTO DEL PROYECTO ══
-
-${plan_header}
-
-══ FASE ACTUAL ══
-
-${phase_section}
-
-══ TAREA A EJECUTAR ══
-
-Crea el documento: ${task}
-
-Descripción de la tabla del plan:
-${task_desc}
-
-══ CONVENCIONES DE DOCUMENTACIÓN ══
-
-${conventions}
-
-══ INSTRUCCIONES ══
-
-1. Crea el documento indicado arriba siguiendo las convenciones.
-2. Si existen documentos hermanos en la misma fase (misma carpeta), léelos para mantener coherencia de estilo y referencias cruzadas.
-3. NO leas documentos de otras fases a menos que necesites referenciarlos específicamente.
-4. Una vez completado, marca la tarea como hecha en ${PLAN_FILE} cambiando - [ ] por - [x] SOLO en la línea de esta tarea.
-5. NO modifiques ninguna otra línea de ${PLAN_FILE}.
-PROMPT
-}
-
-# ── Ejecución con timeout ───────────────────────────────────────────────────
-
-run_agent_with_timeout() {
-  local prompt="$1"
-  local timeout_secs=$(( TASK_TIMEOUT_MIN * 60 ))
-  local agent_pid exit_code=0
-
-  # Fichero temporal para capturar la salida del agente
-  AGENT_OUTPUT_FILE=$(mktemp /tmp/ralph-agent-XXXXXX.log)
-  AGENT_JSON_FILE=$(mktemp /tmp/ralph-agent-XXXXXX.json)
-
-  # Lanzar el agente en background según el backend elegido, capturando stdout+stderr
-  if [[ "$BACKEND" == "devin" ]]; then
-    devin --permission-mode dangerous -p "$prompt" > >(tee "$AGENT_OUTPUT_FILE") 2>&1 &
-  else
-    # Ejecutamos codex con --json para obtener eventos estructurados (incluyen tokens).
-    # La salida JSON se guarda en AGENT_JSON_FILE para parsear tokens después.
-    # También se copia a AGENT_OUTPUT_FILE y se muestra en consola.
-    codex exec --json --dangerously-bypass-approvals-and-sandbox "$prompt" \
-      > >(tee "$AGENT_JSON_FILE" "$AGENT_OUTPUT_FILE") 2>&1 &
-  fi
-  agent_pid=$!
-
-  # Esperar con timeout
-  local elapsed=0
-  while kill -0 "$agent_pid" 2>/dev/null; do
-    if (( elapsed >= timeout_secs )); then
-      warn "Timeout alcanzado (${TASK_TIMEOUT_MIN} min). Matando proceso ${BACKEND} (PID ${agent_pid})..."
-      kill "$agent_pid" 2>/dev/null || true
-      sleep 2
-      kill -9 "$agent_pid" 2>/dev/null || true
-      wait "$agent_pid" 2>/dev/null || true
-      return 124  # código estándar de timeout
-    fi
-    sleep 5
-    (( elapsed += 5 )) || true
-  done
-
-  # Recoger el exit code real del agente
-  wait "$agent_pid" 2>/dev/null && exit_code=0 || exit_code=$?
-  return "$exit_code"
-}
-
-# ── Parseo de argumentos ────────────────────────────────────────────────────
-
-PLAN_FILE=""
-ACTION="loop"
-
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --status)    ACTION="status"; shift ;;
-    --timeout)   TASK_TIMEOUT_MIN="$2"; shift 2 ;;
-    --max-iter)  MAX_ITERATIONS="$2"; shift 2 ;;
-    --devin)     BACKEND="devin"; shift ;;
-    -h|--help)   usage ;;
-    -*)          die "Opción desconocida: $1" ;;
-    *)
-      [[ -z "$PLAN_FILE" ]] || die "Solo se acepta un archivo de plan"
-      PLAN_FILE="$1"; shift
+      ${mem_limit_prefix[@]+"${mem_limit_prefix[@]}"} \
+        env GEMINI_CLI_SYSTEM_SETTINGS_PATH="$gemini_settings_file" \
+        "$tool_command" "${tool_flags[@]}" --model ralph-selected <"$prompt_path"
+      run_exit_code=$?
+      rm -rf -- "$gemini_settings_dir"
+      return "$run_exit_code"
       ;;
   esac
-done
+}
 
-[[ -n "$PLAN_FILE" ]] || die "Falta el archivo del plan. Usa -h para ver la ayuda."
-[[ -f "$PLAN_FILE" ]] || die "No se encontró: ${PLAN_FILE}"
-PLAN_FILE="$(cd "$(dirname "$PLAN_FILE")" && pwd)/$(basename "$PLAN_FILE")"
+next_tool_in_rotation() {
+  # Fixed rotation: codex -> claude -> gemini -> codex. The next tool is always
+  # distinct from the current one. It acts both as the token-exhaustion detector
+  # and as the agent we switch to.
+  case "$1" in
+    codex) printf '%s\n' claude ;;
+    claude) printf '%s\n' gemini ;;
+    gemini) printf '%s\n' codex ;;
+  esac
+}
 
-# Log file junto al plan
-LOG_FILE="$(dirname "$PLAN_FILE")/ralph-loop.log"
+command_for_tool() {
+  case "$1" in
+    codex) printf '%s\n' "${RALPH_CODEX_COMMAND:-codex}" ;;
+    claude) printf '%s\n' "${RALPH_CLAUDE_COMMAND:-claude}" ;;
+    gemini) printf '%s\n' "${RALPH_GEMINI_COMMAND:-gemini}" ;;
+  esac
+}
 
-# ── Validaciones ─────────────────────────────────────────────────────────────
+flags_for_tool() {
+  case "$1" in
+    codex) printf '%s\n' "${RALPH_CODEX_FLAGS:---dangerously-bypass-approvals-and-sandbox --skip-git-repo-check}" ;;
+    claude) printf '%s\n' "${RALPH_CLAUDE_FLAGS:---permission-mode bypassPermissions}" ;;
+    gemini) printf '%s\n' "${RALPH_GEMINI_FLAGS:---approval-mode=yolo --skip-trust}" ;;
+  esac
+}
 
-if [[ "$ACTION" == "status" ]]; then
-  show_status
-  exit 0
-fi
+build_detector_prompt() {
+  local failed_tool=$1
+  local log=$2
 
-if [[ "$BACKEND" == "devin" ]]; then
-  command -v devin >/dev/null || die "Devin CLI no encontrado. Instálalo: curl -fsSL https://cli.devin.ai/install.sh | bash"
-else
-  command -v codex >/dev/null || die "Codex CLI no encontrado. Instálalo: npm install -g @openai/codex"
-fi
+  cat <<EOF
+You are a log analyzer. The AI coding CLI "$failed_tool" was just run and exited
+with a non-zero status. Below is the tail of its log output.
 
-total=$(count_tasks "$PLAN_FILE")
-(( total > 0 )) || die "No se encontraron tareas (- [ ] / - [x]) en ${PLAN_FILE}"
+Your only job: decide whether the failure was caused by "$failed_tool" running
+out of tokens, usage credits, or quota for its account/provider, or by being
+rate-limited or usage-limited (e.g. "usage limit reached", "out of credits",
+"quota exceeded", "rate limit exceeded", "insufficient credits", "you have hit
+your usage limit"). Transient network errors, code bugs, crashes, or normal
+non-zero exits are NOT token exhaustion.
 
-pending=$(count_pending "$PLAN_FILE")
+Respond with EXACTLY one line and nothing else:
+TOKENS_EXHAUSTED=true
+or
+TOKENS_EXHAUSTED=false
 
-if (( pending == 0 )); then
-  ok "¡No hay tareas pendientes! Todo completado."
-  show_status
-  exit 0
-fi
+--- BEGIN LOG TAIL ---
+$(tail -n 200 "$log")
+--- END LOG TAIL ---
+EOF
+}
 
-# ── Ralph Loop v2.1 ─────────────────────────────────────────────────────────
+run_detector() {
+  local detector_tool=$1
+  local detector_prompt_path=$2
+  local cmd model
+  local -a flags
 
-info "Inicio del bucle Ralph v2.1"
-info "Plan: ${PLAN_FILE}"
-echo -e "$(ts) ${CYAN}[ralph]${RESET} Log:  ${LOG_FILE}"
-info "Backend: ${BACKEND} | Timeout por tarea: ${TASK_TIMEOUT_MIN} min | Max iteraciones: ${MAX_ITERATIONS}"
+  cmd=$(command_for_tool "$detector_tool")
+  model=$(model_for_tool "$detector_tool" low)
+  # shellcheck disable=SC2206
+  flags=($(flags_for_tool "$detector_tool"))
 
-echo ""
-echo -e "${BOLD}╔══════════════════════════════════════════════╗${RESET}"
-echo -e "${BOLD}║     Ralph Loop v2.1 + $(echo "${BACKEND}" | tr '[:lower:]' '[:upper:]') CLI             ║${RESET}"
-echo -e "${BOLD}╠══════════════════════════════════════════════╣${RESET}"
-echo -e "${BOLD}║  ${RESET}${pending}/${total} tareas pendientes${BOLD}                      ║${RESET}"
-echo -e "${BOLD}║  ${RESET}Timeout: ${TASK_TIMEOUT_MIN} min | Max iter: ${MAX_ITERATIONS}${BOLD}            ║${RESET}"
-echo -e "${BOLD}╚══════════════════════════════════════════════╝${RESET}"
-echo ""
+  # The detector always runs at low capability with thinking disabled: it is a
+  # cheap yes/no classification. Output (stdout+stderr) is returned to caller.
+  case "$detector_tool" in
+    codex)
+      "$cmd" exec "${flags[@]}" -m "$model" \
+        -c 'model_reasoning_effort="low"' \
+        -c 'model_reasoning_summary="none"' \
+        -c hide_agent_reasoning=true \
+        - <"$detector_prompt_path" 2>&1
+      ;;
+    claude)
+      env CLAUDE_CODE_DISABLE_THINKING=1 CLAUDE_CODE_EFFORT_LEVEL=low \
+        "$cmd" "${flags[@]}" --model "$model" --effort low -p <"$detector_prompt_path" 2>&1
+      ;;
+    gemini)
+      "$cmd" "${flags[@]}" --model "$model" <"$detector_prompt_path" 2>&1
+      ;;
+  esac
+}
 
-iteration=0
-skipped=0
-failed_tasks=()
-skipped_lines=()
+update_env_tool() {
+  local new_tool=$1
+  local tmp
 
-while true; do
-  task=$(get_next_pending_task)
-  line_num=$(get_next_pending_line)
-
-  [[ -n "$task" ]] || break
-
-  (( iteration++ )) || true
-  remaining=$(count_pending "$PLAN_FILE")
-
-  echo -e "$(ts) ${BOLD}──────────────────────────────────────────────${RESET}"
-  echo -e "$(ts) ${CYAN}  [iteración ${iteration}]${RESET}  ${YELLOW}${remaining} pendientes${RESET}"
-  echo -e "$(ts)   ${BOLD}${task}${RESET}"
-  echo -e "$(ts) ${BOLD}──────────────────────────────────────────────${RESET}"
-  echo ""
-  log_file "START" "Tarea iniciada: ${task} (iteración ${iteration}, ${remaining} pendientes)"
-
-  prompt=$(build_prompt "$task" "$line_num")
-  task_start=$(date +%s)
-
-  info "Ejecutando ${BACKEND} CLI..."
-  echo ""
-
-  if run_agent_with_timeout "$prompt"; then
-    echo ""
-    task_end=$(date +%s)
-    duration=$(( task_end - task_start ))
-    duration_fmt=$(printf '%02d:%02d' $((duration/60)) $((duration%60)))
-
-    # Verificar si el agente marcó la tarea; si no, la marcamos nosotros
-    if grep -qE '^\s*- \[ \]' "$PLAN_FILE" && \
-       [[ "$(sed -n "${line_num}p" "$PLAN_FILE")" == *"- [ ]"* ]]; then
-      mark_done "$line_num"
-      ok "Tarea marcada como completada por ralph-loop [${duration_fmt}]"
-    else
-      ok "Tarea completada (marcada por ${BACKEND}) [${duration_fmt}]"
-    fi
-    log_file "DONE" "Tarea completada: ${task} [${duration_fmt}]"
-    # Registrar uso de tokens/contexto
-    log_token_usage "$task"
+  tmp=$(mktemp "$RALPH_LOCAL_DIR/env.XXXXXX") || return 1
+  if grep -q '^[[:space:]]*RALPH_TOOL=' "$ralph_env_file"; then
+    sed 's/^[[:space:]]*RALPH_TOOL=.*/RALPH_TOOL='"$new_tool"'/' "$ralph_env_file" >"$tmp"
   else
-    ec=$?
-    task_end=$(date +%s)
-    duration=$(( task_end - task_start ))
+    cat "$ralph_env_file" >"$tmp"
+    printf 'RALPH_TOOL=%s\n' "$new_tool" >>"$tmp"
+  fi
+  mv "$tmp" "$ralph_env_file"
+}
 
-    if [[ "$ec" == "124" ]]; then
-      warn "Timeout tras ${TASK_TIMEOUT_MIN} min: ${task}"
-    else
-      warn "${BACKEND} salió con error (exit code: ${ec}): ${task}"
-    fi
-    # Registrar las últimas líneas de salida del agente como motivo del fallo
-    if [[ -f "${AGENT_OUTPUT_FILE:-}" && -s "${AGENT_OUTPUT_FILE:-}" ]]; then
-      fail_tail=$(tail -20 "$AGENT_OUTPUT_FILE" | sed 's/\x1b\[[0-9;]*m//g')
-      log_file "FAIL_OUTPUT" "Últimas líneas de salida del agente para: ${task}"
-      while IFS= read -r _line; do
-        log_file "FAIL_OUTPUT" "  $_line"
-      done <<< "$fail_tail"
-    else
-      log_file "FAIL_OUTPUT" "(sin salida capturada del agente para: ${task})"
-    fi
-    # Saltar la tarea fallida (NO se marca, se deja como - [ ])
-    (( skipped++ )) || true
-    failed_tasks+=("$task")
-    skipped_lines+=("$task")
-    warn "SALTADA: ${task} (se deja pendiente para revisión manual)"
+handle_token_exhaustion() {
+  # On a non-zero run, ask the next tool in the rotation whether the failure was
+  # token/quota exhaustion of the failed tool. If so, rewrite RALPH_TOOL in
+  # .ralph/.env so the next iteration picks up the new agent on reload. The
+  # current iteration is not retried.
+  local failed_tool=$1
+  local log=$2
+  local detector_tool detector_cmd detector_prompt_path detector_output
+
+  detector_tool=$(next_tool_in_rotation "$failed_tool")
+  detector_cmd=$(command_for_tool "$detector_tool")
+
+  {
+    echo "---- ralph-loop token-exhaustion check ----"
+    echo "failed_tool: $failed_tool"
+    echo "detector_tool: $detector_tool"
+  } >>"$log"
+
+  if ! command -v "$detector_cmd" >/dev/null 2>&1; then
+    echo "detector_unavailable: $detector_cmd not on PATH; skipping switch" >>"$log"
+    printf 'Token-exhaustion check skipped: detector %s (%s) not installed.\n' "$detector_tool" "$detector_cmd"
+    return 0
   fi
 
-  # Limpiar ficheros temporales de salida del agente
-  [[ -f "${AGENT_OUTPUT_FILE:-}" ]] && rm -f "$AGENT_OUTPUT_FILE"
-  [[ -f "${AGENT_JSON_FILE:-}" ]] && rm -f "$AGENT_JSON_FILE"
+  detector_prompt_path=$(mktemp "$RALPH_LOCAL_DIR/detector-prompt.XXXXXX") || return 0
+  build_detector_prompt "$failed_tool" "$log" >"$detector_prompt_path"
+  detector_output=$(run_detector "$detector_tool" "$detector_prompt_path")
+  rm -f -- "$detector_prompt_path"
 
-  # Control de máximo de iteraciones
-  if (( iteration >= MAX_ITERATIONS )); then
-    warn "Alcanzado el máximo de iteraciones (${MAX_ITERATIONS}). Deteniendo bucle."
+  {
+    echo "---- detector output ----"
+    printf '%s\n' "$detector_output"
+  } >>"$log"
+
+  if printf '%s' "$detector_output" | grep -qi 'TOKENS_EXHAUSTED=true'; then
+    if update_env_tool "$detector_tool"; then
+      echo "switch: RALPH_TOOL $failed_tool -> $detector_tool (written to .ralph/.env)" >>"$log"
+      printf 'Token exhaustion detected for %s; switched RALPH_TOOL to %s for the next iteration.\n' "$failed_tool" "$detector_tool"
+    else
+      echo "switch_failed: could not update $ralph_env_file" >>"$log"
+      printf 'Token exhaustion detected for %s but failed to update %s.\n' "$failed_tool" "$ralph_env_file"
+    fi
+  else
+    echo "no_switch: detector did not report token exhaustion" >>"$log"
+  fi
+}
+
+write_default_env_file() {
+  cat >"$ralph_env_file" <<'EOF'
+# Ralph configuration. Edit this file to reconfigure the loop; changes are
+# picked up before each iteration. This is the only configuration source.
+
+RALPH_TOOL=codex
+RALPH_MODEL_CAPABILITY=med
+RALPH_THINKING=false
+
+# When an iteration exits non-zero, ask the next tool in the rotation
+# (codex -> claude -> gemini -> codex) whether the failure was token/quota
+# exhaustion. If so, RALPH_TOOL is rewritten here so the next iteration switches.
+RALPH_SWITCH_ON_EXHAUSTION=true
+
+# Hard RAM limit for the agent process, enforced by the kernel via a transient
+# systemd user scope (the agent is OOM-killed if it exceeds this). Accepts a
+# systemd memory value (8G, 512M, raw bytes, or a percentage). Leave empty to
+# disable.
+RALPH_MEMORY_MAX=8G
+
+RALPH_CODEX_COMMAND=codex
+RALPH_CODEX_FLAGS="--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check"
+RALPH_CODEX_MODEL_LOW=gpt-5.4-mini
+RALPH_CODEX_MODEL_MED=gpt-5.4
+RALPH_CODEX_MODEL_HIGH=gpt-5.5
+
+RALPH_CLAUDE_COMMAND=claude
+RALPH_CLAUDE_FLAGS="--permission-mode bypassPermissions"
+RALPH_CLAUDE_MODEL_LOW=haiku
+RALPH_CLAUDE_MODEL_MED=sonnet
+RALPH_CLAUDE_MODEL_HIGH=opus
+
+RALPH_GEMINI_COMMAND=gemini
+RALPH_GEMINI_FLAGS="--approval-mode=yolo --skip-trust"
+RALPH_GEMINI_MODEL_LOW=gemini-2.5-flash-lite
+RALPH_GEMINI_MODEL_MED=gemini-2.5-flash
+RALPH_GEMINI_MODEL_HIGH=gemini-2.5-pro
+
+# Logs to retain in .ralph/logs. Default: min(MAX_ITERATIONS, 50).
+# RALPH_LOOP_MAX_LOGS=50
+EOF
+}
+
+load_env_file() {
+  # The file is the only configuration source. It is sourced without "set -a",
+  # so RALPH_* become plain shell variables, not exported environment variables;
+  # the shell environment is never a configuration channel. The file always
+  # exists (created at startup), so no existence check is needed here.
+  # shellcheck disable=SC1090
+  . "$ralph_env_file"
+
+  # The only exported variable: the script-managed local dir.
+  export RALPH_LOCAL_DIR="$initial_cwd/.ralph"
+}
+
+resolve_config() {
+  local capability thinking switch_on_exhaustion tool cmd flags_string invocation output_label
+  local model reasoning_effort thinking_budget logs memory_max
+
+  if ! capability=$(normalize_capability "${RALPH_MODEL_CAPABILITY:-med}"); then
+    echo "Error: RALPH_MODEL_CAPABILITY must be one of: low, med, high." >&2
+    return 1
+  fi
+
+  if ! thinking=$(normalize_bool "${RALPH_THINKING:-false}"); then
+    echo "Error: RALPH_THINKING must be true or false." >&2
+    return 1
+  fi
+
+  if ! switch_on_exhaustion=$(normalize_bool "${RALPH_SWITCH_ON_EXHAUSTION:-true}"); then
+    echo "Error: RALPH_SWITCH_ON_EXHAUSTION must be true or false." >&2
+    return 1
+  fi
+
+  # Default only when unset, so RALPH_MEMORY_MAX= (empty) explicitly disables it.
+  if ! memory_max=$(normalize_memory_max "${RALPH_MEMORY_MAX-8G}"); then
+    echo "Error: RALPH_MEMORY_MAX must be empty, infinity, a byte count, a value with a K/M/G/T/P/E suffix, or a percentage." >&2
+    return 1
+  fi
+
+  tool=${RALPH_TOOL:-codex}
+  case "$tool" in
+    codex)
+      cmd=${RALPH_CODEX_COMMAND:-codex}
+      flags_string=${RALPH_CODEX_FLAGS:---dangerously-bypass-approvals-and-sandbox --skip-git-repo-check}
+      invocation='codex exec FLAGS - < PROMPT_FILE'
+      output_label='codex'
+      ;;
+    claude)
+      cmd=${RALPH_CLAUDE_COMMAND:-claude}
+      flags_string=${RALPH_CLAUDE_FLAGS:---permission-mode bypassPermissions}
+      invocation='claude FLAGS -p < PROMPT_FILE'
+      output_label='claude'
+      ;;
+    gemini)
+      cmd=${RALPH_GEMINI_COMMAND:-gemini}
+      flags_string=${RALPH_GEMINI_FLAGS:---approval-mode=yolo --skip-trust}
+      invocation='gemini FLAGS < PROMPT_FILE'
+      output_label='gemini'
+      ;;
+    *)
+      echo "Error: unknown RALPH_TOOL '$tool'. Allowed values: codex, claude, gemini." >&2
+      return 1
+      ;;
+  esac
+
+  model=$(model_for_tool "$tool" "$capability")
+  case "$tool" in
+    codex|claude)
+      reasoning_effort=$(effort_level "$capability" "$thinking")
+      thinking_budget=
+      ;;
+    gemini)
+      reasoning_effort=
+      thinking_budget=$(gemini_thinking_budget "$model" "$capability" "$thinking")
+      ;;
+  esac
+
+  if [ -n "${RALPH_LOOP_MAX_LOGS:-}" ]; then
+    if ! is_positive_integer "$RALPH_LOOP_MAX_LOGS"; then
+      echo "Error: RALPH_LOOP_MAX_LOGS must be a positive integer." >&2
+      return 1
+    fi
+    logs=$RALPH_LOOP_MAX_LOGS
+  elif [ "$max_iterations" -lt 50 ]; then
+    logs=$max_iterations
+  else
+    logs=50
+  fi
+
+  # Commit to globals only after every value is validated, so a bad reload
+  # mid-loop leaves the previous good configuration in place.
+  ralph_model_capability=$capability
+  ralph_thinking=$thinking
+  ralph_switch_on_exhaustion=$switch_on_exhaustion
+  ralph_memory_max=$memory_max
+  ralph_tool=$tool
+  tool_command=$cmd
+  tool_flags_string=$flags_string
+  tool_invocation=$invocation
+  tool_output_label=$output_label
+  # shellcheck disable=SC2206
+  tool_flags=($flags_string)
+  tool_model=$model
+  tool_reasoning_effort=$reasoning_effort
+  tool_thinking_budget=$thinking_budget
+  max_logs=$logs
+}
+
+if [ "$#" -ne 2 ]; then
+  usage >&2
+  exit 2
+fi
+
+max_iterations=$1
+prompt_file=$2
+initial_cwd=$(pwd)
+
+export RALPH_LOCAL_DIR="$initial_cwd/.ralph"
+
+if ! is_positive_integer "$max_iterations"; then
+  echo "Error: MAX_ITERATIONS must be a positive integer." >&2
+  usage >&2
+  exit 2
+fi
+
+if [ ! -f "$prompt_file" ]; then
+  echo "Error: PROMPT_FILE must exist and be a regular file: $prompt_file" >&2
+  usage >&2
+  exit 2
+fi
+
+ralph_env_file="$RALPH_LOCAL_DIR/.env"
+
+mkdir -p "$RALPH_LOCAL_DIR"
+[ -f "$ralph_env_file" ] || write_default_env_file
+
+load_env_file
+if ! resolve_config; then
+  exit 2
+fi
+
+case "$prompt_file" in
+  /*)
+    prompt_path=$prompt_file
+    ;;
+  *)
+    prompt_path="$initial_cwd/$prompt_file"
+    ;;
+esac
+
+if stop_file=$(find_stop_file); then
+  echo "$stop_file exists; exiting without deleting it."
+  echo "Summary: iterations_executed=0 failed=0 stop_reason=stop.md_present_at_start"
+  exit 0
+fi
+
+log_dir="$RALPH_LOCAL_DIR/logs"
+mkdir -p "$log_dir"
+
+executed=0
+failed=0
+stop_reason="max_iterations_reached"
+current_console_output=
+mem_limit_prefix=()
+
+cleanup_current_console_output() {
+  if [ -n "${current_console_output:-}" ]; then
+    rm -f -- "$current_console_output"
+    current_console_output=
+  fi
+}
+
+print_file_with_trailing_newline() {
+  local file=$1
+
+  cat "$file"
+  if [ "$(tail -c 1 "$file" | wc -l | tr -d ' ')" -eq 0 ]; then
+    printf '\n'
+  fi
+}
+
+trap cleanup_current_console_output EXIT HUP INT TERM
+
+printf 'Ralph loop: %s iteration(s), tool=%s(%s), model=%s, logs=.ralph/logs\n' "$max_iterations" "$ralph_tool" "$ralph_model_capability" "$tool_model"
+
+for ((iteration = 1; iteration <= max_iterations; iteration++)); do
+  if stop_file=$(find_stop_file); then
+    stop_reason="stop.md_detected_before_iteration_$iteration"
+    echo "Detected $stop_file; stopping."
     break
   fi
 
-  echo ""
+  load_env_file
+  if ! resolve_config; then
+    echo "Warning: invalid Ralph config in $ralph_env_file; keeping previous settings." >&2
+  fi
+
+  timestamp=$(date '+%Y%m%d-%H%M%S')
+  printf -v iteration_padded '%06d' "$iteration"
+  log_file="$log_dir/iteration-${iteration_padded}-${timestamp}.log"
+  current_console_output=$(mktemp "$RALPH_LOCAL_DIR/console-output-${iteration_padded}.XXXXXX") || {
+    echo "Error: failed to create temporary console output file in $RALPH_LOCAL_DIR" >&2
+    stop_reason="failed_to_create_temporary_console_output"
+    break
+  }
+
+  cd "$initial_cwd" || {
+    echo "Error: failed to cd to invocation directory: $initial_cwd" >&2
+    stop_reason="failed_to_cd_to_initial_cwd"
+    break
+  }
+
+  {
+    echo "ralph-loop iteration $iteration/$max_iterations"
+    echo "cwd: $(pwd)"
+    echo "started_at: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "tool: $ralph_tool"
+    echo "command: $tool_command"
+    echo "flags: $tool_flags_string"
+    echo "model_capability: $ralph_model_capability"
+    echo "model: $tool_model"
+    echo "thinking: $ralph_thinking"
+    if [ -n "$ralph_memory_max" ]; then
+      echo "memory_max: $ralph_memory_max"
+    fi
+    if [ -n "$tool_reasoning_effort" ]; then
+      echo "reasoning_effort: $tool_reasoning_effort"
+    fi
+    if [ -n "$tool_thinking_budget" ]; then
+      echo "thinking_budget: $tool_thinking_budget"
+    fi
+    echo "prompt_file: $prompt_path"
+    echo "ralph_local_dir: $RALPH_LOCAL_DIR"
+    echo "log_dir: $log_dir"
+    echo "retaining_logs: $max_logs"
+    echo "invocation: $tool_invocation"
+    echo "---- $tool_output_label output ----"
+  } >"$log_file"
+
+  if run_tool >>"$log_file" 2>&1; then
+    exit_code=0
+    iteration_status=ok
+  else
+    exit_code=$?
+    failed=$((failed + 1))
+    iteration_status="failed exit=$exit_code"
+  fi
+
+  {
+    echo "---- ralph-loop result ----"
+    echo "exit_code: $exit_code"
+    echo "finished_at: $(date '+%Y-%m-%d %H:%M:%S')"
+  } >>"$log_file"
+
+  if [ "$exit_code" -ne 0 ] && [ "$ralph_switch_on_exhaustion" = true ]; then
+    handle_token_exhaustion "$ralph_tool" "$log_file"
+  fi
+
+  if [ -s "$current_console_output" ]; then
+    print_file_with_trailing_newline "$current_console_output"
+  fi
+  if [ -t 1 ]; then
+    green=$'\033[0;32m'
+    reset=$'\033[0m'
+  else
+    green=''
+    reset=''
+  fi
+  printf '%s=== Iteration %s/%s [%s(%s)] %s; log=.ralph/logs/%s ===%s\n' "$green" "$iteration" "$max_iterations" "$ralph_tool" "$ralph_model_capability" "$iteration_status" "$(basename "$log_file")" "$reset"
+
+  executed=$((executed + 1))
+  rotate_logs "$log_dir" "$max_logs"
+  cleanup_current_console_output
 done
 
-# ── Resumen final ────────────────────────────────────────────────────────────
-
-echo ""
-if (( skipped > 0 )); then
-  warn "¡Bucle completado con ${skipped} tarea(s) saltada(s)!"
-  warn "Tareas que requieren revisión manual:"
-  for ft in "${failed_tasks[@]}"; do
-    warn "  - ${ft}"
-  done
-else
-  ok "¡Todas las tareas han sido procesadas correctamente!"
-fi
-show_status
-echo -e "$(ts) ${CYAN}[ralph]${RESET} Log completo en: ${LOG_FILE}"
-exit 0
+echo "Summary: iterations_executed=$executed failed=$failed stop_reason=$stop_reason"

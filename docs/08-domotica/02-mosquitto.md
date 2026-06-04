@@ -64,8 +64,11 @@ Este stack sigue la convención general del proyecto:
 ```bash
 mkdir -p /home/<user>/homelab/compose/iot-mosquitto
 mkdir -p /home/<user>/homelab/data/mosquitto/{config,data,log}
-chmod 700 /home/<user>/homelab/data/mosquitto/config
+sudo chown -R 1883:1883 /home/<user>/homelab/data/mosquitto
+chmod 750 /home/<user>/homelab/data/mosquitto/config
 ```
+
+La imagen oficial de **Eclipse Mosquitto** suele ejecutarse con el UID/GID `1883`. Si dejas `config/` como `700` y propiedad de `root`, el contenedor no podrá leer `mosquitto.conf`, `passwd` o `acl`.
 
 ### 2. Crear la configuración principal
 
@@ -107,7 +110,7 @@ Crea el fichero y añade usuarios usando la propia imagen oficial:
 
 ```bash
 touch /home/<user>/homelab/data/mosquitto/config/passwd
-chmod 600 /home/<user>/homelab/data/mosquitto/config/passwd
+chmod 640 /home/<user>/homelab/data/mosquitto/config/passwd
 
 docker run --rm \
   -v /home/<user>/homelab/data/mosquitto/config:/mosquitto/config \
@@ -130,6 +133,7 @@ Notas:
 - usa `-c` solo en la primera creación del fichero
 - no reutilices la misma cuenta para varios servicios
 - evita pasar contraseñas por línea de comandos para no dejarlas en el historial del shell
+- si alguno de estos comandos deja el fichero como `root:root`, corrige después con `sudo chown 1883:1883 /home/<user>/homelab/data/mosquitto/config/passwd`
 
 ### 4. Definir ACLs
 
@@ -151,6 +155,15 @@ topic readwrite nodered/#
 topic readwrite homeassistant/#
 topic readwrite zigbee2mqtt/#
 topic read $SYS/#
+```
+
+Después de guardar `acl`, deja también ese fichero accesible para el contenedor:
+
+```bash
+sudo chown 1883:1883 /home/<user>/homelab/data/mosquitto/config/acl
+chmod 640 /home/<user>/homelab/data/mosquitto/config/acl
+sudo chown 1883:1883 /home/<user>/homelab/data/mosquitto/config/mosquitto.conf
+chmod 644 /home/<user>/homelab/data/mosquitto/config/mosquitto.conf
 ```
 
 Este punto es importante:
@@ -247,7 +260,7 @@ No uses `hd2t` ni `hd5t` para estos datos. Esos discos quedan reservados para mu
 ### Permisos
 
 - `config/passwd` debe quedar con permisos restrictivos, por ejemplo `600`
-- `config/` conviene mantenerlo al menos en `700`
+- `config/` conviene mantenerlo en `750` o similar, con propietario `1883:1883`
 - `data/` y `log/` deben ser escribibles por el contenedor
 
 Si ves errores de permisos al arrancar, revisa el propietario real de las rutas bind-mounted y ajústalo según el UID/GID que use la imagen dentro del contenedor.

@@ -132,7 +132,7 @@ Genera el locale y aplícalo como predeterminado:
 
 ```bash
 sudo locale-gen
-sudo update-locale LANG=es_ES.UTF-8 LC_ALL=es_ES.UTF-8
+sudo update-locale LANG=es_ES.UTF-8
 ```
 
 Abre una nueva sesión SSH y verifica:
@@ -141,7 +141,7 @@ Abre una nueva sesión SSH y verifica:
 locale
 ```
 
-Si prefieres otro locale principal, sustituye `es_ES.UTF-8` por el valor que corresponda. Lo importante es dejarlo fijado de forma explícita y no depender de valores implícitos o parciales.
+Si prefieres otro locale principal, sustituye `es_ES.UTF-8` por el valor que corresponda. Lo importante es dejarlo fijado de forma explícita y no depender de valores implícitos o parciales. A nivel de sistema conviene definir `LANG` y evitar forzar `LC_ALL` salvo para pruebas o depuración puntuales.
 
 ### 6. Revisar la situación actual de swap
 
@@ -175,11 +175,13 @@ Si `dphys-swapfile` está instalado en tu sistema, desactívalo y deshabilítalo
 sudo systemctl disable --now dphys-swapfile 2>/dev/null
 ```
 
-Si existe un swapfile antiguo de la configuración por defecto, elimínalo:
+Si existe el swapfile antiguo por defecto de Raspberry Pi OS, elimínalo:
 
 ```bash
 sudo rm -f /var/swap
 ```
+
+Si `swapon --show` indica otro fichero o partición de swap heredada, elimínala o retírala de `/etc/fstab` antes de continuar para no dejar varias configuraciones mezcladas.
 
 Vuelve a comprobar el estado:
 
@@ -280,6 +282,7 @@ Después del reinicio, comprueba:
 swapon --show
 cat /proc/sys/vm/swappiness
 findmnt -no SOURCE /
+findmnt -no SOURCE /swapfile
 ```
 
 El resultado esperado es equivalente a este:
@@ -288,6 +291,7 @@ El resultado esperado es equivalente a este:
 - `/swapfile` con prioridad baja, por ejemplo `10`
 - `vm.swappiness` igual a `10`
 - raíz del sistema montada sobre el **NVMe**
+- `/swapfile` resuelto sobre el mismo sistema raíz del **NVMe**
 
 ### 12. Comprobación operativa mínima
 

@@ -8,7 +8,7 @@ En este proyecto conviene mantener una topología simple y fácil de operar:
 
 - la aplicación vive en `/home/<user>/homelab/compose/productivity-freshrss/`
 - los datos persistentes viven en `/home/<user>/homelab/data/freshrss/` sobre el **SSD NVMe**
-- el servicio se publica en `16005/tcp` para acceso desde **LAN** y **Tailscale**
+- el servicio se publica en `127.0.0.1:16005/tcp` para bootstrap local y para que **Caddy** lo publique de forma coherente con la política de red del proyecto
 - se usa la base de datos **SQLite** integrada, suficiente para un uso personal o familiar
 - la actualización automática de feeds se hace con el **cron interno** del contenedor
 - `hd2t` y `hd5t` no se usan para datos activos de FreshRSS
@@ -18,13 +18,14 @@ Para este homelab, esa combinación suele ser la más razonable: despliegue cort
 ## Requisitos Previos
 
 - Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar FreshRSS de forma coherente con la política general de exposición web del homelab.
 - Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder también desde fuera de casa por la tailnet.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto `16005/tcp`.
 - Revisar [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount del servicio en la estrategia de copias.
 - Disponer de `/home/<user>/homelab/` en el **SSD NVMe** con espacio suficiente para configuración, base de datos, favicon cache y extensiones.
 - Tener exportado a `.opml` el catálogo de feeds si vienes de otro lector RSS.
 - Puertos necesarios en esta fase:
-  - **`16005/tcp` publicado en el host** para acceso web desde LAN y Tailscale
+  - **`16005/tcp` publicado solo en `127.0.0.1`** para bootstrap local y upstream de Caddy
   - **`80/tcp`** es el puerto interno del contenedor
 
 ## Docker Compose
@@ -64,7 +65,7 @@ Archivo recomendado: `/home/<user>/homelab/compose/productivity-freshrss/.env`
 ```dotenv
 TZ=Europe/Madrid
 DATA_ROOT=/home/<user>/homelab/data
-FRESHRSS_BIND_IP=0.0.0.0
+FRESHRSS_BIND_IP=127.0.0.1
 FRESHRSS_PORT=16005
 FRESHRSS_CRON_MIN=13,43
 FRESHRSS_ENV=production
@@ -72,12 +73,14 @@ FRESHRSS_ENV=production
 
 Notas sobre este Compose:
 
-- `FreshRSS` escucha internamente en `80/tcp`, pero en este homelab se publica en `16005/tcp`
+- `FreshRSS` escucha internamente en `80/tcp`, pero en este homelab se publica solo en `127.0.0.1:16005`
 - la persistencia completa queda en bind mounts sobre el **SSD NVMe**
 - `SQLite` es suficiente aquí y evita añadir PostgreSQL o MariaDB para un servicio pequeño
 - `FRESHRSS_CRON_MIN=13,43` refresca feeds aproximadamente dos veces por hora sin depender de cron en el host
 - `extensions/` queda separado para poder probar extensiones sin mezclarlo con la base de datos y la configuración
 - se desactiva Watchtower para evitar actualizaciones automáticas ciegas sobre una aplicación con migraciones y cambios de esquema posibles
+- este servicio debería entrar por **Caddy** para acceso desde la LAN o Tailscale; el bind en loopback evita exponerlo en `0.0.0.0` por comodidad, tal como fija [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
+- <!-- TODO: verificar una etiqueta concreta y estable de `freshrss/freshrss` para ARM64 antes de pasar este stack a producción; `latest` simplifica el ejemplo, pero no fija una versión reproducible -->
 
 ## Configuración
 
@@ -120,8 +123,10 @@ ls -lah /home/<user>/homelab/data/freshrss
 
 Si todo ha arrancado bien, la interfaz quedará accesible en una de estas URLs:
 
-- `http://<ip-lan-de-la-pi>:16005`
-- `http://pi-homelab.<tailnet>.ts.net:16005`
+- `http://127.0.0.1:16005` desde la propia Raspberry Pi o mediante un túnel SSH
+- la URL que publiques después en **Caddy** para LAN o Tailscale
+
+<!-- TODO: verificar y documentar el bloque exacto de Caddy para FreshRSS si finalmente se publica como `freshrss.lan`, bajo un hostname dedicado de Tailscale o en una subruta del hostname principal. -->
 
 ### 3. Completar la instalación inicial
 
@@ -129,7 +134,7 @@ En un despliegue nuevo, FreshRSS puede terminar de configurarse desde la interfa
 
 Flujo recomendado:
 
-1. Abre `http://<ip-lan-de-la-pi>:16005` o la URL Tailscale equivalente.
+1. Abre `http://127.0.0.1:16005` desde la Raspberry Pi, usando un túnel SSH, o la URL final que hayas definido en Caddy.
 2. Elige el idioma de la interfaz.
 3. Usa **SQLite** como base de datos.
 4. Crea el usuario administrador principal.
@@ -184,6 +189,7 @@ docker compose exec -u www-data freshrss php cli/list-users.php
 Señales de que el servicio está sano:
 
 - la UI carga sin errores en `:16005`
+- la UI carga sin errores en `127.0.0.1:16005` o en la URL final servida por Caddy
 - puedes iniciar sesión con el usuario creado
 - los feeds importados se actualizan y aparecen artículos nuevos
 - el `healthcheck` del contenedor aparece como `healthy`

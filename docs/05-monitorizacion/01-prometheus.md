@@ -19,7 +19,7 @@ En esta Raspberry Pi 5 conviene fijar un criterio simple:
 - Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 - Haber completado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
-- Tener creada la red Docker externa `homelab_proxy` si más adelante Grafana va a consultar Prometheus por nombre interno.
+- Tener creada la red Docker externa `homelab_proxy`, ya que este stack la usa para que Grafana pueda consultar Prometheus por nombre interno.
 - Poder crear directorios persistentes en `/home/<user>/homelab/config/` y `/home/<user>/homelab/data/`.
 - Si se quiere scrapear el endpoint nativo de Docker, tener acceso administrativo al host para editar `/etc/docker/daemon.json` y reiniciar `docker`.
 - Puertos necesarios en esta fase:
@@ -47,7 +47,7 @@ name: monitoring-prometheus
 
 services:
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.12.0
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -99,6 +99,7 @@ Puntos importantes de este Compose:
 - el stack se une a `homelab_proxy` para que [02-grafana.md](02-grafana.md) pueda alcanzarlo por nombre interno `prometheus:9090`
 - `extra_hosts` deja resuelto `host.docker.internal` hacia el gateway del host, útil para scrapear métricas del daemon Docker
 - la retención queda acotada a **15 días** o **15 GB**, lo que ocurra antes
+- la imagen queda fijada a una versión concreta para evitar cambios inesperados al recrear el contenedor
 - se recomienda **no** autoactualizar Prometheus ciegamente con Watchtower
 
 ## Configuración

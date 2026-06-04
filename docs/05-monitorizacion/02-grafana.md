@@ -80,6 +80,8 @@ GRAFANA_ADMIN_PASSWORD=<cambia-esta-password>
 PROXY_NETWORK=homelab_proxy
 ```
 
+<!-- TODO: verificar una versión fija probada de `grafana/grafana` para ARM64 y sustituir la etiqueta `latest` en este Compose -->
+
 Puntos importantes de este Compose:
 
 - Grafana se publica solo en `127.0.0.1:13000`, no en toda la LAN por defecto
@@ -342,13 +344,14 @@ Comandos útiles para operación diaria:
 cd /home/<user>/homelab/compose/monitoring-grafana
 docker compose logs -f grafana
 docker compose restart grafana
-curl -s http://127.0.0.1:13000/api/health | jq
+curl -s http://127.0.0.1:13000/api/health
 ```
 
 Si quieres verificar desde dentro del contenedor que Grafana resuelve Prometheus correctamente:
 
 ```bash
-docker exec -it monitoring-grafana-grafana-1 wget -qO- http://prometheus:9090/-/ready
+cd /home/<user>/homelab/compose/monitoring-grafana
+docker compose exec grafana wget -qO- http://prometheus:9090/-/ready
 ```
 
 ## Almacenamiento

@@ -20,12 +20,12 @@ Traducción práctica de esta decisión:
 Ejemplos razonables para proteger con Authelia:
 
 - `Grafana`
-- `Portainer`
 - `Uptime Kuma`
 - dashboards y paneles administrativos similares
 
 Ejemplos que conviene evaluar con cuidado antes de poner detrás de Authelia:
 
+- `Portainer`, porque en este repositorio hoy se documenta con acceso directo a `:9443` y no queda validado aquí su funcionamiento correcto bajo una subruta como `/portainer/`
 - `Vaultwarden`, porque los clientes Bitwarden y extensiones no esperan una pantalla SSO intermedia
 - servicios con aplicaciones móviles o clientes nativos que no funcionen bien en subruta o tras `forward_auth`
 
@@ -160,6 +160,10 @@ theme: auto
 
 server:
   address: 'tcp://:9091/authelia'
+  endpoints:
+    authz:
+      forward-auth:
+        implementation: 'ForwardAuth'
 
 log:
   level: info
@@ -186,7 +190,6 @@ access_control:
     - domain: 'pi-homelab.<tailnet>.ts.net'
       resources:
         - '^/grafana(/.*)?$'
-        - '^/portainer(/.*)?$'
         - '^/uptime(/.*)?$'
       policy: two_factor
 
@@ -227,7 +230,7 @@ Qué fija esta configuración:
 - el backend de usuarios es local por fichero
 - la política por defecto es `deny`
 - `Homepage` queda con ejemplo de `one_factor`
-- `Grafana`, `Portainer` y `Uptime Kuma` quedan como ejemplo de `two_factor`
+- `Grafana` y `Uptime Kuma` quedan como ejemplo de `two_factor`
 - las notificaciones se guardan en fichero local, útil para bootstrap y pruebas sin depender todavía de SMTP
 - la base de datos SQLite y el fichero de notificaciones viven en el **SSD NVMe**
 
@@ -299,15 +302,6 @@ https://{$TAILSCALE_DOMAIN} {
 		reverse_proxy grafana:3000
 	}
 
-	handle_path /portainer/* {
-		import authelia_forward_auth
-		reverse_proxy host.docker.internal:9443 {
-			transport http {
-				tls_insecure_skip_verify
-			}
-		}
-	}
-
 	handle {
 		respond "Caddy activo." 200
 	}
@@ -319,6 +313,7 @@ Notas importantes sobre este patrón:
 - el portal de Authelia debe quedar accesible **antes** de aplicar `forward_auth` a otras rutas
 - esta guía protege la entrada **HTTPS de Tailscale**, no los bloques `http://servicio.lan`
 - los servicios protegidos deben funcionar correctamente en **subruta** o estar configurados para ello
+- `Portainer` no se incluye en este ejemplo porque su documento actual lo deja publicado en `:9443` y aquí no queda demostrada una adaptación correcta a `/portainer/`
 - si un servicio no soporta bien subrutas, no lo metas aquí sin revisar primero su configuración
 
 Tras modificar el `Caddyfile`:

@@ -62,8 +62,8 @@ services:
       - "${SYNCTHING_BIND_IP}:${SYNCTHING_DISCOVERY_PORT}:21027/udp"
     volumes:
       - ${DATA_ROOT}/syncthing/config:/config
-      - ${SSD_SYNC_ROOT}/documents:/data/documents
-      - ${SSD_SYNC_ROOT}/notes:/data/notes
+      - ${SYNC_FOLDERS_ROOT}/documents:/data/documents
+      - ${SYNC_FOLDERS_ROOT}/notes:/data/notes
       - /media/hd2t/syncthing/media-drop:/data/media-drop
     labels:
       - com.centurylinklabs.watchtower.enable=true
@@ -86,7 +86,7 @@ Si no quieres crear alguna de las carpetas de ejemplo, elimina su volumen del Co
 ```bash
 mkdir -p /home/<user>/homelab/compose/files-syncthing
 mkdir -p /home/<user>/homelab/data/syncthing/config
-mkdir -p /home/<user>/homelab/sync/{documents,notes}
+mkdir -p /home/<user>/homelab/data/syncthing/folders/{documents,notes}
 sudo mkdir -p /media/hd2t/syncthing/media-drop
 ```
 
@@ -97,10 +97,9 @@ Usa el mismo usuario operativo del host que ya gestiona Docker y el resto del ho
 ```bash
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/syncthing
-sudo chown -R <user>:<user> /home/<user>/homelab/sync
 sudo chown -R <user>:<user> /media/hd2t/syncthing
 
-sudo find /home/<user>/homelab/sync -type d -exec chmod 2775 {} \;
+sudo find /home/<user>/homelab/data/syncthing/folders -type d -exec chmod 2775 {} \;
 sudo find /media/hd2t/syncthing -type d -exec chmod 2775 {} \;
 ```
 
@@ -119,7 +118,7 @@ TZ=Europe/Madrid
 PUID=1000
 PGID=1000
 DATA_ROOT=/home/<user>/homelab/data
-SSD_SYNC_ROOT=/home/<user>/homelab/sync
+SYNC_FOLDERS_ROOT=/home/<user>/homelab/data/syncthing/folders
 SYNCTHING_BIND_IP=0.0.0.0
 SYNCTHING_GUI_PORT=12000
 SYNCTHING_SYNC_PORT=22000
@@ -129,7 +128,7 @@ SYNCTHING_DISCOVERY_PORT=21027
 Notas importantes:
 
 - `DATA_ROOT` mantiene la configuración del servicio en el **SSD NVMe**.
-- `SSD_SYNC_ROOT` define la raíz de carpetas sincronizadas que quieres mantener también en SSD.
+- `SYNC_FOLDERS_ROOT` define la raíz de carpetas sincronizadas que quieres mantener también en SSD, sin salir de `data/syncthing/`.
 - `SYNCTHING_BIND_IP=0.0.0.0` permite acceso desde la **LAN** y desde la IP de **Tailscale** del host si el firewall lo autoriza.
 - Si prefieres que la interfaz web no sea accesible desde la LAN, puedes cambiar `SYNCTHING_BIND_IP` a una IP concreta del host o a `127.0.0.1` y gestionar el acceso por otro camino.
 
@@ -203,7 +202,7 @@ Recomendación de uso:
 
 - guarda en **SSD** solo datos pequeños, muy activos o sensibles a la latencia
 - usa **`hd2t`** para lotes grandes, importaciones multimedia o intercambio temporal
-- no sincronices directorios internos de aplicaciones como `/home/<user>/homelab/data/<servicio>/`
+- no sincronices directorios internos de otras aplicaciones como `/home/<user>/homelab/data/<otro-servicio>/`
 - no sincronices bases de datos vivas ni librerías que estén siendo escritas simultáneamente por otros contenedores
 
 Pasos en la UI para cada carpeta:
@@ -262,7 +261,7 @@ Rutas implicadas en este despliegue:
 - `docker-compose.yml`: `/home/<user>/homelab/compose/files-syncthing/docker-compose.yml`
 - `.env`: `/home/<user>/homelab/compose/files-syncthing/.env`
 - configuración persistente: `/home/<user>/homelab/data/syncthing/config`
-- carpetas sincronizadas en SSD: `/home/<user>/homelab/sync/`
+- carpetas sincronizadas en SSD: `/home/<user>/homelab/data/syncthing/folders/`
 - carpeta sincronizada en `hd2t`: `/media/hd2t/syncthing/media-drop`
 
 Reglas operativas recomendadas:
@@ -280,7 +279,7 @@ Syncthing no reemplaza una estrategia de copias de seguridad. Lo que debes respa
 - `/home/<user>/homelab/compose/files-syncthing/.env`
 - `/home/<user>/homelab/data/syncthing/config/`
 - las carpetas cuyo contenido sea autoritativo en la Raspberry Pi:
-  - `/home/<user>/homelab/sync/`
+  - `/home/<user>/homelab/data/syncthing/folders/`
   - `/media/hd2t/syncthing/`
 
 Motivos:

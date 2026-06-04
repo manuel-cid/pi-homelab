@@ -10,7 +10,7 @@ Este documento cubre los casos habituales de reutilización de discos en **ext4*
 
 - Haber completado o validado [01-material-necesario.md](01-material-necesario.md).
 - Tener conectados físicamente el **SSD NVMe**, **`hd2t`** y **`hd5t`** según [02-esquema-conexiones.md](02-esquema-conexiones.md).
-- Arrancar con Raspberry Pi OS y disponer de acceso por terminal con un usuario con permisos de `sudo`.
+- Arrancar con **Raspberry Pi OS Lite 64-bit** y disponer de acceso por terminal con un usuario con permisos de `sudo`.
 - Si la carcasa es una **Argon ONE V3**, haber instalado los scripts de control del ventilador y botón de power según se indica en [02-esquema-conexiones.md](02-esquema-conexiones.md#scripts-de-la-carcasa-si-aplica).
 - Confirmar qué disco reutilizado será **`hd2t`** y cuál será **`hd5t`** según su contenido real.
 - Asumir que en esta fase **no se reformatea nada**.
@@ -169,6 +169,13 @@ La recomendación es:
 
 No hace falta que la etiqueta original del volumen coincida con `hd2t` o `hd5t` si usas **UUID** en `fstab`.
 
+Si el disco ya contiene datos con otra estructura, no hace falta reorganizarlo en esta fase. Aun así, para que los servicios del homelab puedan reutilizar rutas coherentes más adelante, conviene validar si el contenido ya encaja con la estructura objetivo:
+
+- **`hd2t`**: `/media/hd2t/media/video`, `/media/hd2t/media/music`, `/media/hd2t/media/audiobooks`, `/media/hd2t/media/books`, `/media/hd2t/downloads`, `/media/hd2t/backups`
+- **`hd5t`**: `/media/hd5t/media/`
+
+<!-- TODO: verificar si los datos heredados ya siguen la estructura esperada por los futuros `docker-compose.yml` o si habrá que adaptar rutas de biblioteca al desplegar cada servicio. -->
+
 ## Montaje Manual de Prueba
 
 Antes de editar `fstab`, monta cada disco manualmente y valida que el contenido esperado aparece.
@@ -187,6 +194,13 @@ sudo mount -t ext4 /dev/sdb1 /media/hd5t
 ```
 
 ### Ejemplo para `NTFS`
+
+Primero obtén el UID/GID reales del usuario operativo:
+
+```bash
+id -u
+id -g
+```
 
 Si el kernel soporta `ntfs3`, usa esta opción:
 
@@ -262,22 +276,22 @@ UUID=EEEE-FFFF-GGGG-HHHH  /media/hd5t  ext4   defaults,nofail,noatime,x-systemd.
 Con driver `ntfs3`:
 
 ```fstab
-UUID=AAAA-BBBB  /media/hd2t  ntfs3   uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
-UUID=CCCC-DDDD  /media/hd5t  ntfs3   uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=AAAA-BBBB  /media/hd2t  ntfs3   uid=<uid>,gid=<gid>,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=CCCC-DDDD  /media/hd5t  ntfs3   uid=<uid>,gid=<gid>,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
 ```
 
 Fallback con `ntfs-3g`:
 
 ```fstab
-UUID=AAAA-BBBB  /media/hd2t  ntfs-3g  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
-UUID=CCCC-DDDD  /media/hd5t  ntfs-3g  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=AAAA-BBBB  /media/hd2t  ntfs-3g  uid=<uid>,gid=<gid>,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=CCCC-DDDD  /media/hd5t  ntfs-3g  uid=<uid>,gid=<gid>,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
 ```
 
 ### Ejemplo para `exFAT`
 
 ```fstab
-UUID=AAAA-BBBB  /media/hd2t  exfat  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
-UUID=CCCC-DDDD  /media/hd5t  exfat  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=AAAA-BBBB  /media/hd2t  exfat  uid=<uid>,gid=<gid>,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=CCCC-DDDD  /media/hd5t  exfat  uid=<uid>,gid=<gid>,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
 ```
 
 ### Validación inmediata
@@ -311,13 +325,13 @@ Haz esto solo si el contenido debe quedar gestionado por tu usuario operativo. S
 
 Estos sistemas de archivos no manejan permisos Linux de la misma forma. El control se hace en el propio montaje con:
 
-- `uid=1000`
-- `gid=1000`
+- `uid=<uid>`
+- `gid=<gid>`
 - `umask=002`
 
 Eso deja los archivos accesibles para el usuario principal y su grupo, que suele ser suficiente para bibliotecas multimedia y directorios compartidos con contenedores.
 
-Si más adelante usas un UID/GID distinto para Docker, ajusta esos valores en `fstab` para que coincidan con el usuario efectivo de los contenedores.
+Sustituye esos valores por el UID/GID reales de tu usuario operativo (`id -u` y `id -g`). Si más adelante usas un UID/GID distinto para Docker, ajusta también esos valores en `fstab` para que coincidan con el usuario efectivo de los contenedores.
 
 ## Recomendaciones Operativas
 
@@ -359,7 +373,9 @@ sd X:0:0:0: [sdX] tag#N uas_eh_abort_handler
 
 El problema es que la Raspberry Pi 5 **limita por defecto la corriente USB a 600 mA** en total para todos los puertos. Dos discos mecánicos necesitan mucho más que eso, especialmente durante el arranque (spin-up), y la Pi corta la alimentación por protección.
 
-**Solución**: habilitar la entrega de alta corriente USB añadiendo `usb_max_current_enable=1` en `/boot/firmware/config.txt`. Esto sube el límite a **1,6 A**, pero requiere una fuente de alimentación de al menos **5 V / 5 A** (la fuente oficial de la Raspberry Pi 5).
+**Solución**: si tu carcasa o tu montaje lo requieren, habilitar la entrega de alta corriente USB añadiendo `usb_max_current_enable=1` en `/boot/firmware/config.txt`. Esto requiere una fuente de alimentación de al menos **5 V / 5 A** (la fuente oficial de la Raspberry Pi 5).
+
+<!-- TODO: verificar en la carcasa/controladora USB concreta si `usb_max_current_enable=1` sigue siendo necesario en Raspberry Pi 5 o si ya viene resuelto por firmware o scripts del fabricante. -->
 
 Si la carcasa es una **Argon ONE V3** y ya se instalaron los scripts del fabricante según [02-esquema-conexiones.md](02-esquema-conexiones.md#scripts-de-la-carcasa-si-aplica), esta línea **ya se añadió automáticamente**. Verifica que existe:
 

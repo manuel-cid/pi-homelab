@@ -10,6 +10,7 @@ En este proyecto, Portainer se usa como **capa de gestión**, no como sustituto 
 
 - Haber completado [01-instalacion-docker.md](01-instalacion-docker.md).
 - Haber completado [02-estructura-compose.md](02-estructura-compose.md).
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 - Disponer del directorio operativo del homelab en `/home/<user>/homelab/`.
 - Poder crear directorios persistentes bajo `/home/<user>/homelab/data/`.
 - Tener claro que Portainer necesitará acceso al socket Docker del host (`/var/run/docker.sock`).
@@ -51,7 +52,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DATA_ROOT}/portainer:/data
     labels:
-      - com.centurylinklabs.watchtower.enable=true
+      - com.centurylinklabs.watchtower.enable=false
 ```
 
 Este Compose sigue la convención definida en [02-estructura-compose.md](02-estructura-compose.md):
@@ -60,7 +61,7 @@ Este Compose sigue la convención definida en [02-estructura-compose.md](02-estr
 - sin campo legado `version:`
 - datos persistentes en el **SSD NVMe**
 - publicación explícita solo del puerto necesario
-- etiqueta preparada para la política futura de Watchtower
+- exclusión explícita de autoactualización con Watchtower por tratarse de infraestructura base
 
 ## Configuración
 
@@ -87,7 +88,7 @@ PORTAINER_HTTPS_PORT=9443
 Notas de esta configuración:
 
 - `PORTAINER_BIND_IP=0.0.0.0` permite acceso desde la **LAN** y desde la IP de **Tailscale** del host.
-- Si prefieres que Portainer solo sea accesible localmente o detrás de un proxy futuro, cambia a `127.0.0.1`.
+- Si prefieres que Portainer solo sea accesible detrás del reverse proxy interno documentado en [05-caddy.md](../03-red/05-caddy.md), cambia a `127.0.0.1`.
 - El fichero `.env` no contiene credenciales iniciales, así que no requiere nada especial aparte de la disciplina habitual del proyecto.
 
 ### 3. Desplegar el stack
@@ -121,7 +122,7 @@ Como el certificado inicial de Portainer es propio del contenedor, el navegador 
 
 - no hay exposición pública a internet
 - el acceso queda restringido a **LAN + Tailscale**
-- más adelante, si interesa, Portainer puede publicarse detrás del reverse proxy interno del homelab
+- más adelante, si interesa, Portainer puede publicarse detrás del reverse proxy interno del homelab según [05-caddy.md](../03-red/05-caddy.md)
 
 En el primer acceso:
 
@@ -166,6 +167,7 @@ Criterio concreto para este proyecto:
 
 - **infraestructura base crítica** como Portainer debe poder reconstruirse siempre desde archivos en `/home/<user>/homelab/compose/`
 - para servicios pequeños, Portainer puede servir como interfaz cómoda de despliegue, pero cualquier cambio importante debe reflejarse también en la estructura documental del homelab
+- Portainer no debe quedar marcado para autoactualización con Watchtower; su actualización conviene hacerla manualmente y en una ventana de mantenimiento controlada, en línea con [04-watchtower.md](04-watchtower.md)
 
 ### 7. Operaciones habituales desde Portainer
 

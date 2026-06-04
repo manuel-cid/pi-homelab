@@ -22,6 +22,7 @@ En este diseño, **Pi-hole no actúa como servidor DHCP**. El DHCP sigue en el r
 - Tener creada la red Docker externa `dns_lan`.
 - Tener reservada la IP `192.168.1.194` para Pi-hole y la IP `192.168.1.222` para `macvlan-shim`.
 - Mantener el DHCP en el router; no habilitar DHCP en Pi-hole en este escenario.
+- Tener disponibles `dig` y `curl` para las validaciones (`sudo apt install -y dnsutils curl` si todavía no están instalados).
 - Puertos necesarios para Pi-hole en su IP macvlan:
   - `53/tcp`
   - `53/udp`
@@ -44,6 +45,8 @@ services:
     image: pihole/pihole:latest
     hostname: pihole
     restart: unless-stopped
+    env_file:
+      - .env
     networks:
       dns_lan:
         ipv4_address: 192.168.1.194
@@ -71,6 +74,7 @@ Notas sobre este Compose:
 
 - no se usa `ports:` porque el contenedor ya tiene su propia IP LAN mediante macvlan
 - no se habilita DHCP en Pi-hole, así que no hace falta exponer `67/udp`
+- se declara `env_file: .env` para que el stack sea autocontenido tanto por CLI como desde Portainer
 - el upstream inicial usa resolutores públicos solo para bootstrap
 - cuando completes [03-unbound.md](03-unbound.md), cambia `FTLCONF_dns_upstreams` para apuntar a `192.168.1.195#5335`
 
@@ -88,6 +92,7 @@ PIHOLE_WEBPASSWORD=<cambia-esta-contraseña>
 ```bash
 mkdir -p /home/<user>/homelab/compose/infra-pihole-unbound
 mkdir -p /home/<user>/homelab/data/pihole
+sudo apt install -y dnsutils curl
 ```
 
 Guarda el `docker-compose.yml` y el `.env` mostrados arriba y valida el stack:

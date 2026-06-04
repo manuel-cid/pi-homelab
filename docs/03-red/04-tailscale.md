@@ -13,6 +13,8 @@ En este proyecto, **Tailscale** cumple una función muy concreta:
 
 Para este homelab, la opción recomendada es **instalar Tailscale en el host**. Así, el nodo Tailscale coincide con la Raspberry Pi real y el acceso remoto a servicios publicados en el host, especialmente detrás de **Caddy**, resulta más simple.
 
+Aunque `SERVICES.md` resume el catálogo bajo la convención general de servicios en contenedor, en este caso el plan maestro de red admite **host o contenedor** para Tailscale. En esta guía se documentan ambas modalidades y se prioriza **host** como excepción operativa intencionada.
+
 La opción en contenedor también es válida, pero se considera secundaria y solo tiene sentido si quieres evitar instalar paquetes adicionales en el sistema base.
 
 ## Requisitos Previos

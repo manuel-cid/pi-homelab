@@ -10,7 +10,8 @@ La política de almacenamiento de este proyecto se mantiene igual que en el rest
 - la biblioteca multimedia vive en `/media/hd5t/media/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
-- **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
+- **Caddy** puede publicarlo por **HTTP en la LAN** y **HTTPS solo por Tailscale** según [05-caddy.md](../03-red/05-caddy.md)
+- no hay exposición directa a internet ni port forwarding para este servicio
 
 Stash encaja bien en este homelab porque separa claramente la **biblioteca real** del **estado operativo** del servicio. Eso permite dejar en el SSD NVMe lo sensible al rendimiento y a la consistencia del SQLite, mientras `hd5t` absorbe el crecimiento del catálogo multimedia.
 
@@ -20,12 +21,12 @@ Stash encaja bien en este homelab porque separa claramente la **biblioteca real*
 - Tener Docker Engine y Docker Compose operativos según [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md).
 - Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceso remoto seguro.
-- Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Stash detrás del reverse proxy interno.
+- Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Stash detrás del reverse proxy interno del homelab.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
 - Tener montado `hd5t` en `/media/hd5t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:
-  - `14004/tcp` en el host para acceso web desde LAN o Tailscale
+  - `14004/tcp` en el host para acceso web directo desde LAN o Tailscale
   - `9999/tcp` como puerto interno del contenedor
 
 ## Docker Compose
@@ -141,8 +142,8 @@ PROXY_NETWORK=homelab_proxy
 
 Notas prácticas:
 
-- `STASH_BIND_IP=0.0.0.0` deja el servicio accesible desde la LAN y también desde la IP Tailscale del host
-- si prefieres acceso solo detrás de Caddy, puedes publicar `127.0.0.1:14004`
+- `STASH_BIND_IP=0.0.0.0` deja el servicio accesible por acceso directo desde la LAN y también desde la IP Tailscale del host
+- si prefieres seguir el patrón recomendado del homelab y entrar siempre por Caddy, puedes publicar `127.0.0.1:14004`
 - `STASH_PORT` debe coincidir con el puerto interno del contenedor y con el mapeo del Compose
 
 ### 4. Desplegar el stack
@@ -167,9 +168,12 @@ Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en
 - `http://IP_DE_LA_PI:14004`
 - `http://pi-homelab.<tailnet>.ts.net:14004` desde dispositivos unidos a Tailscale
 
-Y, si ya tienes Caddy operativo:
+Si prefieres el patrón recomendado del homelab, con Caddy por delante:
 
 - `http://stash.lan`
+- acceso remoto por el hostname MagicDNS del nodo y la publicación que definas en [05-caddy.md](../03-red/05-caddy.md)
+
+El acceso directo por puerto es válido para administración o pruebas, pero no sustituye la política general del proyecto: **sin exposición WAN y sin abrir puertos en el router**.
 
 ### 5. Primer arranque y rutas de trabajo
 

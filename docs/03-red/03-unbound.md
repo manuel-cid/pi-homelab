@@ -51,6 +51,8 @@ services:
     image: pihole/pihole:latest
     hostname: pihole
     restart: unless-stopped
+    env_file:
+      - .env
     depends_on:
       - unbound
     networks:
@@ -72,6 +74,8 @@ services:
     image: mvance/unbound:latest
     hostname: unbound
     restart: unless-stopped
+    env_file:
+      - .env
     networks:
       dns_lan:
         ipv4_address: 192.168.1.195

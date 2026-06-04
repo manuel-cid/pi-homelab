@@ -133,7 +133,7 @@ Cómo usar esta convención:
 
 ### 3. Registro actual de puertos del proyecto
 
-Estado inicial coherente con la Fase 3:
+Infraestructura base ya fijada en esta fase:
 
 | Ámbito | IP / interfaz | Puerto | Servicio | Uso | Exposición |
 |-------|----------------|--------|----------|-----|------------|
@@ -146,35 +146,41 @@ Estado inicial coherente con la Fase 3:
 | Macvlan | `192.168.1.195` | `5335/tcp` | Unbound | upstream DNS TCP | interno DNS |
 | Macvlan | `192.168.1.195` | `5335/udp` | Unbound | upstream DNS UDP | interno DNS |
 
-Reserva inicial sugerida para próximos servicios del catálogo:
+Registro vivo de servicios ya documentados en el repositorio:
 
 | Servicio | Puerto recomendado | Nota |
 |---------|--------------------|------|
-| Portainer | `10001/tcp` | si se publica en host, mejor en `127.0.0.1` y detrás de Caddy |
-| Prometheus | `11000/tcp` | evitar exponerlo directamente a la LAN si no es necesario |
-| Grafana | `11001/tcp` | candidato natural para Caddy |
-| Uptime Kuma | `11002/tcp` | candidato natural para Caddy |
-| Syncthing UI | `12000/tcp` | la sincronización usa puertos propios aparte |
-| Home Assistant | `13000/tcp` | candidato natural para Caddy |
-| Zigbee2MQTT UI | `13001/tcp` | candidato natural para Caddy |
-| Node-RED | `13002/tcp` | candidato natural para Caddy |
-| Jellyfin | `14000/tcp` | candidato natural para Caddy |
-| Navidrome | `14001/tcp` | candidato natural para Caddy |
-| Audiobookshelf | `14002/tcp` | candidato natural para Caddy |
-| Calibre-Web | `14003/tcp` | candidato natural para Caddy |
-| Stash | `14004/tcp` | revisar si necesita acceso directo adicional |
-| Transmission Web UI | `15000/tcp` | el puerto de pares se documenta aparte |
-| Prowlarr | `15001/tcp` | candidato natural para Caddy |
-| Sonarr | `15002/tcp` | candidato natural para Caddy |
-| Radarr | `15003/tcp` | candidato natural para Caddy |
-| Vaultwarden | `16000/tcp` | preferible siempre detrás de Caddy |
-| Linkding | `16001/tcp` | candidato natural para Caddy |
-| Paperless-ngx | `16002/tcp` | candidato natural para Caddy |
-| Mealie | `16003/tcp` | candidato natural para Caddy |
-| Stirling PDF | `16004/tcp` | candidato natural para Caddy |
-| FreshRSS | `16005/tcp` | candidato natural para Caddy |
-| Homepage | `17000/tcp` | candidato natural para Caddy |
-| Authelia | `17001/tcp` | backend de autenticación para Caddy |
+| Portainer | `9443/tcp` | publicado en host según [03-portainer.md](../02-docker/03-portainer.md); si lo pasas por Caddy, mejor moverlo a `127.0.0.1` |
+| Prometheus | `11000/tcp` | publicado solo en `127.0.0.1` según su documento |
+| Grafana | `13000/tcp` | publicado solo en `127.0.0.1`; queda fuera del rango inicialmente sugerido para monitorización |
+| Uptime Kuma | `11002/tcp` | publicado solo en `127.0.0.1` |
+| Syncthing UI | `12000/tcp` | la sincronización usa además `22000/tcp`, `22000/udp` y `21027/udp` |
+| Home Assistant | `13000/tcp` | <!-- TODO: verificar el puerto final de Home Assistant; `13000/tcp` quedó reservado en esta fase, pero hoy ese bind ya aparece usado por Grafana --> |
+| Zigbee2MQTT UI | `13001/tcp` | candidato natural para Caddy mientras no exista una necesidad de acceso directo |
+| Node-RED | `13002/tcp` | candidato natural para Caddy mientras no exista una necesidad de acceso directo |
+| Jellyfin | `8096/tcp` | publicado en host según [01-jellyfin.md](../09-multimedia/01-jellyfin.md) |
+| Navidrome | `14001/tcp` | publicado en host según [02-navidrome.md](../09-multimedia/02-navidrome.md) |
+| Audiobookshelf | `13378/tcp` | publicado en host según [03-audiobookshelf.md](../09-multimedia/03-audiobookshelf.md) |
+| Calibre-Web | `14003/tcp` | publicado en host según [04-calibre-web.md](../09-multimedia/04-calibre-web.md) |
+| Stash | `14004/tcp` | publicado en host; revisar si más adelante conviene dejarlo detrás de Caddy |
+| Transmission Web UI | `15000/tcp` | usa además `51413/tcp` y `51413/udp` para pares |
+| Prowlarr | `15001/tcp` | publicado en host según [02-prowlarr.md](../10-descargas/02-prowlarr.md) |
+| Sonarr | `15002/tcp` | publicado en host según [03-sonarr.md](../10-descargas/03-sonarr.md) |
+| Radarr | `15003/tcp` | publicado en host según [04-radarr.md](../10-descargas/04-radarr.md) |
+| Vaultwarden | puerto interno `80/tcp` | preferible detrás de Caddy, sin publicación directa en host según [01-vaultwarden.md](../11-productividad/01-vaultwarden.md) |
+| Linkding | `9090/tcp` | publicado en host según [02-linkding.md](../11-productividad/02-linkding.md) |
+| Paperless-ngx | `16002/tcp` | publicado en host según [03-paperless-ngx.md](../11-productividad/03-paperless-ngx.md) |
+| Mealie | `16003/tcp` | publicado en host según [04-mealie.md](../11-productividad/04-mealie.md) |
+| Stirling PDF | `16004/tcp` | publicado en host según [05-stirling-pdf.md](../11-productividad/05-stirling-pdf.md) |
+| FreshRSS | `16005/tcp` | publicado en host según [06-freshrss.md](../11-productividad/06-freshrss.md) |
+| Homepage | `17000/tcp` | publicado en host según [01-homepage.md](../12-dashboards/01-homepage.md) |
+| Authelia | puerto interno `9091/tcp` | backend interno para Caddy según [01-authelia.md](../04-seguridad/01-authelia.md) |
+
+Regla de interpretación para esta tabla:
+
+- si un documento de servicio ya fija un puerto concreto, ese valor pasa a ser la referencia operativa de este registro vivo
+- la convención por rangos sigue siendo útil para servicios futuros, pero no debe pisar puertos estándar o ya documentados
+- cuando un servicio pase a `127.0.0.1` o quede solo detrás de Caddy, actualiza aquí su nota de exposición
 
 Puertos estándar que conviene documentar como excepción cuando esos servicios se desplieguen:
 

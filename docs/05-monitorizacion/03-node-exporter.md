@@ -78,6 +78,8 @@ Archivo recomendado: `/home/<user>/homelab/compose/monitoring-node-exporter/.env
 PROXY_NETWORK=homelab_proxy
 ```
 
+<!-- TODO: verificar una versión fija probada de `quay.io/prometheus/node-exporter` para ARM64 y sustituir la etiqueta `latest` en este Compose -->
+
 Puntos importantes de este Compose:
 
 - `read_only: true` reduce superficie de escritura en un servicio que no necesita persistencia

@@ -418,7 +418,9 @@ Da esta tarea por terminada solo si se cumplen estas condiciones:
 
 ## Siguiente Paso
 
-Con el arranque desde NVMe verificado, el siguiente documento a completar o seguir es `docs/01-sistema/01-instalacion-os.md` si vas a rehacer la instalación base con un flujo limpio, o `docs/01-sistema/02-configuracion-inicial.md` si la migración ya dejó un sistema operativo funcional sobre el NVMe.
+Con el arranque desde NVMe verificado, el siguiente documento a completar o seguir es [docs/01-sistema/02-configuracion-inicial.md](../01-sistema/02-configuracion-inicial.md), que asume un sistema operativo ya funcional sobre el SSD NVMe.
+
+Si durante la migración decidiste rehacer la instalación base desde cero con Raspberry Pi Imager, usa [docs/01-sistema/01-instalacion-os.md](../01-sistema/01-instalacion-os.md) solo como referencia para recuperar los criterios de instalación inicial y la configuración headless.
 
 ## Referencias
 

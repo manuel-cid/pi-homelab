@@ -115,7 +115,7 @@ Comprobaciones útiles tras el arranque:
 
 ```bash
 docker compose logs --tail=50 watchtower
-docker inspect watchtower --format '{{json .Mounts}}'
+docker inspect "$(docker compose ps -q watchtower)" --format '{{json .Mounts}}'
 ```
 
 El resultado esperado es que el contenedor quede en estado `Up` y que monte correctamente:

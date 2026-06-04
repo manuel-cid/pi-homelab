@@ -44,6 +44,8 @@ services:
       - .env
     environment:
       TZ: ${TZ}
+      PUID: ${PUID}
+      PGID: ${PGID}
       USER: ${TRANSMISSION_RPC_USER}
       PASS: ${TRANSMISSION_RPC_PASS}
       WHITELIST: ${TRANSMISSION_RPC_WHITELIST}
@@ -74,6 +76,7 @@ Notas sobre este Compose:
 - el stack queda aislado bajo `downloads-transmission`
 - la configuración persistente vive en el **SSD NVMe**
 - el contenido pesado de descarga vive en `hd2t`
+- `PUID` y `PGID` se pasan también como variables de entorno porque la imagen de LinuxServer usa ese patrón para ajustar permisos internos
 - el puerto de peers se fija en `51413` para evitar cambios aleatorios tras reinicios
 - la carpeta `/downloads` agrupa `complete/`, `incomplete/` y otras subcarpetas sin mezclar descargas con las bibliotecas finales
 - el servicio se conecta también a `homelab_proxy` para que futuros stacks como Sonarr o Radarr puedan alcanzar `transmission:9091` por nombre interno Docker
@@ -164,7 +167,7 @@ curl -I http://127.0.0.1:15000
 Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en:
 
 - `http://IP_DE_LA_PI:15000`
-- `http://pi-homelab.<tailnet>.ts.net:15000` desde dispositivos unidos a Tailscale
+- `http://<hostname>.<tailnet>.ts.net:15000` desde dispositivos unidos a Tailscale con MagicDNS
 
 ### 5. Primer arranque y autenticación básica
 
