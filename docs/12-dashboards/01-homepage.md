@@ -57,7 +57,7 @@ services:
       - default
       - homelab_proxy
     labels:
-      - com.centurylinklabs.watchtower.enable=true
+      - wud.watch=true
 
 networks:
   homelab_proxy:

@@ -57,7 +57,7 @@ services:
       - ${DATA_ROOT}/mealie:/app/data
     mem_limit: 1g
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/productivity-mealie/.env`
@@ -84,7 +84,7 @@ Notas sobre este Compose:
 - `SQLite` es una buena opción aquí porque todo el estado vive en almacenamiento local del host, no en un NAS remoto
 - `mem_limit: 1g` ayuda a contener el uso de memoria en una Raspberry Pi 5 sin complicar el despliegue
 - `MEALIE_ALLOW_SIGNUP=true` solo es recomendable para el **bootstrap inicial**; después conviene dejarlo en `false`
-- se desactiva Watchtower porque el propio proyecto recomienda usar una **versión fijada** y actualizar deliberadamente
+- se excluye de WUD porque el propio proyecto recomienda usar una **versión fijada** y actualizar deliberadamente
 - antes de una instalación nueva conviene comprobar si existe una versión más reciente de `v3.17.0` y sustituirla conscientemente en el Compose
 
 ## Configuración

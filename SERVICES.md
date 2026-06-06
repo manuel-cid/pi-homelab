@@ -10,7 +10,7 @@ Catálogo de servicios recomendados para un homelab doméstico corriendo sobre *
 |---|---|
 | **Docker + Docker Compose** | Motor de contenedores y orquestador declarativo |
 | **Portainer CE** | Panel web para gestionar contenedores, imágenes, volúmenes y redes |
-| **Watchtower** | Actualización automática de imágenes Docker en ejecución |
+| **WUD (What's Up Docker)** | Monitorización y actualización controlada de imágenes Docker |
 
 ---
 
@@ -126,7 +126,7 @@ LAN / Tailscale (VPN mesh)
           │
           ├─► Docker Engine
           │     ├─► Portainer (gestión)
-          │     ├─► Watchtower (actualizaciones)
+          │     ├─► WUD (monitorización de actualizaciones)
           │     └─► todos los servicios en contenedores
           │
           ├─► Pi-hole + Unbound (DNS)

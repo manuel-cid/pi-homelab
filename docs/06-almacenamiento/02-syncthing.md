@@ -66,7 +66,7 @@ services:
       - ${SYNC_FOLDERS_ROOT}/notes:/data/notes
       - /media/hd2t/syncthing/media-drop:/data/media-drop
     labels:
-      - com.centurylinklabs.watchtower.enable=true
+      - wud.watch=true
 ```
 
 Este Compose sigue la política general del proyecto:

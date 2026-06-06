@@ -59,7 +59,7 @@ services:
       - default
       - proxy
     labels:
-      - com.centurylinklabs.watchtower.enable=true
+      - wud.watch=true
 
 networks:
   proxy:
@@ -305,17 +305,17 @@ Antes de levantar un stack:
 - comprueba que la red externa compartida existe si el stack la referencia
 - revisa que los puertos elegidos no colisionan con otros servicios
 
-### 8. Relación con Portainer y Watchtower
+### 8. Relación con Portainer y WUD
 
 La estructura definida aquí está pensada para funcionar bien con los siguientes documentos de esta fase:
 
 - Portainer gestionará mejor stacks pequeños y coherentes que un monolito gigante
-- Watchtower se puede controlar mejor con etiquetas por stack o por servicio
+- WUD se puede controlar mejor con etiquetas por stack o por servicio
 
 Convención recomendada desde el principio:
 
-- añade la etiqueta `com.centurylinklabs.watchtower.enable=true` solo a los servicios que quieras actualizar automáticamente
-- deja fuera de esa política servicios especialmente sensibles si prefieres actualizarlos manualmente
+- WUD monitoriza todos los contenedores por defecto; añade la etiqueta `wud.watch=false` solo a los servicios que quieras excluir de la monitorización
+- las actualizaciones automáticas requieren configurar triggers explícitos en el stack de WUD, no basta con una etiqueta
 
 ## Almacenamiento
 

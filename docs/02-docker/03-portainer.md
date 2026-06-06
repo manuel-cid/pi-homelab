@@ -52,7 +52,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DATA_ROOT}/portainer:/data
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 ```
 
 Este Compose sigue la convención definida en [02-estructura-compose.md](02-estructura-compose.md):
@@ -61,7 +61,7 @@ Este Compose sigue la convención definida en [02-estructura-compose.md](02-estr
 - sin campo legado `version:`
 - datos persistentes en el **SSD NVMe**
 - publicación explícita solo del puerto necesario
-- exclusión explícita de autoactualización con Watchtower por tratarse de infraestructura base
+- exclusión explícita de monitorización con WUD por tratarse de infraestructura base
 
 ## Configuración
 
@@ -167,7 +167,7 @@ Criterio concreto para este proyecto:
 
 - **infraestructura base crítica** como Portainer debe poder reconstruirse siempre desde archivos en `/home/<user>/homelab/compose/`
 - para servicios pequeños, Portainer puede servir como interfaz cómoda de despliegue, pero cualquier cambio importante debe reflejarse también en la estructura documental del homelab
-- Portainer no debe quedar marcado para autoactualización con Watchtower; su actualización conviene hacerla manualmente y en una ventana de mantenimiento controlada, en línea con [04-watchtower.md](04-watchtower.md)
+- Portainer no debe quedar marcado para autoactualización con WUD; su actualización conviene hacerla manualmente y en una ventana de mantenimiento controlada, en línea con [04-wud.md](04-wud.md)
 
 ### 7. Operaciones habituales desde Portainer
 

@@ -54,7 +54,7 @@ services:
       - default
       - proxy
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 
 networks:
   proxy:
@@ -79,7 +79,7 @@ Puntos importantes de este Compose:
 - `extra_hosts` permite resolver `host.docker.internal`, útil para comprobar endpoints del host como métricas nativas de Docker Engine
 - el stack se une a `homelab_proxy` para poder monitorizar otros servicios Docker por nombre interno
 - no se monta `/var/run/docker.sock`, porque en este escenario no es necesario y añade privilegios innecesarios
-- se recomienda **no** autoactualizar Uptime Kuma ciegamente con Watchtower
+- se recomienda **no** configurar triggers de actualización automática de WUD para Uptime Kuma
 
 ## Configuración
 

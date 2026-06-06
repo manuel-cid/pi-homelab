@@ -47,7 +47,7 @@ services:
     volumes:
       - ${DATA_ROOT}/linkding:/etc/linkding/data
     labels:
-      - com.centurylinklabs.watchtower.enable=true
+      - wud.watch=true
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/productivity-linkding/.env`
@@ -68,7 +68,7 @@ Notas sobre este Compose:
 - `LINKDING_BIND_IP=0.0.0.0` permite acceder al servicio desde la LAN y desde Tailscale
 - si prefieres publicarlo solo detrás de un reverse proxy local, cambia `LINKDING_BIND_IP=127.0.0.1`
 - `LD_SUPERUSER_NAME` y `LD_SUPERUSER_PASSWORD` permiten crear el primer usuario automáticamente al arrancar
-- la etiqueta de Watchtower puede mantenerse activa porque es un servicio pequeño y fácil de recuperar
+- WUD puede monitorizar este servicio sin riesgo porque es pequeño y fácil de recuperar
 
 ## Configuración
 

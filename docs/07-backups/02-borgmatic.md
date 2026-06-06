@@ -61,7 +61,7 @@ services:
       - ${CONFIG_ROOT}/borgmatic/ssh:/root/.ssh:ro
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
-      - com.centurylinklabs.watchtower.enable=true
+      - wud.watch=true
 ```
 
 Variables mínimas recomendadas para `/home/<user>/homelab/compose/infra-borgmatic/.env`:

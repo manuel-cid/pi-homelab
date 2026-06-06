@@ -47,7 +47,7 @@ services:
       - /home/<user>/homelab/data/mosquitto/data:/mosquitto/data
       - /home/<user>/homelab/data/mosquitto/log:/mosquitto/log
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 ```
 
 Este stack sigue la convención general del proyecto:

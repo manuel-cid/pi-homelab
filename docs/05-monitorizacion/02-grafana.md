@@ -59,7 +59,7 @@ services:
       - default
       - proxy
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 
 networks:
   proxy:
@@ -88,7 +88,7 @@ Puntos importantes de este Compose:
 - el stack se une a `homelab_proxy` para alcanzar `http://prometheus:9090` sin publicar Prometheus en la red local
 - los datos persistentes viven en `/home/<user>/homelab/data/grafana/` sobre el **SSD NVMe**
 - el aprovisionamiento de datasource y dashboards vive fuera del contenedor, bajo `/home/<user>/homelab/config/grafana/`
-- se recomienda **no** autoactualizar Grafana ciegamente con Watchtower
+- se recomienda **no** configurar triggers de actualización automática de WUD para Grafana
 
 ## Configuración
 

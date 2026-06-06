@@ -44,7 +44,7 @@ services:
     volumes:
       - /home/<user>/homelab/data/paperless/redis:/data
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 
   db:
     image: postgres:18
@@ -56,7 +56,7 @@ services:
     volumes:
       - /home/<user>/homelab/data/paperless/db:/var/lib/postgresql/data
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 
   webserver:
     image: ghcr.io/paperless-ngx/paperless-ngx:latest
@@ -89,7 +89,7 @@ services:
       - /home/<user>/homelab/data/paperless/export:/usr/src/paperless/export
       - /home/<user>/homelab/data/paperless/consume:/usr/src/paperless/consume
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/paperless-ngx/.env`
@@ -116,7 +116,7 @@ Notas sobre este Compose:
 - la persistencia completa queda en bind mounts sobre el **SSD NVMe**
 - `PAPERLESS_TASK_WORKERS=1` es una base prudente para una Raspberry Pi 5 de 8 GB; puedes subirlo después si importas lotes grandes
 - `PAPERLESS_CONSUMER_RECURSIVE=true` y `PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS=true` permiten usar subcarpetas dentro de `consume/` como **etiquetas automáticas**
-- se desactiva Watchtower para evitar actualizaciones automáticas ciegas en una aplicación con migraciones de base de datos
+- se excluye de WUD para evitar actualizaciones automáticas ciegas en una aplicación con migraciones de base de datos
 - si necesitas ingerir muchos documentos Office, puedes extender más adelante el stack con **Gotenberg** y **Tika**, pero para escaneos PDF e imágenes el despliegue anterior ya es funcional
 
 ## Configuración

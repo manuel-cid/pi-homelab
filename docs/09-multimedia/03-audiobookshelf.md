@@ -55,7 +55,7 @@ services:
       - default
       - proxy
     labels:
-      - com.centurylinklabs.watchtower.enable=true
+      - wud.watch=true
 
 networks:
   proxy:

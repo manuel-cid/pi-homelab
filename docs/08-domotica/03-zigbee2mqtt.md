@@ -50,7 +50,7 @@ services:
     devices:
       - /dev/serial/by-id/ADAPTADOR_ZIGBEE:/dev/zigbee
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 ```
 
 Notas sobre este Compose:
@@ -58,7 +58,7 @@ Notas sobre este Compose:
 - la ruta en `devices:` debe sustituirse por la ruta real del coordinador en `/dev/serial/by-id/`
 - el bind mount de `/run/udev` permite a Zigbee2MQTT detectar correctamente el adaptador
 - el puerto `13001` del host publica la interfaz web local del contenedor en `8080`
-- se desactiva la actualización automática por Watchtower para evitar cambios inesperados en una pieza crítica de la domótica
+- se excluye de la monitorización de WUD para evitar cambios inesperados en una pieza crítica de la domótica
 
 ## Configuración
 

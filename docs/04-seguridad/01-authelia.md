@@ -67,7 +67,7 @@ services:
     networks:
       - homelab_proxy
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 
 networks:
   homelab_proxy:
@@ -88,7 +88,7 @@ Notas sobre este Compose:
 - **Caddy** lo alcanza por nombre de servicio interno `authelia:9091` a través de `homelab_proxy`
 - la configuración editable queda fuera del contenedor en `/config`
 - el estado persistente queda en `/data`
-- se recomienda **no** dejar Authelia en autoactualización ciega con Watchtower
+- se recomienda **no** configurar triggers de actualización automática de WUD para Authelia
 
 ## Configuración
 
