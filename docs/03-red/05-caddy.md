@@ -65,7 +65,7 @@ services:
       - /home/<user>/homelab/data/caddy/config:/config
       - /home/<user>/homelab/data/caddy/certs:/certs:ro
     labels:
-      - com.centurylinklabs.watchtower.enable=true
+      - wud.watch=true
 
 networks:
   homelab_proxy:

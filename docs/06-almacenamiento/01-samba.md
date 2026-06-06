@@ -134,7 +134,7 @@ services:
       - /media/hd2t/downloads:/shares/downloads
       - /media/hd5t/media:/shares/stash
     labels:
-      - com.centurylinklabs.watchtower.enable=true
+      - wud.watch=true
 ```
 
 Este Compose sigue la política general del proyecto:

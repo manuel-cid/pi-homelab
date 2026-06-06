@@ -47,7 +47,7 @@ services:
     volumes:
       - /home/<user>/homelab/data/node-red:/data
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 ```
 
 Este stack sigue el mismo patrón que el resto de la fase:

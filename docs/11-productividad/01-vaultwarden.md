@@ -59,7 +59,7 @@ services:
     networks:
       - homelab_proxy
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 
 networks:
   homelab_proxy:
@@ -84,7 +84,7 @@ Notas sobre este Compose:
 - `DOMAIN` debe coincidir con la URL real que usarán los clientes
 - el `ADMIN_TOKEN` puede guardarse en texto plano, pero es preferible almacenarlo como **hash Argon2**
 - el log persistente en `/data/vaultwarden.log` deja preparado el servicio para [02-fail2ban.md](../04-seguridad/02-fail2ban.md)
-- se recomienda **no** autoactualizar a ciegas un gestor de contraseñas con Watchtower
+- se recomienda **no** configurar triggers de actualización automática de WUD para un gestor de contraseñas
 
 ## Configuración
 

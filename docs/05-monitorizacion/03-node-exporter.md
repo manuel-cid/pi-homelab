@@ -64,7 +64,7 @@ services:
       - default
       - proxy
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 
 networks:
   proxy:
@@ -87,7 +87,7 @@ Puntos importantes de este Compose:
 - `expose: 9100` deja el servicio accesible para Prometheus dentro de Docker sin abrirlo en la LAN
 - `--collector.hwmon` y `--collector.thermal_zone` ayudan a obtener métricas de temperatura útiles en la Pi
 - el stack se une a `homelab_proxy` para que Prometheus llegue a `node-exporter:9100`
-- se recomienda **no** autoactualizar Node Exporter ciegamente con Watchtower
+- se recomienda **no** configurar triggers de actualización automática de WUD para Node Exporter
 
 ## Configuración
 

@@ -20,7 +20,7 @@ En este proyecto, la prioridad operativa es proteger:
 
 - Haber completado [02-borgmatic.md](../07-backups/02-borgmatic.md).
 - Haber completado [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md).
-- Haber completado [04-watchtower.md](../02-docker/04-watchtower.md) si vas a automatizar parte de las actualizaciones.
+- Haber completado [04-wud.md](../02-docker/04-wud.md) si vas a monitorizar y automatizar parte de las actualizaciones.
 - Haber completado [03-seguridad-base.md](../01-sistema/03-seguridad-base.md).
 - Haber completado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 - Tener instaladas herramientas de administración base en el host:
@@ -153,7 +153,7 @@ docker ps --format '{{.Names}}' | xargs -r -I{} docker logs --tail=50 {} 2>&1 | 
 Si prefieres revisar solo contenedores críticos, empieza por:
 
 - `borgmatic`
-- `watchtower`
+- `wud`
 - `caddy`
 - bases de datos como `mariadb` o `postgres`
 - servicios de acceso como `authelia`, `vaultwarden` o `tailscale`
@@ -184,11 +184,11 @@ docker compose ps
 docker compose logs --tail=50
 ```
 
-Si usas Watchtower en modo controlado, revisa su ejecución:
+Si usas WUD en modo controlado, revisa su ejecución:
 
 ```bash
-cd /home/<user>/homelab/compose/infra-watchtower
-docker compose logs --tail=100 watchtower
+cd /home/<user>/homelab/compose/infra-wud
+docker compose logs --tail=100 wud
 ```
 
 Reglas recomendadas:
@@ -343,7 +343,7 @@ La recuperación técnica de datos y servicios depende de:
 
 - [02-borgmatic.md](../07-backups/02-borgmatic.md)
 - [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md)
-- [04-watchtower.md](../02-docker/04-watchtower.md)
+- [04-wud.md](../02-docker/04-wud.md)
 - [03-seguridad-base.md](../01-sistema/03-seguridad-base.md)
 - [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
 - Docker Docs: [docker system prune](https://docs.docker.com/reference/cli/docker/system/prune/)

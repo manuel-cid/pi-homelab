@@ -57,7 +57,7 @@ services:
       retries: 3
       start_period: 60s
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/productivity-freshrss/.env`
@@ -78,7 +78,7 @@ Notas sobre este Compose:
 - `SQLite` es suficiente aquí y evita añadir PostgreSQL o MariaDB para un servicio pequeño
 - `FRESHRSS_CRON_MIN=13,43` refresca feeds aproximadamente dos veces por hora sin depender de cron en el host
 - `extensions/` queda separado para poder probar extensiones sin mezclarlo con la base de datos y la configuración
-- se desactiva Watchtower para evitar actualizaciones automáticas ciegas sobre una aplicación con migraciones y cambios de esquema posibles
+- se excluye de WUD para evitar actualizaciones automáticas ciegas sobre una aplicación con migraciones y cambios de esquema posibles
 - este servicio debería entrar por **Caddy** para acceso desde la LAN o Tailscale; el bind en loopback evita exponerlo en `0.0.0.0` por comodidad, tal como fija [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
 - <!-- TODO: verificar una etiqueta concreta y estable de `freshrss/freshrss` para ARM64 antes de pasar este stack a producción; `latest` simplifica el ejemplo, pero no fija una versión reproducible -->
 

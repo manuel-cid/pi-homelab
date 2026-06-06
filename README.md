@@ -63,7 +63,7 @@ hd5t (5 TB) → /media/hd5t/
 
 ### Infraestructura Docker
 - **Portainer** — gestión visual de contenedores y stacks
-- **Watchtower** — actualización automática de imágenes (selectiva por etiqueta)
+- **WUD (What's Up Docker)** — monitorización y actualización controlada de imágenes Docker
 
 ### Monitorización
 - **Prometheus** — recolección de métricas
@@ -115,7 +115,7 @@ hd5t (5 TB) → /media/hd5t/
 docs/
 ├── 00-hardware/         # Material, conexiones, discos y arranque NVMe
 ├── 01-sistema/          # Instalación OS, configuración inicial, seguridad base, directorios
-├── 02-docker/           # Docker Engine, estructura Compose, Portainer, Watchtower
+├── 02-docker/           # Docker Engine, estructura Compose, Portainer, WUD
 ├── 03-red/              # Macvlan, Pi-hole, Unbound, Tailscale, Caddy, firewall
 ├── 04-seguridad/        # Authelia, Fail2ban
 ├── 05-monitorizacion/   # Prometheus, Grafana, Node Exporter, Uptime Kuma

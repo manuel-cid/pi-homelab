@@ -40,7 +40,7 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | `docs/02-docker/01-instalacion-docker.md` | Instalación de Docker Engine y Docker Compose en ARM64, post-install (grupo docker, autoarranque), verificación |
 | `docs/02-docker/02-estructura-compose.md` | Estrategia de organización: un `docker-compose.yml` por stack vs monolito, red Docker compartida, convenciones de nombres, variables de entorno (`.env`) |
 | `docs/02-docker/03-portainer.md` | Despliegue de Portainer CE, configuración inicial, gestión de stacks |
-| `docs/02-docker/04-watchtower.md` | Despliegue de Watchtower, programación de actualizaciones, exclusiones, notificaciones |
+| `docs/02-docker/04-wud.md` | Despliegue de WUD (What's Up Docker), monitorización de actualizaciones, exclusiones, triggers, notificaciones |
 
 ---
 
@@ -217,7 +217,7 @@ Enlaces a documentación oficial e imágenes Docker.
 - [x] `docs/02-docker/01-instalacion-docker.md`
 - [x] `docs/02-docker/02-estructura-compose.md`
 - [x] `docs/02-docker/03-portainer.md`
-- [x] `docs/02-docker/04-watchtower.md`
+- [x] `docs/02-docker/04-wud.md`
 
 ### Fase 3 — Red y DNS
 - [x] `docs/03-red/01-macvlan.md`

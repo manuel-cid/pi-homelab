@@ -72,7 +72,7 @@ services:
       - default
       - proxy
     labels:
-      - com.centurylinklabs.watchtower.enable=false
+      - wud.watch=false
 
 networks:
   proxy:
@@ -100,7 +100,7 @@ Puntos importantes de este Compose:
 - `extra_hosts` deja resuelto `host.docker.internal` hacia el gateway del host, útil para scrapear métricas del daemon Docker
 - la retención queda acotada a **15 días** o **15 GB**, lo que ocurra antes
 - la imagen queda fijada a una versión concreta para evitar cambios inesperados al recrear el contenedor
-- se recomienda **no** autoactualizar Prometheus ciegamente con Watchtower
+- se recomienda **no** configurar triggers de actualización automática de WUD para Prometheus
 
 ## Configuración
 

@@ -51,7 +51,7 @@ services:
       - /configs
       - /logs
     labels:
-      - com.centurylinklabs.watchtower.enable=true
+      - wud.watch=true
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/productivity-stirling-pdf/.env`
@@ -73,7 +73,7 @@ Notas sobre este Compose:
 - `DISABLE_ADDITIONAL_FEATURES=false` mantiene disponibles las funciones extra de la imagen estándar aunque el login esté desactivado
 - `tmpfs` en `/tmp`, `/configs` y `/logs` fuerza el carácter **stateless** del servicio: nada de lo que se genere ahí sobrevive a una recreación o reinicio del contenedor
 - no se usan bind mounts sobre el **SSD NVMe** porque este servicio no necesita persistencia
-- la etiqueta de Watchtower puede mantenerse activa porque el servicio es fácil de recrear y no arrastra estado propio
+- WUD puede monitorizar este servicio sin riesgo porque es fácil de recrear y no arrastra estado propio
 - <!-- TODO: verificar una etiqueta concreta y estable de `stirlingtools/stirling-pdf` para ARM64 antes de pasar este stack a producción; `latest` simplifica el ejemplo, pero no fija una versión reproducible -->
 
 ## Configuración
