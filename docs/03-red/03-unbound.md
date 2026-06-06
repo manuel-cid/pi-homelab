@@ -81,7 +81,7 @@ services:
       dns_lan:
         ipv4_address: 192.168.1.195
     volumes:
-      - /home/<user>/homelab/data/unbound:/etc/unbound
+      - /home/<user>/homelab/data/unbound/custom.conf.d:/etc/unbound/custom.conf.d:ro
 
 networks:
   dns_lan:
@@ -101,7 +101,8 @@ Notas sobre este Compose:
 - **Pi-hole** sigue siendo el único DNS anunciado a la LAN por DHCP
 - **Unbound** no publica `ports:` porque ya tiene IP propia dentro de `dns_lan`
 - el upstream de Pi-hole queda fijado en `192.168.1.195#5335`
-- el fichero `unbound.conf` se versiona y se respalda junto al resto del stack
+- la configuración custom se monta como solo lectura en `/etc/unbound/custom.conf.d/`; la imagen gestiona internamente `root.hints`, `root.key` y la config base
+- los ficheros montados deben ser legibles por el usuario/grupo `101:102` de la imagen
 
 ## Configuración
 
@@ -110,25 +111,20 @@ Notas sobre este Compose:
 ```bash
 mkdir -p /home/<user>/homelab/compose/infra-pihole-unbound
 mkdir -p /home/<user>/homelab/data/pihole
-mkdir -p /home/<user>/homelab/data/unbound
+mkdir -p /home/<user>/homelab/data/unbound/custom.conf.d
 sudo apt install -y dnsutils curl
-curl -fsSL https://www.internic.net/domain/named.root \
-  -o /home/<user>/homelab/data/unbound/root.hints
-docker run --rm --entrypoint unbound-anchor \
-  -v /home/<user>/homelab/data/unbound:/etc/unbound \
-  klutchell/unbound:latest \
-  -a /etc/unbound/root.key
 ```
 
 Si ya existe el stack de Pi-hole, conserva su `.env` actual y reemplaza únicamente el `docker-compose.yml` por el bloque mostrado arriba.
 
 ### 2. Crear la configuración de Unbound
 
-Archivo: `/home/<user>/homelab/data/unbound/unbound.conf`
+Archivo: `/home/<user>/homelab/data/unbound/custom.conf.d/custom.conf`
+
+La imagen `klutchell/unbound` es **distroless** y ya incluye una configuración base con `root.hints`, `root.key` y DNSSEC activado. Solo hay que añadir las directivas que personalizan el comportamiento para el homelab. Los ficheros en `custom.conf.d/` se incluyen automáticamente.
 
 ```conf
 server:
-  verbosity: 0
   interface: 0.0.0.0
   port: 5335
 
@@ -137,9 +133,6 @@ server:
   do-tcp: yes
   do-ip6: no
   prefer-ip6: no
-
-  root-hints: "/etc/unbound/root.hints"
-  auto-trust-anchor-file: "/etc/unbound/root.key"
 
   harden-glue: yes
   harden-dnssec-stripped: yes
@@ -170,12 +163,17 @@ server:
   private-address: fe80::/10
 ```
 
+Ajusta permisos para que la imagen pueda leer el fichero:
+
+```bash
+chmod 644 /home/<user>/homelab/data/unbound/custom.conf.d/custom.conf
+```
+
 Puntos importantes de esta configuración:
 
 - Unbound escucha en el puerto `5335`, no en `53`, para dejar clara su función interna como upstream de Pi-hole
 - se desactiva IPv6 para simplificar el escenario inicial del homelab y evitar rutas inesperadas
-- `root.hints` permite recursión completa sin depender de DNS públicos
-- `root.key` activa la validación DNSSEC del resolvedor
+- `root.hints` y `root.key` los gestiona la imagen internamente; no hace falta crearlos a mano
 - `access-control` limita las consultas al propio contenedor, a **Pi-hole** (`192.168.1.194`) y al `macvlan-shim` del host (`192.168.1.222`) para validaciones
 - el cache se guarda en memoria del contenedor; el único fichero persistente aquí es la configuración
 
@@ -244,16 +242,15 @@ Regla operativa importante:
 
 Este stack no requiere ajustes frecuentes, pero sí conviene mantener dos rutinas simples:
 
-- actualizar el fichero `root.hints` de vez en cuando, por ejemplo en revisiones trimestrales o cuando actualices el stack DNS
+- actualizar la imagen periódicamente para recibir `root.hints` y parches de seguridad actualizados
 - revisar el Query Log de Pi-hole antes de tocar Unbound si una app deja de resolver; la mayoría de incidencias estarán en filtrado o DNS local, no en la capa recursiva
 
-Para refrescar `root.hints` manualmente:
+Para actualizar la imagen:
 
 ```bash
-curl -fsSL https://www.internic.net/domain/named.root \
-  -o /home/<user>/homelab/data/unbound/root.hints
 cd /home/<user>/homelab/compose/infra-pihole-unbound
-docker compose restart unbound
+docker compose pull unbound
+docker compose up -d unbound
 ```
 
 ### 7. Errores frecuentes que conviene evitar
@@ -271,9 +268,7 @@ En este despliegue, todo el estado persistente relevante vive en el **SSD NVMe**
 - Compose: `/home/<user>/homelab/compose/infra-pihole-unbound/docker-compose.yml`
 - variables del stack: `/home/<user>/homelab/compose/infra-pihole-unbound/.env`
 - datos de Pi-hole: `/home/<user>/homelab/data/pihole/`
-- configuración de Unbound: `/home/<user>/homelab/data/unbound/unbound.conf`
-- root hints de Unbound: `/home/<user>/homelab/data/unbound/root.hints`
-- trust anchor DNSSEC: `/home/<user>/homelab/data/unbound/root.key`
+- configuración de Unbound: `/home/<user>/homelab/data/unbound/custom.conf.d/custom.conf`
 
 Notas operativas:
 
@@ -288,15 +283,13 @@ Para poder reconstruir la capa DNS recursiva sin perder configuración ni integr
 - `/home/<user>/homelab/compose/infra-pihole-unbound/docker-compose.yml`
 - `/home/<user>/homelab/compose/infra-pihole-unbound/.env`
 - `/home/<user>/homelab/data/pihole/`
-- `/home/<user>/homelab/data/unbound/unbound.conf`
-- `/home/<user>/homelab/data/unbound/root.hints`
-- `/home/<user>/homelab/data/unbound/root.key`
+- `/home/<user>/homelab/data/unbound/custom.conf.d/custom.conf`
 - cualquier nota operativa sobre la IP fija `192.168.1.195` y la configuración DHCP del router
 
 Orden de restauración recomendado:
 
 - recuperar `dns_lan` y `macvlan-shim` según [01-macvlan.md](01-macvlan.md)
-- restaurar `unbound.conf`, `root.hints`, el Compose y el `.env`
+- restaurar `custom.conf.d/custom.conf`, el Compose y el `.env`
 - levantar el stack `infra-pihole-unbound`
 - validar primero `dig @192.168.1.195 -p 5335 cloudflare.com`
 - validar después `dig @192.168.1.194 cloudflare.com`
@@ -311,4 +304,4 @@ Orden de restauración recomendado:
 - Pi-hole Docs: [Docker](https://docs.pi-hole.net/docker/)
 - NLnet Labs: [Unbound Documentation](https://unbound.docs.nlnetlabs.nl/)
 - Docker Hub: [klutchell/unbound](https://hub.docker.com/r/klutchell/unbound)
-- InterNIC: [named.root](https://www.internic.net/domain/named.root)
+- GitHub: [klutchell/unbound-docker](https://github.com/klutchell/unbound-docker)
