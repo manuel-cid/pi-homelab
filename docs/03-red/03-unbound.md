@@ -72,7 +72,7 @@ services:
       - /home/<user>/homelab/data/pihole:/etc/pihole
 
   unbound:
-    image: mvance/unbound:latest
+    image: klutchell/unbound:latest
     hostname: unbound
     restart: unless-stopped
     env_file:
@@ -81,7 +81,7 @@ services:
       dns_lan:
         ipv4_address: 192.168.1.195
     volumes:
-      - /home/<user>/homelab/data/unbound:/opt/unbound/etc/unbound
+      - /home/<user>/homelab/data/unbound:/etc/unbound
 
 networks:
   dns_lan:
@@ -115,9 +115,9 @@ sudo apt install -y dnsutils curl
 curl -fsSL https://www.internic.net/domain/named.root \
   -o /home/<user>/homelab/data/unbound/root.hints
 docker run --rm --entrypoint unbound-anchor \
-  -v /home/<user>/homelab/data/unbound:/opt/unbound/etc/unbound \
-  mvance/unbound:latest \
-  -a /opt/unbound/etc/unbound/root.key
+  -v /home/<user>/homelab/data/unbound:/etc/unbound \
+  klutchell/unbound:latest \
+  -a /etc/unbound/root.key
 ```
 
 Si ya existe el stack de Pi-hole, conserva su `.env` actual y reemplaza únicamente el `docker-compose.yml` por el bloque mostrado arriba.
@@ -138,8 +138,8 @@ server:
   do-ip6: no
   prefer-ip6: no
 
-  root-hints: "/opt/unbound/etc/unbound/root.hints"
-  auto-trust-anchor-file: "/opt/unbound/etc/unbound/root.key"
+  root-hints: "/etc/unbound/root.hints"
+  auto-trust-anchor-file: "/etc/unbound/root.key"
 
   harden-glue: yes
   harden-dnssec-stripped: yes
@@ -310,5 +310,5 @@ Orden de restauración recomendado:
 - Pi-hole Docs: [Recursive DNS Server / Unbound](https://docs.pi-hole.net/guides/dns/unbound/)
 - Pi-hole Docs: [Docker](https://docs.pi-hole.net/docker/)
 - NLnet Labs: [Unbound Documentation](https://unbound.docs.nlnetlabs.nl/)
-- Docker Hub: [mvance/unbound](https://hub.docker.com/r/mvance/unbound)
+- Docker Hub: [klutchell/unbound](https://hub.docker.com/r/klutchell/unbound)
 - InterNIC: [named.root](https://www.internic.net/domain/named.root)
