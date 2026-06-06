@@ -250,7 +250,7 @@ Antes de pasar a la siguiente guía, ejecuta una comprobación rápida:
 sudo sshd -t
 sudo ufw status verbose
 sudo fail2ban-client status sshd
-sudo systemctl status unattended-upgrades --no-pager
+systemctl list-timers --all | grep -E 'apt-daily|apt-daily-upgrade'
 sudo systemctl status fail2ban --no-pager
 ```
 
@@ -261,6 +261,7 @@ Además, valida operativamente estos puntos:
 - `root` no puede iniciar sesión remotamente
 - el firewall está activo
 - Fail2ban tiene cargado el jail `sshd`
+- los temporizadores `apt-daily.timer` y `apt-daily-upgrade.timer` aparecen programados
 
 ### 10. Qué hacer justo después
 

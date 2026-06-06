@@ -79,10 +79,14 @@ Estas entradas siguen siendo la base del diseño de red del proyecto y coinciden
 | Puerto | Protocolo | Servicio | Estado documental actual | Exposición prevista |
 |-------|-----------|----------|---------------------------|---------------------|
 | `9443` | TCP | Portainer | publicado en `0.0.0.0` | LAN + Tailscale |
+| `1883` | TCP | Mosquitto | publicado en `0.0.0.0` | LAN + Tailscale |
 | `8096` | TCP | Jellyfin | publicado en `0.0.0.0` | LAN + Tailscale |
 | `9090` | TCP | Linkding | publicado en `0.0.0.0` | LAN + Tailscale |
 | `12000` | TCP | Syncthing GUI | publicado en `0.0.0.0` | LAN + Tailscale |
+| `8123` | TCP | Home Assistant | publicado en `network_mode: host` | LAN + Tailscale |
 | `13378` | TCP | Audiobookshelf | publicado en `0.0.0.0` | LAN + Tailscale |
+| `13001` | TCP | Zigbee2MQTT | publicado en `0.0.0.0` | LAN + Tailscale |
+| `13002` | TCP | Node-RED | publicado en `0.0.0.0` | LAN + Tailscale |
 | `137` | UDP | Samba | publicado en `0.0.0.0` | LAN |
 | `138` | UDP | Samba | publicado en `0.0.0.0` | LAN |
 | `139` | TCP | Samba | publicado en `0.0.0.0` | LAN |
@@ -97,7 +101,6 @@ Estas entradas siguen siendo la base del diseño de red del proyecto y coinciden
 | `16002` | TCP | Paperless-ngx | publicado en `0.0.0.0` | LAN + Tailscale |
 | `16003` | TCP | Mealie | publicado en `0.0.0.0` | LAN + Tailscale |
 | `16004` | TCP | Stirling PDF | publicado en `0.0.0.0` | LAN + Tailscale |
-| `16005` | TCP | FreshRSS | publicado en `0.0.0.0` | LAN + Tailscale |
 | `17000` | TCP | Homepage | publicado en `0.0.0.0` | LAN + Tailscale |
 | `22000` | TCP | Syncthing sync | publicado en `0.0.0.0` | LAN + Tailscale |
 | `22000` | UDP | Syncthing sync | publicado en `0.0.0.0` | LAN + Tailscale |
@@ -118,6 +121,7 @@ Lectura operativa:
 | `127.0.0.1` | `11000/tcp` | Prometheus | acceso local o vía proxy, no LAN directa |
 | `127.0.0.1` | `11002/tcp` | Uptime Kuma | acceso local o vía proxy, no LAN directa |
 | `127.0.0.1` | `13000/tcp` | Grafana | acceso local o vía proxy, no LAN directa |
+| `127.0.0.1` | `16005/tcp` | FreshRSS | acceso local o vía proxy, no LAN directa |
 | `127.0.0.1` | `18080/tcp` | `infra-port-policy-test` | validación temporal de política de puertos |
 
 Estos puertos **no** deberían requerir aperturas generales en `ufw` o `nftables` para la LAN. Si aparecen escuchando en `0.0.0.0`, hay deriva real de seguridad.
@@ -133,6 +137,8 @@ Estos puertos **no** deberían requerir aperturas generales en `ufw` o `nftables
 | `3000/tcp` | Grafana | puerto interno del contenedor; el host usa `13000/tcp` en loopback |
 | `3001/tcp` | Uptime Kuma | puerto interno del contenedor; el host usa `11002/tcp` en loopback |
 | `9999/tcp` | Stash | puerto interno del contenedor; el host publica `14004/tcp` |
+| `1880/tcp` | Node-RED | puerto interno del contenedor; el host publica `13002/tcp` |
+| `8080/tcp` | Zigbee2MQTT | puerto interno del contenedor; el host publica `13001/tcp` |
 
 Estos puertos no deben convertirse en reglas de firewall del host salvo que un documento de servicio cambie expresamente su política de publicación.
 
@@ -152,6 +158,7 @@ Eso significa:
 | Caso | Reserva en Fase 3 | Estado real documentado | Lectura operativa | Acción recomendada |
 |------|-------------------|-------------------------|-------------------|--------------------|
 | Portainer | `10001/tcp` | `9443/tcp` en host | prevalece el puerto real de Portainer | mantener `9443` como referencia actual |
+| Home Assistant | `13000/tcp` | `8123/tcp` en host | el servicio usa su puerto estándar en `network_mode: host` | documentar `8123` como canon operativo |
 | Jellyfin | `14000/tcp` | `8096/tcp` en host | se usa el puerto estándar del servicio | no reservar `14000` como si Jellyfin lo usara ya |
 | Audiobookshelf | `14002/tcp` | `13378/tcp` en host | se usa el puerto estándar del servicio | documentar `13378` como canon operativo |
 | Linkding | `16001/tcp` | `9090/tcp` en host | se usa el puerto estándar del servicio | tratar `16001` como reserva no materializada |
@@ -161,9 +168,10 @@ Eso significa:
 
 Los puntos que merecen más atención son estos:
 
-- `13000/tcp` aparece reservado en Fase 3 para **Home Assistant**, pero hoy está asignado a **Grafana** en `127.0.0.1`
+- `13000/tcp` aparece reservado en Fase 3 para **Home Assistant**, pero el servicio hoy está documentado en `8123/tcp` y ese bind ya lo ocupa **Grafana** en `127.0.0.1`
 - `11001/tcp`, que Fase 3 proponía para **Grafana**, queda libre en la práctica
 - `14000/tcp`, `14002/tcp` y `16001/tcp` siguen pareciendo libres si alguien mira solo la tabla antigua, aunque los servicios equivalentes ya usan otros puertos reales
+- `16005/tcp` puede parecer un puerto web directo más si alguien mira solo la política base, pero **FreshRSS** hoy está documentado solo en `127.0.0.1`
 - muchos servicios siguen documentados con `BIND_IP=0.0.0.0`, lo que amplía la superficie de ataque respecto a la política más estricta de “`127.0.0.1` + Caddy”
 
 Conclusión operativa:

@@ -78,7 +78,7 @@ Puntos importantes del stack:
 - la configuración editable vive en **`/home/<user>/homelab/config/borgmatic/`**
 - los orígenes a respaldar se montan en modo **solo lectura**
 - el repositorio local Borg vive en **`/media/hd2t/backups/borg/`**
-- el directorio `exports/` sirve para dumps o exportaciones auxiliares que quieras conservar fuera del repositorio
+- el directorio `exports/` sirve como área de trabajo para dumps y exportaciones auxiliares que luego también quedan incorporados al backup lógico
 - se monta el **socket Docker** para que los hooks o los data sources puedan ejecutar dumps en contenedores de PostgreSQL/MariaDB
 
 ## Configuración
@@ -130,6 +130,7 @@ source_directories:
   - /source/homelab/scripts
   - /source/homelab/data
   - /source/homelab/.env
+  - /mnt/borg-exports
 
 repositories:
   - path: /mnt/borg-repository/{hostname}
@@ -234,6 +235,7 @@ apprise:
 Notas operativas sobre este ejemplo:
 
 - el repositorio local se crea bajo **`/media/hd2t/backups/borg/<hostname>/`**
+- los dumps previos que se escriben en **`/media/hd2t/backups/exports/`** entran en el backup porque esa ruta se incluye como `source_directory`
 - el bloque `postgresql_databases`, `mariadb_databases` y `sqlite_databases` es una plantilla base; elimina lo que no uses
 - los nombres de `container:` deben coincidir con los nombres reales que ve Docker en tu despliegue
 - los dumps detallados por servicio y el criterio exacto de restore se desarrollan en [03-backup-docker-volumes.md](03-backup-docker-volumes.md)
@@ -270,7 +272,8 @@ Archivo: `/home/<user>/homelab/config/borgmatic/hooks/pre-backup.sh`
 set -eu
 
 mkdir -p /mnt/borg-exports
-find /mnt/borg-exports -mindepth 1 -maxdepth 1 -type d -mtime +7 -exec rm -rf {} +
+find /mnt/borg-exports -type f -mtime +7 -delete
+find /mnt/borg-exports -mindepth 1 -type d -empty -delete
 
 echo "[$(date -Iseconds)] Preparando backup"
 echo "[$(date -Iseconds)] Ejecuta aqui los dumps previos documentados en 03-backup-docker-volumes.md"
@@ -298,7 +301,7 @@ Qué debe hacer el `pre-backup.sh` en un despliegue real:
 
 - generar dumps coherentes de PostgreSQL o MariaDB si no usas los data sources nativos
 - congelar temporalmente aplicaciones si un servicio concreto lo requiere
-- exportar ficheros administrativos pequeños a `/media/hd2t/backups/exports/`
+- dejar esos artefactos en `/media/hd2t/backups/exports/` antes de que empiece `borgmatic create`
 
 Qué no debe hacer:
 
@@ -380,6 +383,7 @@ Distribución recomendada de este servicio:
 Regla importante:
 
 - Borgmatic **lee** los datos persistentes del **SSD NVMe**
+- Borgmatic **incorpora** también los dumps lógicos generados en `exports/`
 - Borgmatic **escribe** el repositorio local en **`hd2t`**
 - no se debe guardar el repositorio Borg dentro de `/home/<user>/homelab/data/`, porque mezclaría origen y destino
 

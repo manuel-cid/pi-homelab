@@ -34,7 +34,7 @@ Al terminar este documento, el criterio operativo esperado es este:
 
 ## Docker Compose
 
-Ejemplo de stack autocontenido siguiendo la convención recomendada. En este caso se usa **Linkding** solo como muestra de estructura: un stack pequeño, con datos persistentes en el NVMe, un `.env` local y conexión opcional a la red compartida.
+Ejemplo de stack autocontenido siguiendo la convención recomendada. En este caso se usa **Linkding** solo como muestra de estructura: un stack pequeño, con datos persistentes en el NVMe, un `.env` local y conexión a la red compartida para publicarlo detrás de Caddy.
 
 Archivo: `/home/<user>/homelab/compose/productivity-linkding/docker-compose.yml`
 
@@ -51,8 +51,8 @@ services:
       TZ: ${TZ}
       LD_SUPERUSER_NAME: ${LINKDING_SUPERUSER_NAME}
       LD_SUPERUSER_PASSWORD: ${LINKDING_SUPERUSER_PASSWORD}
-    ports:
-      - "${LINKDING_BIND_IP}:${LINKDING_PORT}:9090"
+    expose:
+      - "9090"
     volumes:
       - ${DATA_ROOT}/linkding:/etc/linkding/data
     networks:
@@ -74,7 +74,7 @@ Puntos importantes del ejemplo:
 - el stack es autocontenido: `docker-compose.yml` y `.env` viven juntos
 - los datos persistentes van al **SSD NVMe** bajo `/home/<user>/homelab/data/`
 - la red `proxy` es **externa** y compartida entre stacks solo cuando haga falta
-- el puerto puede publicarse en `127.0.0.1` o en una IP LAN según el tipo de servicio
+- al ir detrás de Caddy, el servicio no necesita publicar puertos en el host; basta con `expose` y la red compartida
 
 ## Configuración
 
@@ -241,8 +241,6 @@ PUID=1000
 PGID=1000
 DATA_ROOT=/home/<user>/homelab/data
 PROXY_NETWORK=homelab_proxy
-LINKDING_BIND_IP=127.0.0.1
-LINKDING_PORT=9090
 LINKDING_SUPERUSER_NAME=admin
 LINKDING_SUPERUSER_PASSWORD=cambiar-esta-clave
 ```
@@ -264,7 +262,8 @@ No todos los servicios deben exponerse igual.
 
 Regla recomendada:
 
-- usa `127.0.0.1:<puerto>:<puerto_interno>` para servicios HTTP que irán detrás de reverse proxy en la propia Raspberry Pi
+- usa `expose:` o ningún mapeo de puertos para servicios HTTP publicados detrás de **Caddy** en la red Docker compartida
+- usa `127.0.0.1:<puerto>:<puerto_interno>` solo cuando el acceso previsto sea desde el propio host
 - usa `0.0.0.0:<puerto>:<puerto_interno>` solo cuando el servicio deba ser accesible directamente desde la LAN o Tailscale
 - evita `network_mode: host` salvo que un servicio realmente lo requiera por su naturaleza
 
@@ -280,6 +279,11 @@ Ejemplos típicos:
   - Mealie
   - FreshRSS
   - Vaultwarden detrás de proxy
+
+Regla importante para evitar errores de diseño:
+
+- si un servicio se va a publicar a través de **Caddy en Docker** usando la red compartida `homelab_proxy`, normalmente **no** debe usar `ports:`
+- `127.0.0.1:<puerto>:<puerto_interno>` no sirve para que otro contenedor alcance el servicio a través de la red Docker; para eso hay que compartir red entre contenedores
 
 ### 7. Flujo recomendado de despliegue
 

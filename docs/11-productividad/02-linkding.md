@@ -22,6 +22,7 @@ Para un homelab personal, esta topología suele ser la más práctica: despliegu
 - Disponer de la raíz operativa del homelab en `/home/<user>/homelab/`.
 - Puertos necesarios en esta fase:
   - **`9090/tcp` publicado en el host** para acceso web desde LAN y Tailscale
+  - se mantiene `9090/tcp` como **excepción documentada** a la convención general por rangos de [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md), ya que coincide con el puerto HTTP nativo de Linkding y simplifica la extensión del navegador
   - no hace falta exponer ningún puerto a internet ni abrir nada en el router
 
 ## Docker Compose
@@ -248,7 +249,7 @@ docker compose start linkding
 Buenas prácticas de restore:
 
 - restaura siempre el directorio completo si quieres recuperar también iconos, previews y snapshots
-- si usas el ZIP generado por `full_backup`, descomprímelo en el directorio de datos de la nueva instalación
+- si usas el ZIP generado por `full_backup`, extráelo en una carpeta de la nueva instalación, renómbrala a `data` y móntala como `/etc/linkding/data` al arrancar el contenedor
 - prueba el restore en una copia temporal antes de dar la estrategia por válida
 
 ## Referencias

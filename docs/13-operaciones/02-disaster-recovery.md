@@ -201,12 +201,15 @@ Primero, identifica los archivos disponibles:
 
 ```bash
 cd /home/<user>/homelab
+find /media/hd2t/backups/borg -mindepth 1 -maxdepth 1 -type d | sort
 docker run --rm \
   -v /media/hd2t/backups/borg:/mnt/borg-repository \
   -v /media/hd2t/backups/restore-test:/mnt/restore \
   -it modem7/borgmatic-docker:latest \
-  borg list /mnt/borg-repository/$(hostname)
+  borg list /mnt/borg-repository/<hostname-original>
 ```
+
+<!-- TODO: verificar el `hostname` original del repositorio Borg si el host reconstruido arranca temporalmente con un nombre distinto. -->
 
 Si prefieres restaurar con Borg/Borgmatic instalado temporalmente en el host, puedes hacerlo, pero mantén la restauración inicial fuera de producción.
 
@@ -223,7 +226,7 @@ docker run --rm \
   -v /media/hd2t/backups/borg:/mnt/borg-repository \
   -v /media/hd2t/backups/restore-test/full-host:/mnt/restore \
   -it modem7/borgmatic-docker:latest \
-  borg extract /mnt/borg-repository/$(hostname)::$(hostname)-homelab-<fecha> \
+  borg extract /mnt/borg-repository/<hostname-original>::<hostname-original>-homelab-<fecha> \
     source/homelab/compose \
     source/homelab/config \
     source/homelab/scripts \
@@ -282,7 +285,7 @@ Orden práctico orientativo:
 2. `borgmatic`
 3. `mariadb` y/o `postgres`
 4. `caddy`
-5. `authelia`, `lldap`, `vaultwarden` u otros servicios de acceso
+5. `authelia`, `vaultwarden` u otros servicios de acceso
 6. aplicaciones web con base de datos
 7. servicios multimedia sobre `hd2t`
 8. **Stash** y cargas grandes sobre `hd5t`

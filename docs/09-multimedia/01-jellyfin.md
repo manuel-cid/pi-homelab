@@ -7,7 +7,7 @@
 La política de este proyecto se mantiene sin excepciones:
 
 - la configuración, la base de datos, la caché y el estado del servicio viven en `/home/<user>/homelab/data/jellyfin/` sobre el **SSD NVMe**
-- los archivos multimedia viven en `/media/hd2t/media/jellyfin/`
+- los archivos multimedia viven en las categorías globales de `hd2t`, principalmente `/media/hd2t/media/video/` y opcionalmente `/media/hd2t/media/music/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
 - **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
@@ -50,7 +50,8 @@ services:
     volumes:
       - /home/<user>/homelab/data/jellyfin/config:/config
       - /home/<user>/homelab/data/jellyfin/cache:/cache
-      - /media/hd2t/media/jellyfin:/media:ro
+      - /media/hd2t/media/video:/media/video:ro
+      - /media/hd2t/media/music:/media/music:ro
     networks:
       - default
       - proxy
@@ -67,7 +68,7 @@ Notas sobre este Compose:
 
 - el stack queda aislado bajo `media-jellyfin`
 - los datos persistentes van al **SSD NVMe**
-- la biblioteca multimedia se monta desde `hd2t` en modo lectura para reducir riesgo de borrados accidentales
+- la biblioteca multimedia se monta desde las categorías compartidas de `hd2t` en modo lectura para reducir riesgo de borrados accidentales
 - el servicio se conecta también a `homelab_proxy` para que **Caddy** pueda alcanzarlo por nombre interno Docker
 - el Compose base no habilita aceleración hardware porque en Raspberry Pi depende del kernel, del stack multimedia disponible y de qué dispositivos exponga realmente el host
 
@@ -78,13 +79,13 @@ Notas sobre este Compose:
 ```bash
 mkdir -p /home/<user>/homelab/compose/media-jellyfin
 mkdir -p /home/<user>/homelab/data/jellyfin/{config,cache}
-sudo mkdir -p /media/hd2t/media/jellyfin/{movies,series,concerts,homevideos}
+sudo mkdir -p /media/hd2t/media/video/{movies,series,concerts,homevideos}
 ```
 
 Si quieres exponer también música desde Jellyfin, añade una carpeta más:
 
 ```bash
-sudo mkdir -p /media/hd2t/media/jellyfin/music
+sudo mkdir -p /media/hd2t/media/music
 ```
 
 ### 2. Ajustar propiedad y permisos
@@ -94,12 +95,15 @@ Usa el mismo usuario operativo del host que administra Docker y las carpetas del
 ```bash
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/jellyfin
-sudo chown -R <user>:<user> /media/hd2t/media/jellyfin
+sudo chown -R <user>:<user> /media/hd2t/media/video
+sudo chown -R <user>:<user> /media/hd2t/media/music
 
 sudo find /home/<user>/homelab/data/jellyfin -type d -exec chmod 775 {} \;
 sudo find /home/<user>/homelab/data/jellyfin -type f -exec chmod 664 {} \;
-sudo find /media/hd2t/media/jellyfin -type d -exec chmod 755 {} \;
-sudo find /media/hd2t/media/jellyfin -type f -exec chmod 644 {} \;
+sudo find /media/hd2t/media/video -type d -exec chmod 755 {} \;
+sudo find /media/hd2t/media/video -type f -exec chmod 644 {} \;
+sudo find /media/hd2t/media/music -type d -exec chmod 755 {} \;
+sudo find /media/hd2t/media/music -type f -exec chmod 644 {} \;
 ```
 
 La idea es simple:
@@ -163,10 +167,10 @@ En el primer arranque:
 
 Rutas típicas dentro del contenedor:
 
-- películas: `/media/movies`
-- series: `/media/series`
-- conciertos o directos: `/media/concerts`
-- vídeos caseros: `/media/homevideos`
+- películas: `/media/video/movies`
+- series: `/media/video/series`
+- conciertos o directos: `/media/video/concerts`
+- vídeos caseros: `/media/video/homevideos`
 - música, si la usas: `/media/music`
 
 Como los metadatos y la base de datos viven en el SSD NVMe, no hace falta guardar `nfo`, posters o bases SQLite en `hd2t`.
@@ -230,7 +234,8 @@ Rutas persistentes del servicio:
 - Variables del stack: `/home/<user>/homelab/compose/media-jellyfin/.env`
 - Configuración y base de datos: `/home/<user>/homelab/data/jellyfin/config`
 - Caché y temporales: `/home/<user>/homelab/data/jellyfin/cache`
-- Biblioteca multimedia: `/media/hd2t/media/jellyfin`
+- Biblioteca de vídeo: `/media/hd2t/media/video`
+- Biblioteca de música: `/media/hd2t/media/music`
 
 Criterio de almacenamiento:
 
@@ -252,7 +257,7 @@ Opcional según tu política de restauración:
 
 En general, la caché puede reconstruirse, así que no suele merecer la pena priorizarla frente a la configuración y la base de datos.
 
-La biblioteca de `/media/hd2t/media/jellyfin` no forma parte del backup de la aplicación en sí; es el **contenido multimedia** y debe tratarse según la estrategia general de copias del homelab.
+Las bibliotecas de `/media/hd2t/media/video` y `/media/hd2t/media/music` no forman parte del backup de la aplicación en sí; son el **contenido multimedia** y deben tratarse según la estrategia general de copias del homelab.
 
 Para una copia más consistente de la base de datos interna, detén brevemente el contenedor durante el backup:
 

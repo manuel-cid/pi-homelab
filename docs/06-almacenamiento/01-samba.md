@@ -31,7 +31,7 @@ El objetivo de este documento es desplegar Samba como contenedor Docker con **un
 Al terminar este documento, el estado esperado es este:
 
 - Samba queda desplegado como stack propio `files-samba`.
-- `hd2t` queda expuesto por shares independientes para `jellyfin`, `navidrome`, `audiobookshelf`, `calibre-web` y `downloads`.
+- `hd2t` queda expuesto por shares independientes para `video`, `music`, `audiobooks`, `books` y `downloads`.
 - `hd5t` puede exponerse opcionalmente como share `stash`.
 - Los accesos SMB requieren usuario y contraseña; no se usa acceso invitado.
 - Los permisos en disco quedan alineados con el `UID` y `GID` del usuario operativo del host.
@@ -66,9 +66,9 @@ services:
       SAMBA_CONF_MAP_TO_GUEST: Never
       WSDD2_DISABLE: "1"
       AVAHI_DISABLE: "1"
-      SAMBA_VOLUME_CONFIG_jellyfin: |
-        [jellyfin]
-        path = /shares/jellyfin
+      SAMBA_VOLUME_CONFIG_video: |
+        [video]
+        path = /shares/video
         valid users = media
         guest ok = no
         read only = no
@@ -76,9 +76,9 @@ services:
         force user = media
         create mask = 0664
         directory mask = 2775
-      SAMBA_VOLUME_CONFIG_navidrome: |
-        [navidrome]
-        path = /shares/navidrome
+      SAMBA_VOLUME_CONFIG_music: |
+        [music]
+        path = /shares/music
         valid users = media
         guest ok = no
         read only = no
@@ -86,9 +86,9 @@ services:
         force user = media
         create mask = 0664
         directory mask = 2775
-      SAMBA_VOLUME_CONFIG_audiobookshelf: |
-        [audiobookshelf]
-        path = /shares/audiobookshelf
+      SAMBA_VOLUME_CONFIG_audiobooks: |
+        [audiobooks]
+        path = /shares/audiobooks
         valid users = media
         guest ok = no
         read only = no
@@ -96,9 +96,9 @@ services:
         force user = media
         create mask = 0664
         directory mask = 2775
-      SAMBA_VOLUME_CONFIG_calibre_web: |
-        [calibre-web]
-        path = /shares/calibre-web
+      SAMBA_VOLUME_CONFIG_books: |
+        [books]
+        path = /shares/books
         valid users = media
         guest ok = no
         read only = no
@@ -127,10 +127,10 @@ services:
         create mask = 0664
         directory mask = 2775
     volumes:
-      - /media/hd2t/media/jellyfin:/shares/jellyfin
-      - /media/hd2t/media/navidrome:/shares/navidrome
-      - /media/hd2t/media/audiobookshelf:/shares/audiobookshelf
-      - /media/hd2t/media/calibre-web:/shares/calibre-web
+      - /media/hd2t/media/video:/shares/video
+      - /media/hd2t/media/music:/shares/music
+      - /media/hd2t/media/audiobooks:/shares/audiobooks
+      - /media/hd2t/media/books:/shares/books
       - /media/hd2t/downloads:/shares/downloads
       - /media/hd5t/media:/shares/stash
     labels:
@@ -165,7 +165,7 @@ find /media/hd5t -maxdepth 2 -type d | sort
 Si todavía faltan carpetas, créalas:
 
 ```bash
-sudo mkdir -p /media/hd2t/media/{jellyfin,navidrome,audiobookshelf,calibre-web}
+sudo mkdir -p /media/hd2t/media/{video,music,audiobooks,books}
 sudo mkdir -p /media/hd2t/downloads
 sudo mkdir -p /media/hd5t/media
 ```
@@ -273,10 +273,10 @@ En la práctica, para clientes modernos suele bastar `445/tcp`, pero mantener `1
 
 Rutas típicas de acceso:
 
-- **Windows**: `\\<ip-o-hostname>\jellyfin`
+- **Windows**: `\\<ip-o-hostname>\video`
 - **Windows**: `\\<ip-o-hostname>\downloads`
-- **macOS**: `smb://<ip-o-hostname>/jellyfin`
-- **Linux**: `smb://<ip-o-hostname>/jellyfin`
+- **macOS**: `smb://<ip-o-hostname>/video`
+- **Linux**: `smb://<ip-o-hostname>/video`
 
 Credenciales:
 
@@ -285,9 +285,9 @@ Credenciales:
 
 Pasos rápidos por sistema:
 
-- **Windows**: Explorador de archivos → barra de direcciones → `\\<ip-o-hostname>\jellyfin`
-- **macOS**: Finder → `Ir` → `Conectarse al servidor` → `smb://<ip-o-hostname>/jellyfin`
-- **Linux (GNOME/KDE)**: gestor de archivos → `Otras ubicaciones` → `smb://<ip-o-hostname>/jellyfin`
+- **Windows**: Explorador de archivos → barra de direcciones → `\\<ip-o-hostname>\video`
+- **macOS**: Finder → `Ir` → `Conectarse al servidor` → `smb://<ip-o-hostname>/video`
+- **Linux (GNOME/KDE)**: gestor de archivos → `Otras ubicaciones` → `smb://<ip-o-hostname>/video`
 
 Si la detección automática en la red no muestra el servidor, no es un error: en este despliegue se prioriza acceso directo por **IP** o **hostname** y se desactivan los componentes adicionales de descubrimiento (`wsdd2` y `avahi`) para mantener la exposición mínima.
 
@@ -301,10 +301,10 @@ smbclient -L //127.0.0.1 -U media
 
 Deberías ver al menos estos recursos:
 
-- `jellyfin`
-- `navidrome`
-- `audiobookshelf`
-- `calibre-web`
+- `video`
+- `music`
+- `audiobooks`
+- `books`
 - `downloads`
 - `stash` si no has eliminado el share opcional
 
@@ -314,10 +314,10 @@ Rutas implicadas en este despliegue:
 
 - `docker-compose.yml`: `/home/<user>/homelab/compose/files-samba/docker-compose.yml`
 - `.env`: `/home/<user>/homelab/compose/files-samba/.env`
-- share `jellyfin`: `/media/hd2t/media/jellyfin`
-- share `navidrome`: `/media/hd2t/media/navidrome`
-- share `audiobookshelf`: `/media/hd2t/media/audiobookshelf`
-- share `calibre-web`: `/media/hd2t/media/calibre-web`
+- share `video`: `/media/hd2t/media/video`
+- share `music`: `/media/hd2t/media/music`
+- share `audiobooks`: `/media/hd2t/media/audiobooks`
+- share `books`: `/media/hd2t/media/books`
 - share `downloads`: `/media/hd2t/downloads`
 - share opcional `stash`: `/media/hd5t/media`
 

@@ -45,7 +45,8 @@ Antes de reorganizar rutas, valida el estado real del sistema:
 whoami
 findmnt -no SOURCE /
 lsblk -o NAME,SIZE,TYPE,FSTYPE,LABEL,MOUNTPOINTS
-findmnt /media/hd2t /media/hd5t
+findmnt /media/hd2t
+findmnt /media/hd5t
 ```
 
 Resultados esperados:
@@ -107,21 +108,30 @@ Abre el fichero:
 sudo nano /etc/fstab
 ```
 
-El formato de las entradas depende de cómo se prepararon los discos:
+El sistema de archivos y las opciones de montaje deben coincidir con el formato real del disco:
 
-- **Discos nuevos** formateados según [03-preparacion-discos.md](../../docs/00-hardware/03-preparacion-discos.md), que ya tienen etiqueta asignada con `e2label`:
+- **Discos nuevos** formateados en `ext4` según [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md), que ya tienen etiqueta asignada con `e2label`:
 
 ```fstab
 LABEL=hd2t  /media/hd2t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
 LABEL=hd5t  /media/hd5t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
 ```
 
-- **Discos reutilizados** con datos existentes según [04-discos-con-datos.md](../../docs/00-hardware/04-discos-con-datos.md), donde se recomienda usar **UUID** para evitar ambigüedades (consulta el UUID real con `sudo blkid`):
+- **Discos reutilizados** con datos existentes según [04-discos-con-datos.md](../00-hardware/04-discos-con-datos.md), donde se recomienda usar **UUID** para evitar ambigüedades (consulta el UUID real con `sudo blkid`):
 
 ```fstab
 UUID=<uuid-de-hd2t>  /media/hd2t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
 UUID=<uuid-de-hd5t>  /media/hd5t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
 ```
+
+Si alguno de los discos reutilizados sigue en **NTFS** o **exFAT**, no declares `ext4` en `fstab`. Usa el tipo correcto y fija acceso por `uid`/`gid`:
+
+```fstab
+UUID=<uuid-de-hd2t>  /media/hd2t  ntfs3  uid=1000,gid=1000,umask=0022,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=<uuid-de-hd5t>  /media/hd5t  exfat  uid=1000,gid=1000,umask=0022,nofail,noatime,x-systemd.device-timeout=10  0  0
+```
+
+<!-- TODO: verificar el `uid` y `gid` reales del usuario operativo antes de fijar opciones de montaje para discos NTFS o exFAT. -->
 
 Si en `fstab` todavía aparecen rutas anteriores como `/srv/storage/hd2t` o `/srv/storage/hd5t`, **sustitúyelas** por las rutas nuevas en `/media/...`. No dejes entradas duplicadas para el mismo disco.
 
@@ -208,12 +218,15 @@ Asigna como propietario operativo al usuario administrador del host:
 
 ```bash
 sudo chown -R <user>:<user> /home/<user>/homelab
-sudo chown -R <user>:<user> /media/hd2t
-sudo chown -R <user>:<user> /media/hd5t
-chmod 750 /home/<user>/homelab
+sudo chmod 750 /home/<user>/homelab
 ```
 
-Si más adelante usas un `PUID` y `PGID` fijos para contenedores, ajusta permisos con ese criterio. Lo importante en esta fase es dejar una base consistente y fácilmente administrable.
+Para los discos USB:
+
+- Si el sistema de archivos es **`ext4`**, puedes asignar propiedad con `sudo chown -R <user>:<user> /media/hd2t /media/hd5t`.
+- Si el sistema de archivos es **`NTFS`** o **`exFAT`**, no dependas de `chown -R`: define `uid`, `gid` y `umask` en `fstab`, como en el paso anterior.
+
+Si más adelante usas un `PUID` y `PGID` fijos para contenedores, ajusta permisos con ese criterio. Lo importante en esta fase es dejar una base consistente y fácilmente administrable sin contradecir el sistema de archivos real de cada disco.
 
 ### 10. Verificación final de la estructura
 
@@ -223,7 +236,8 @@ Haz una comprobación rápida del resultado:
 find /home/<user>/homelab -maxdepth 2 -type d | sort
 find /media/hd2t -maxdepth 3 -type d | sort
 find /media/hd5t -maxdepth 2 -type d | sort
-findmnt /media/hd2t /media/hd5t
+findmnt /media/hd2t
+findmnt /media/hd5t
 ```
 
 Al terminar, deberías poder afirmar todo esto:

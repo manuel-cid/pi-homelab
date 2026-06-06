@@ -218,8 +218,8 @@ Para este homelab, esas rutas deben permanecer en el disco del sistema, es decir
 
 Además, el criterio operativo futuro queda así:
 
-- los archivos `compose` vivirán en `/home/<user>/homelab/compose/`
-- los `.env` y configuraciones auxiliares vivirán en `/home/<user>/homelab/`
+- los stacks vivirán en `/home/<user>/homelab/compose/<stack>/`, con su `docker-compose.yml` y, cuando aplique, su `.env`
+- la configuración editable por servicio vivirá en `/home/<user>/homelab/config/<servicio>/`, y el fichero global en `/home/<user>/homelab/.env`
 - los datos persistentes de servicios vivirán en `/home/<user>/homelab/data/<servicio>/`
 
 ## Backup

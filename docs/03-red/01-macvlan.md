@@ -26,7 +26,7 @@ Este diseño encaja bien con el alcance del proyecto: **solo LAN + Tailscale**, 
   - excluir del DHCP el rango que usará la macvlan, o reservar esas IPs manualmente
 - Puertos necesarios en esta fase:
   - ninguno publicado todavía en el host
-  - la red se prepara para servicios que usarán `53/tcp`, `53/udp`, `80/tcp` y `443/tcp` con IP propia
+  - la red se prepara para servicios que usarán `53/tcp`, `53/udp` y `80/tcp` con IP propia
 
 ## Objetivo de esta Fase
 

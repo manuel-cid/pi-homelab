@@ -30,7 +30,8 @@ El resultado buscado es este:
 - Tener almacenamiento persistente en el **SSD NVMe** dentro de `/home/<user>/homelab/data/`.
 - Puertos relevantes en esta fase:
   - **`22/tcp`** para el jail `sshd` ya existente
-  - **`80/tcp` y `443/tcp`** para servicios web publicados mediante Docker y Caddy
+  - **`80/tcp`** solo si un servicio también queda publicado por **Caddy** en la LAN
+  - **`443/tcp`** para servicios web publicados en el hostname HTTPS de **Tailscale** mediante Caddy
   - **`9091/tcp`** solo interno entre Caddy y Authelia, no expuesto directamente al exterior
 
 ## Docker Compose
@@ -208,7 +209,7 @@ enabled = true
 backend = auto
 filter = authelia
 logpath = /home/<user>/homelab/data/authelia/authelia.log
-port = 80,443
+port = 443
 findtime = 15m
 maxretry = 5
 bantime = 4h
@@ -219,7 +220,7 @@ enabled = false
 backend = auto
 filter = vaultwarden
 logpath = /home/<user>/homelab/data/vaultwarden/vaultwarden.log
-port = 80,443
+port = 443
 findtime = 1h
 maxretry = 3
 bantime = 12h
@@ -230,7 +231,7 @@ enabled = false
 backend = auto
 filter = vaultwarden-admin
 logpath = /home/<user>/homelab/data/vaultwarden/vaultwarden.log
-port = 80,443
+port = 443
 findtime = 1h
 maxretry = 3
 bantime = 24h
@@ -243,6 +244,7 @@ Notas sobre este diseño:
 - **Vaultwarden** y `vaultwarden-admin` quedan preparados pero deshabilitados hasta que el servicio exista y el log esté realmente disponible
 - cuando despliegues Vaultwarden, cambia `enabled = false` por `enabled = true` en el jail correspondiente
 - los bans afectan a todo el tráfico del origen contra el host a través de `DOCKER-USER`, no solo a un contenedor concreto
+- aunque aquí se documente `port = 443`, el ban se aplica igualmente sobre cualquier tráfico Dockerizado que atraviese `DOCKER-USER`; ese campo queda como referencia operativa del punto de entrada HTTPS canónico del proyecto
 
 ### 8. Validar filtros antes de reiniciar
 

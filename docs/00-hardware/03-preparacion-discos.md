@@ -25,8 +25,8 @@ Este documento aplica a discos nuevos o vacíos que se pueden reformatear. Si al
 | Disco | Sistema de archivos | Etiqueta | Punto de montaje | Uso |
 |-------|---------------------|----------|------------------|-----|
 | SSD NVMe | Gestionado por la instalación del sistema | Según instalación | `/` y sistema base | Raspberry Pi OS, Docker, configs, volúmenes, bases de datos y logs |
-| Disco USB 2 TB | `ext4` | `hd2t` | `/srv/storage/hd2t` | Multimedia general, descargas y backups |
-| Disco USB 5 TB | `ext4` | `hd5t` | `/srv/storage/hd5t` | Biblioteca multimedia de Stash |
+| Disco USB 2 TB | `ext4` | `hd2t` | `/media/hd2t` | Multimedia general, descargas y backups |
+| Disco USB 5 TB | `ext4` | `hd5t` | `/media/hd5t` | Biblioteca multimedia de Stash |
 
 ### Criterio operativo
 
@@ -175,8 +175,8 @@ Las etiquetas deben quedar exactamente así:
 Crea puntos de montaje persistentes:
 
 ```bash
-sudo mkdir -p /srv/storage/hd2t
-sudo mkdir -p /srv/storage/hd5t
+sudo mkdir -p /media/hd2t
+sudo mkdir -p /media/hd5t
 ```
 
 ## Montaje Manual de Prueba
@@ -184,8 +184,8 @@ sudo mkdir -p /srv/storage/hd5t
 Antes de tocar `fstab`, prueba el montaje manual:
 
 ```bash
-sudo mount /dev/disk/by-label/hd2t /srv/storage/hd2t
-sudo mount /dev/disk/by-label/hd5t /srv/storage/hd5t
+sudo mount /dev/disk/by-label/hd2t /media/hd2t
+sudo mount /dev/disk/by-label/hd5t /media/hd5t
 ```
 
 Verifica:
@@ -198,17 +198,20 @@ lsblk -f
 Si el montaje es correcto, crea ya la estructura inicial dentro de cada disco:
 
 ```bash
-sudo mkdir -p /srv/storage/hd2t/media
-sudo mkdir -p /srv/storage/hd2t/downloads
-sudo mkdir -p /srv/storage/hd2t/backups
-sudo mkdir -p /srv/storage/hd5t/media
+sudo mkdir -p /media/hd2t/media/video
+sudo mkdir -p /media/hd2t/media/music
+sudo mkdir -p /media/hd2t/media/audiobooks
+sudo mkdir -p /media/hd2t/media/books
+sudo mkdir -p /media/hd2t/downloads
+sudo mkdir -p /media/hd2t/backups
+sudo mkdir -p /media/hd5t/media
 ```
 
 Si todo es correcto, desmonta de nuevo para preparar el montaje persistente:
 
 ```bash
-sudo umount /srv/storage/hd2t
-sudo umount /srv/storage/hd5t
+sudo umount /media/hd2t
+sudo umount /media/hd5t
 ```
 
 ## Montaje Automático con `fstab`
@@ -222,8 +225,8 @@ sudo cp /etc/fstab /etc/fstab.bak
 Abre `/etc/fstab` y añade estas líneas al final:
 
 ```fstab
-LABEL=hd2t  /srv/storage/hd2t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
-LABEL=hd5t  /srv/storage/hd5t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
+LABEL=hd2t  /media/hd2t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
+LABEL=hd5t  /media/hd5t  ext4  defaults,nofail,noatime,x-systemd.device-timeout=10  0  2
 ```
 
 ### Significado de las opciones
@@ -239,8 +242,8 @@ Después de guardar `fstab`, valida sin reiniciar:
 
 ```bash
 sudo mount -a
-findmnt /srv/storage/hd2t
-findmnt /srv/storage/hd5t
+findmnt /media/hd2t
+findmnt /media/hd5t
 ```
 
 Si `mount -a` no devuelve errores, el montaje persistente está correcto.
@@ -252,8 +255,8 @@ Si más adelante los contenedores Docker van a escribir directamente en estos di
 Ejemplo:
 
 ```bash
-sudo chown -R $USER:$USER /srv/storage/hd2t
-sudo chown -R $USER:$USER /srv/storage/hd5t
+sudo chown -R $USER:$USER /media/hd2t
+sudo chown -R $USER:$USER /media/hd5t
 ```
 
 Si vas a trabajar con un UID/GID fijo para contenedores, ajusta permisos más adelante según ese criterio. Lo importante en esta fase es que el montaje funcione y quede estable.
@@ -271,8 +274,8 @@ sudo blkid
 Debes poder verificar lo siguiente:
 
 - El **NVMe** queda identificado como disco del sistema o candidato a serlo en la siguiente fase.
-- **`hd2t`** está montado en `/srv/storage/hd2t`.
-- **`hd5t`** está montado en `/srv/storage/hd5t`.
+- **`hd2t`** está montado en `/media/hd2t`.
+- **`hd5t`** está montado en `/media/hd5t`.
 - Ambos discos USB usan **ext4** y conservan sus etiquetas.
 - `mount -a` no genera errores.
 
@@ -285,10 +288,13 @@ Usa desde el inicio una separación clara de contenidos:
 | `/` sobre SSD NVMe | Raspberry Pi OS y sistema base |
 | `/var/lib/docker` sobre SSD NVMe | Imágenes, capas y red de Docker |
 | Volúmenes persistentes de servicios sobre SSD NVMe | Configuraciones, bases de datos, uploads y logs |
-| `/srv/storage/hd2t/media` | Películas, series, música, libros y contenido general |
-| `/srv/storage/hd2t/downloads` | Descargas temporales o de ingestión |
-| `/srv/storage/hd2t/backups` | Backups locales del host y de servicios |
-| `/srv/storage/hd5t/media` | Biblioteca multimedia dedicada |
+| `/media/hd2t/media/video` | Películas, series y vídeos |
+| `/media/hd2t/media/music` | Biblioteca musical |
+| `/media/hd2t/media/audiobooks` | Audiolibros y podcasts |
+| `/media/hd2t/media/books` | Ebooks y documentos |
+| `/media/hd2t/downloads` | Descargas temporales o de ingestión |
+| `/media/hd2t/backups` | Backups locales del host y de servicios |
+| `/media/hd5t/media` | Biblioteca multimedia dedicada |
 
 ### Qué no conviene mover a USB
 

@@ -33,7 +33,7 @@ Este documento asume el material descrito en [01-material-necesario.md](01-mater
                             │                   │              │
    ┌──────────────┐  USB 3.0│                   │      ┌───────▼────────┐
    │ hd5t (5 TB)  ├─────────┤                   │      │ Adaptador      │
-   │ Stash        │         └─────────┬─────────┘      │ Zigbee USB      │
+   │ biblioteca   │         └─────────┬─────────┘      │ Zigbee USB      │
    └──────────────┘                   │                └────────────────┘
                                       │ PCIe interno en la carcasa
                              ┌────────▼────────┐
@@ -87,11 +87,13 @@ Este documento asume el material descrito en [01-material-necesario.md](01-mater
 
 ### Scripts de la carcasa (si aplica)
 
-Si la carcasa es una **Argon ONE V3** (o cualquier modelo Argon con ventilador activo y botón de encendido inteligente), sigue el manual del fabricante para instalar los scripts **antes de pasar a la preparación de discos**. Estos scripts habilitan:
+Si la carcasa es una **Argon ONE V3** (o cualquier modelo Argon con ventilador activo y botón de encendido inteligente), sigue el manual del fabricante para instalar los scripts **antes de pasar a la preparación de discos**. Estos scripts suelen habilitar:
 
 - **Control del ventilador por temperatura**: sin ellos, el ventilador puede quedarse apagado o funcionar a máxima velocidad permanentemente.
 - **Botón de power inteligente**: doble pulsación para reiniciar, pulsación larga para apagado limpio.
-- **`usb_max_current_enable=1`** en `/boot/firmware/config.txt`: sube el límite de corriente USB a 1,6 A, necesario para alimentar discos mecánicos externos.
+- Ajustes específicos del fabricante para la carcasa y su placa PCIe.
+
+<!-- TODO: verificar si el fabricante de la carcasa elegida requiere algún ajuste adicional en Raspberry Pi 5 para alimentación USB o gestión del NVMe; no asumir opciones heredadas de modelos anteriores. -->
 
 Si usas una carcasa pasiva como la **Argon NEO 5 M.2 NVME**, este paso no aplica.
 

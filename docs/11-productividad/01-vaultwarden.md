@@ -2,12 +2,13 @@
 
 ## Descripción
 
-**Vaultwarden** es el gestor de contraseñas autoalojado compatible con clientes **Bitwarden** para este homelab. En esta Raspberry Pi 5 se despliega como stack Docker propio, con toda su persistencia en el **SSD NVMe** y publicado **solo a través de Caddy**.
+**Vaultwarden** es el gestor de contraseñas autoalojado compatible con clientes **Bitwarden** para este homelab. En esta Raspberry Pi 5 se despliega como stack Docker propio, con toda su persistencia en el **SSD NVMe** y publicado a través de **Caddy**.
 
 En este servicio conviene fijar dos decisiones de diseño desde el principio:
 
 - la URL canónica del vault debe ser **HTTPS**, porque el web vault y varios flujos de cliente funcionan mejor en un contexto seguro
 - en este proyecto la forma más limpia de conseguirlo sin exponer nada a internet es usar **Caddy + certificado de Tailscale** sobre `https://pi-homelab.<tailnet>.ts.net/vaultwarden/`
+- el acceso LAN `http://vaultwarden.lan` puede seguir existiendo en Caddy como vía auxiliar o de diagnóstico, pero **no** debe usarse como URL principal en clientes Bitwarden
 - **Vaultwarden no debe ponerse detrás de Authelia**; los clientes Bitwarden, las extensiones de navegador y algunas apps móviles esperan hablar directamente con el servidor del vault
 - los datos persistentes, la base SQLite, adjuntos, `send` y logs viven en `/home/<user>/homelab/data/vaultwarden/` sobre el **SSD NVMe**
 - el servicio no necesita publicar puertos en la IP del host; **Caddy** lo alcanza por red Docker interna
@@ -151,7 +152,7 @@ En este punto **todavía no habrá acceso externo** hasta completar el bloque de
 
 ### 5. Publicar Vaultwarden con Caddy
 
-Edita `/home/<user>/homelab/config/caddy/Caddyfile` y añade el manejo específico de Vaultwarden dentro del bloque HTTPS del hostname Tailscale.
+Edita `/home/<user>/homelab/config/caddy/Caddyfile` y añade el manejo específico de Vaultwarden dentro del bloque HTTPS del hostname Tailscale que se define en [05-caddy.md](../03-red/05-caddy.md).
 
 Patrón recomendado:
 
@@ -175,8 +176,11 @@ https://{$TAILSCALE_DOMAIN} {
 }
 ```
 
+<!-- TODO: verificar si la versión concreta de Vaultwarden que se despliegue en este homelab funciona de forma totalmente estable detrás de la subruta `/vaultwarden/` con este patrón de Caddy. Si aparecen problemas de rutas, adjuntos o websockets, mantener `vaultwarden.lan` para LAN y evaluar un hostname HTTPS dedicado en Tailscale en lugar de una subruta. -->
+
 Notas importantes para este servicio:
 
+- integra este bloque dentro del `https://{$TAILSCALE_DOMAIN}` ya existente; no crees un segundo bloque HTTPS duplicado para el mismo hostname
 - usa una **subruta HTTPS** y deja esa URL como **canónica**
 - no uses `http://vaultwarden.lan` como URL principal del vault; para Vaultwarden interesa priorizar el contexto seguro
 - `header_up X-Real-IP {remote_host}` ayuda a que [02-fail2ban.md](../04-seguridad/02-fail2ban.md) vea la IP real del cliente en el log
@@ -190,10 +194,12 @@ docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile
 docker compose up -d
 ```
 
-La URL operativa quedará así:
+La URL canónica para clientes Bitwarden quedará así:
 
 - web vault y API: `https://pi-homelab.<tailnet>.ts.net/vaultwarden/`
 - panel admin: `https://pi-homelab.<tailnet>.ts.net/vaultwarden/admin`
+
+Si mantienes el bloque LAN de [05-caddy.md](../03-red/05-caddy.md), `http://vaultwarden.lan` puede seguir siendo útil para pruebas locales puntuales, pero no conviene mezclarlo con la URL HTTPS canónica en los clientes.
 
 ### 6. Configuración inicial en la UI
 

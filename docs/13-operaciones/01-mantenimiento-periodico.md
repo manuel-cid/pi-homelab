@@ -99,7 +99,7 @@ cd /home/<user>/homelab/compose/infra-borgmatic
 docker compose ps
 docker compose logs --tail=100 borgmatic
 docker compose exec borgmatic borgmatic list --short --last 7
-docker compose exec borgmatic borgmatic info --repository /mnt/borg-repository/$(hostname)
+docker compose exec borgmatic borgmatic info --repository local
 ```
 
 Además, revisa el directorio de exports:
@@ -147,7 +147,7 @@ dmesg -T | grep -Ei 'error|fail|warn|nvme|usb|sd[a-z]|ext4'
 Comprobaciones de servicios y contenedores:
 
 ```bash
-docker ps --format '{{.Names}}' | xargs -I{} docker logs --tail=50 {} 2>&1 | grep -Ei 'error|exception|fatal|panic'
+docker ps --format '{{.Names}}' | xargs -r -I{} docker logs --tail=50 {} 2>&1 | grep -Ei 'error|exception|fatal|panic'
 ```
 
 Si prefieres revisar solo contenedores críticos, empieza por:
@@ -271,6 +271,12 @@ Aunque este documento se centra en mantenimiento, conviene cerrar cada ronda men
 ss -ltnup
 docker ps --format 'table {{.Names}}\t{{.Ports}}'
 sudo ufw status numbered
+```
+
+Si el host usa **`nftables`** en lugar de **`ufw`**, sustituye la última comprobación por:
+
+```bash
+sudo nft list ruleset
 ```
 
 Debes comprobar que:

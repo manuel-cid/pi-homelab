@@ -7,7 +7,7 @@
 La política de almacenamiento de este proyecto se mantiene igual que en el resto de servicios:
 
 - la configuración, el estado del servicio, la metadata descargada y la base de datos viven en `/home/<user>/homelab/data/audiobookshelf/` sobre el **SSD NVMe**
-- la biblioteca de audiolibros y podcasts vive en `/media/hd2t/audiobookshelf/data/`
+- la biblioteca de audiolibros y podcasts vive en la categoría global `/media/hd2t/media/audiobooks/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
 - **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
@@ -47,8 +47,8 @@ services:
     ports:
       - "${AUDIOBOOKSHELF_BIND_IP}:${AUDIOBOOKSHELF_HTTP_PORT}:80"
     volumes:
-      - /media/hd2t/audiobookshelf/data/audiobooks:/audiobooks:ro
-      - /media/hd2t/audiobookshelf/data/podcasts:/podcasts
+      - /media/hd2t/media/audiobooks/books:/audiobooks:ro
+      - /media/hd2t/media/audiobooks/podcasts:/podcasts
       - /home/<user>/homelab/data/audiobookshelf/metadata:/metadata
       - /home/<user>/homelab/data/audiobookshelf/config:/config
     networks:
@@ -79,14 +79,15 @@ Notas sobre este Compose:
 ```bash
 mkdir -p /home/<user>/homelab/compose/media-audiobookshelf
 mkdir -p /home/<user>/homelab/data/audiobookshelf/{config,metadata}
-sudo mkdir -p /media/hd2t/audiobookshelf/data/{audiobooks,podcasts}
+sudo mkdir -p /media/hd2t/media/audiobooks/{books,podcasts}
 ```
 
 Una organización razonable de la biblioteca puede ser:
 
 ```bash
-sudo mkdir -p /media/hd2t/audiobookshelf/data/audiobooks/{fiction,non-fiction,courses}
-sudo mkdir -p /media/hd2t/audiobookshelf/data/podcasts/{subscriptions,archives}
+sudo mkdir -p /media/hd2t/media/audiobooks/{books,podcasts}
+sudo mkdir -p /media/hd2t/media/audiobooks/books/{fiction,non-fiction,courses}
+sudo mkdir -p /media/hd2t/media/audiobooks/podcasts/{subscriptions,archives}
 ```
 
 No es obligatorio seguir ese esquema exacto, pero sí conviene mantener una estructura estable para que las bibliotecas y los escaneos sean previsibles.
@@ -98,13 +99,13 @@ Usa el mismo usuario operativo del host que administra Docker y las carpetas del
 ```bash
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/audiobookshelf
-sudo chown -R <user>:<user> /media/hd2t/audiobookshelf
+sudo chown -R <user>:<user> /media/hd2t/media/audiobooks
 
 sudo find /home/<user>/homelab/data/audiobookshelf -type d -exec chmod 775 {} \;
 sudo find /home/<user>/homelab/data/audiobookshelf -type f -exec chmod 664 {} \;
-sudo find /media/hd2t/audiobookshelf -type d -exec chmod 755 {} \;
-sudo find /media/hd2t/audiobookshelf -type f -exec chmod 644 {} \;
-sudo chmod 775 /media/hd2t/audiobookshelf/data/podcasts
+sudo find /media/hd2t/media/audiobooks -type d -exec chmod 755 {} \;
+sudo find /media/hd2t/media/audiobooks -type f -exec chmod 644 {} \;
+sudo chmod 775 /media/hd2t/media/audiobooks/podcasts
 ```
 
 La idea es simple:
@@ -194,6 +195,8 @@ Recomendación operativa:
 - para acceso remoto sencillo, Tailscale directo a `:13378` suele ser la opción más simple
 - usa Caddy delante de Audiobookshelf cuando quieras centralizar nombres internos del homelab
 
+<!-- TODO: verificar si la versión elegida de Audiobookshelf soporta publicación estable bajo subruta (por ejemplo `/audiobookshelf/`) antes de depender de ese patrón detrás de Caddy para acceso remoto por Tailscale. -->
+
 ### 7. Organización de la biblioteca y buenas prácticas
 
 Audiobookshelf funciona mejor cuando cada libro o podcast está bien separado y con nombres consistentes.
@@ -217,8 +220,8 @@ Rutas persistentes del servicio:
 - Variables del stack: `/home/<user>/homelab/compose/media-audiobookshelf/.env`
 - Configuración, base de datos y usuarios: `/home/<user>/homelab/data/audiobookshelf/config`
 - Metadata descargada, carátulas e índices: `/home/<user>/homelab/data/audiobookshelf/metadata`
-- Biblioteca de audiolibros: `/media/hd2t/audiobookshelf/data/audiobooks`
-- Biblioteca de podcasts: `/media/hd2t/audiobookshelf/data/podcasts`
+- Biblioteca de audiolibros: `/media/hd2t/media/audiobooks/books`
+- Biblioteca de podcasts: `/media/hd2t/media/audiobooks/podcasts`
 
 Criterio de almacenamiento:
 
@@ -235,7 +238,7 @@ Respaldar como mínimo:
 - `/home/<user>/homelab/data/audiobookshelf/config`
 - `/home/<user>/homelab/data/audiobookshelf/metadata`
 
-La biblioteca de `/media/hd2t/audiobookshelf/data/` no forma parte del backup de la aplicación en sí; es el **contenido multimedia** y debe tratarse según la estrategia general de copias del homelab.
+La biblioteca de `/media/hd2t/media/audiobooks/` no forma parte del backup de la aplicación en sí; es el **contenido multimedia** y debe tratarse según la estrategia general de copias del homelab.
 
 Para una copia más consistente de la base de datos interna, detén brevemente el contenedor durante el backup:
 

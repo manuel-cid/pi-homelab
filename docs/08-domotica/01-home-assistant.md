@@ -8,19 +8,21 @@ Esta modalidad encaja bien con el resto del homelab porque mantiene el mismo pat
 
 ## Requisitos Previos
 
-- Haber completado `docs/01-sistema/04-estructura-directorios.md` para disponer de la estructura base en el SSD NVMe.
-- Haber completado `docs/02-docker/01-instalacion-docker.md` y `docs/02-docker/02-estructura-compose.md`.
-- Haber completado `docs/03-red/04-tailscale.md` si se quiere acceso remoto por VPN.
-- Haber completado `docs/03-red/05-caddy.md` solo si se va a publicar Home Assistant detrás del reverse proxy interno.
-- Revisar `docs/03-red/06-puertos-y-firewall.md` para registrar el puerto del servicio.
+- Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md) para disponer de la estructura base en el SSD NVMe.
+- Haber completado [01-instalacion-docker.md](../02-docker/01-instalacion-docker.md) y [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si se quiere acceso remoto por VPN.
+- Haber completado [05-caddy.md](../03-red/05-caddy.md) solo si se va a publicar Home Assistant detrás del reverse proxy interno.
+- Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto del servicio.
 - Puerto principal: `8123/tcp`.
 - Recomendado usar `network_mode: host` para que Home Assistant detecte correctamente dispositivos y protocolos de descubrimiento en la red local.
 
 ## Docker Compose
 
-Guarda el stack en `/home/<user>/homelab/home-assistant/docker-compose.yml`.
+Archivo: `/home/<user>/homelab/compose/automation-homeassistant/docker-compose.yml`
 
 ```yaml
+name: automation-homeassistant
+
 services:
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
@@ -31,7 +33,7 @@ services:
     environment:
       TZ: Europe/Madrid
     volumes:
-      - /home/<user>/homelab/home-assistant/config:/config
+      - /home/<user>/homelab/config/homeassistant:/config
       - /etc/localtime:/etc/localtime:ro
       - /run/dbus:/run/dbus:ro
 ```
@@ -39,8 +41,10 @@ services:
 ### Despliegue
 
 ```bash
-mkdir -p /home/<user>/homelab/home-assistant/config
-cd /home/<user>/homelab/home-assistant
+mkdir -p /home/<user>/homelab/compose/automation-homeassistant
+mkdir -p /home/<user>/homelab/config/homeassistant
+cd /home/<user>/homelab/compose/automation-homeassistant
+docker compose config
 docker compose up -d
 docker compose logs -f
 ```
@@ -48,7 +52,7 @@ docker compose logs -f
 Tras arrancar, la interfaz queda disponible en:
 
 - `http://IP_DE_LA_PI:8123`
-- `http://NOMBRE_TAILSCALE:8123` si accedes por la red Tailscale
+- `http://pi-homelab.<tailnet>.ts.net:8123` si accedes por la red Tailscale con MagicDNS
 
 ## Configuración
 
@@ -81,7 +85,7 @@ Es una de las integraciones más útiles incluso antes de añadir dispositivos Z
 
 #### MQTT
 
-Cuando esté desplegado `docs/08-domotica/02-mosquitto.md`, añade la integración **MQTT** desde **Settings → Devices & services → Add integration**.
+Cuando esté desplegado [02-mosquitto.md](02-mosquitto.md), añade la integración **MQTT** desde **Settings → Devices & services → Add integration**.
 
 Valores típicos:
 
@@ -93,11 +97,11 @@ Esta integración es la base para enlazar posteriormente **Zigbee2MQTT** y expon
 
 #### Zigbee2MQTT
 
-Cuando esté desplegado `docs/08-domotica/03-zigbee2mqtt.md`, activa la integración por MQTT. Si Zigbee2MQTT tiene `homeassistant: true`, los dispositivos emparejados aparecerán automáticamente en Home Assistant mediante MQTT Discovery.
+Cuando esté desplegado [03-zigbee2mqtt.md](03-zigbee2mqtt.md), activa la integración por MQTT. Si Zigbee2MQTT tiene `homeassistant: true`, los dispositivos emparejados aparecerán automáticamente en Home Assistant mediante MQTT Discovery.
 
 #### Node-RED
 
-Cuando esté desplegado `docs/08-domotica/04-node-red.md`, integra Node-RED con Home Assistant usando:
+Cuando esté desplegado [04-node-red.md](04-node-red.md), integra Node-RED con Home Assistant usando:
 
 - el servidor de Home Assistant en `http://IP_DE_LA_PI:8123`
 - un **Long-Lived Access Token** generado desde el perfil del usuario administrador
@@ -106,7 +110,7 @@ Esto permite crear automatizaciones complejas fuera del editor nativo de Home As
 
 ### Publicación detrás de Caddy
 
-Si vas a acceder a Home Assistant mediante `docs/03-red/05-caddy.md`, añade en `/home/<user>/homelab/home-assistant/config/configuration.yaml` una sección `http` con los proxies de confianza reales de tu despliegue.
+Si vas a acceder a Home Assistant mediante [05-caddy.md](../03-red/05-caddy.md), añade en `/home/<user>/homelab/config/homeassistant/configuration.yaml` una sección `http` con los proxies de confianza reales de tu despliegue.
 
 Ejemplo:
 
@@ -124,13 +128,14 @@ Ajusta la subred al rango Docker desde el que llegue Caddy. Si no se configura c
 Después de editar `configuration.yaml`, valida la sintaxis desde **Developer Tools → YAML** o reinicia el contenedor:
 
 ```bash
-cd /home/<user>/homelab/home-assistant
+cd /home/<user>/homelab/compose/automation-homeassistant
 docker compose restart
 ```
 
 ## Almacenamiento
 
-- Datos persistentes en `/home/<user>/homelab/home-assistant/config` sobre el **SSD NVMe**.
+- `docker-compose.yml` en `/home/<user>/homelab/compose/automation-homeassistant/docker-compose.yml`.
+- Datos persistentes en `/home/<user>/homelab/config/homeassistant` sobre el **SSD NVMe**.
 - No guardar datos de Home Assistant en `hd2t` ni `hd5t`; esos discos quedan reservados para multimedia y backups.
 - Dentro de `config/` quedarán, entre otros:
   - `configuration.yaml`
@@ -154,7 +159,8 @@ En Home Assistant Container no existe el sistema de snapshots gestionado por Sup
 
 Respaldar:
 
-- `/home/<user>/homelab/home-assistant/config`
+- `/home/<user>/homelab/compose/automation-homeassistant/docker-compose.yml`
+- `/home/<user>/homelab/config/homeassistant`
 - especialmente `configuration.yaml`, `automations.yaml`, `secrets.yaml`, `.storage/` y `home-assistant_v2.db`
 
 Recomendaciones:
@@ -162,7 +168,7 @@ Recomendaciones:
 - Para una copia consistente de la base de datos SQLite, detener brevemente el contenedor durante el backup:
 
 ```bash
-cd /home/<user>/homelab/home-assistant
+cd /home/<user>/homelab/compose/automation-homeassistant
 docker compose stop homeassistant
 # ejecutar backup
 docker compose start homeassistant

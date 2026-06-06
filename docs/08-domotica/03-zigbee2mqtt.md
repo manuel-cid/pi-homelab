@@ -23,7 +23,7 @@ El servicio se publica solo en la **LAN** y a través de **Tailscale**. No hay e
 - Haber revisado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto de la interfaz web.
 - Tener el coordinador Zigbee conectado por USB a la Raspberry Pi.
 - Puertos necesarios en esta fase:
-  - **`8080/tcp`** para la interfaz web de Zigbee2MQTT
+  - **`13001/tcp`** para la interfaz web de Zigbee2MQTT
   - **sin puerto Zigbee expuesto en red**; la comunicación con el coordinador es local por dispositivo USB
 
 ## Docker Compose
@@ -43,12 +43,12 @@ services:
     environment:
       TZ: Europe/Madrid
     ports:
-      - "8080:8080"
+      - "13001:8080"
     volumes:
       - /home/<user>/homelab/data/zigbee2mqtt:/app/data
       - /run/udev:/run/udev:ro
     devices:
-      - /dev/serial/by-id/ADAPTADOR_ZIGBEE:/dev/ttyACM0
+      - /dev/serial/by-id/ADAPTADOR_ZIGBEE:/dev/zigbee
     labels:
       - com.centurylinklabs.watchtower.enable=false
 ```
@@ -57,7 +57,7 @@ Notas sobre este Compose:
 
 - la ruta en `devices:` debe sustituirse por la ruta real del coordinador en `/dev/serial/by-id/`
 - el bind mount de `/run/udev` permite a Zigbee2MQTT detectar correctamente el adaptador
-- el puerto `8080` publica la interfaz web local
+- el puerto `13001` del host publica la interfaz web local del contenedor en `8080`
 - se desactiva la actualización automática por Watchtower para evitar cambios inesperados en una pieza crítica de la domótica
 
 ## Configuración
@@ -83,7 +83,7 @@ Ejemplo de salida:
 usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_1234567890abcdef-if00-port0 -> ../../ttyUSB0
 ```
 
-Usa siempre la ruta de `/dev/serial/by-id/...` tanto en el Compose como en `configuration.yaml`. Evita usar directamente `/dev/ttyUSB0` o `/dev/ttyACM0`, porque puede cambiar entre reinicios.
+Usa siempre la ruta de `/dev/serial/by-id/...` en el lado del host dentro del Compose. Evita usar directamente `/dev/ttyUSB0` o `/dev/ttyACM0`, porque puede cambiar entre reinicios.
 
 Si quieres confirmar el destino real:
 
@@ -110,7 +110,7 @@ mqtt:
   base_topic: zigbee2mqtt
 
 serial:
-  port: /dev/serial/by-id/usb-REEMPLAZAR_POR_TU_ADAPTADOR
+  port: /dev/zigbee
   adapter: zstack
 
 advanced:
@@ -122,7 +122,7 @@ Puntos importantes:
 - `mqtt.server` debe apuntar al broker de [02-mosquitto.md](02-mosquitto.md)
 - `mqtt.user` y `mqtt.password` deben corresponder al usuario `mqtt-zigbee2mqtt` creado en Mosquitto
 - `homeassistant.enabled: true` activa MQTT Discovery para que Home Assistant detecte los dispositivos
-- `serial.port` debe ser la misma ruta estable encontrada en `/dev/serial/by-id/`
+- `serial.port` debe coincidir con la ruta expuesta dentro del contenedor; en este ejemplo se usa `/dev/zigbee`
 - `serial.adapter` depende del coordinador concreto; confirma el valor correcto en la documentación oficial del adaptador si `zstack` no corresponde a tu modelo
 
 Si prefieres no dejar credenciales en el fichero principal, puedes guardar usuario y contraseña en un fichero separado y montar la configuración siguiendo el patrón de secretos de Zigbee2MQTT.
@@ -133,10 +133,10 @@ Sustituye `ADAPTADOR_ZIGBEE` por el nombre real del coordinador detectado antes.
 
 ```yaml
 devices:
-  - /dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_1234567890abcdef-if00-port0:/dev/ttyACM0
+  - /dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_1234567890abcdef-if00-port0:/dev/zigbee
 ```
 
-El nombre interno `/dev/ttyACM0` dentro del contenedor puede mantenerse así; lo importante es que el lado izquierdo del mapeo sea correcto.
+La parte importante es que el lado izquierdo del mapeo use la ruta estable del host en `/dev/serial/by-id/`. El nombre interno `/dev/zigbee` se fija a propósito para que `configuration.yaml` no dependa de cómo enumere el kernel el adaptador en cada arranque.
 
 ### 5. Desplegar el stack
 
@@ -151,7 +151,7 @@ docker compose logs -f zigbee2mqtt
 Resultado esperado:
 
 - el contenedor queda en estado `Up`
-- la interfaz web responde en `http://IP_DE_LA_PI:8080`
+- la interfaz web responde en `http://IP_DE_LA_PI:13001`
 - los logs muestran conexión correcta al broker MQTT
 - no aparecen errores de apertura del puerto serie
 
@@ -170,7 +170,7 @@ En este diseño, **Home Assistant no habla por USB con el coordinador**. Toda la
 
 #### Método recomendado desde la interfaz web
 
-1. Abre `http://IP_DE_LA_PI:8080`.
+1. Abre `http://IP_DE_LA_PI:13001`.
 2. Pulsa **Permit join (All)** en la esquina superior derecha.
 3. Pon el dispositivo Zigbee en modo emparejamiento siguiendo las instrucciones del fabricante. Si no las tienes, normalmente el equivalente práctico es hacer un reset de fábrica del dispositivo.
 4. Espera a que Zigbee2MQTT complete la entrevista del dispositivo.

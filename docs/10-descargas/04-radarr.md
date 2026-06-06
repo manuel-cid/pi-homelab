@@ -7,8 +7,8 @@
 En esta arquitectura, Radarr sigue la misma política general del proyecto:
 
 - la configuración, la base de datos SQLite, los logs y el estado del servicio viven en `/home/<user>/homelab/data/radarr/` sobre el **SSD NVMe**
-- las descargas de entrada llegan desde `/media/hd2t/downloads/transmission/`
-- la biblioteca final de películas vive en `/media/hd2t/media/jellyfin/movies/`
+- las descargas de entrada llegan desde `/media/hd2t/downloads/transmission/complete/`
+- la biblioteca final de películas vive en `/media/hd2t/media/video/movies/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
 - el stack se une a la red Docker compartida `homelab_proxy` para comunicarse por nombre interno con **Transmission**, **Prowlarr** y, si lo necesitas, **Caddy**
@@ -29,7 +29,7 @@ Como la zona de descargas y la biblioteca final están en el mismo disco `hd2t`,
 - Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Haber desplegado [01-transmission.md](01-transmission.md) para disponer del cliente de descargas.
 - Haber desplegado [02-prowlarr.md](02-prowlarr.md) si quieres centralizar los indexadores.
-- Haber desplegado [01-jellyfin.md](../09-multimedia/01-jellyfin.md) o, al menos, haber adoptado la misma ruta final de películas en `hd2t`.
+- Haber desplegado [01-jellyfin.md](../09-multimedia/01-jellyfin.md) o, al menos, haber adoptado la misma ruta final de películas en `hd2t` bajo `/media/hd2t/media/video/movies/`.
 - Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder a la interfaz fuera de la LAN.
 - Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Radarr detrás del reverse proxy interno.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
@@ -61,8 +61,8 @@ services:
       - "${RADARR_BIND_IP}:${RADARR_HTTP_PORT}:7878"
     volumes:
       - /home/<user>/homelab/data/radarr/config:/config
-      - /media/hd2t/media/jellyfin/movies:/movies
-      - /media/hd2t/downloads/transmission:/downloads
+      - /media/hd2t/media/video/movies:/movies
+      - /media/hd2t/downloads/transmission/complete:/downloads
     networks:
       - default
       - proxy
@@ -81,7 +81,7 @@ Notas sobre este Compose:
 - la base de datos y toda la persistencia del servicio viven en el **SSD NVMe**
 - Radarr monta la biblioteca final y la carpeta de descargas del mismo modo que las necesita para importar sin traducciones extra de rutas
 - el servicio se conecta también a `homelab_proxy` para que **Prowlarr**, **Transmission** y **Caddy** puedan alcanzarlo por nombre interno Docker
-- montar `/media/hd2t/downloads/transmission` como `/downloads` evita depender de `Remote Path Mappings` en el caso base
+- montar `/media/hd2t/downloads/transmission/complete` como `/downloads` evita depender de `Remote Path Mappings` en el caso base
 
 ## Configuración
 
@@ -90,10 +90,10 @@ Notas sobre este Compose:
 ```bash
 mkdir -p /home/<user>/homelab/compose/downloads-radarr
 mkdir -p /home/<user>/homelab/data/radarr/config
-sudo mkdir -p /media/hd2t/media/jellyfin/movies
+sudo mkdir -p /media/hd2t/media/video/movies
 ```
 
-La carpeta de descargas ya debe existir si has seguido [01-transmission.md](01-transmission.md). No la recrees con otra estructura distinta, porque Radarr y Transmission deben ver la misma jerarquía de archivos.
+La carpeta de descargas completas ya debe existir si has seguido [01-transmission.md](01-transmission.md). No la recrees con otra estructura distinta, porque Radarr y Transmission deben ver la misma jerarquía de archivos terminados.
 
 ### 2. Ajustar propiedad y permisos
 
@@ -102,15 +102,15 @@ Usa el mismo usuario operativo del host que administra Docker y las carpetas del
 ```bash
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/radarr
-sudo chown -R <user>:<user> /media/hd2t/media/jellyfin/movies
-sudo chown -R <user>:<user> /media/hd2t/downloads/transmission
+sudo chown -R <user>:<user> /media/hd2t/media/video/movies
+sudo chown -R <user>:<user> /media/hd2t/downloads/transmission/complete
 
 sudo find /home/<user>/homelab/data/radarr -type d -exec chmod 775 {} \;
 sudo find /home/<user>/homelab/data/radarr -type f -exec chmod 664 {} \;
-sudo find /media/hd2t/media/jellyfin/movies -type d -exec chmod 775 {} \;
-sudo find /media/hd2t/media/jellyfin/movies -type f -exec chmod 664 {} \;
-sudo find /media/hd2t/downloads/transmission -type d -exec chmod 775 {} \;
-sudo find /media/hd2t/downloads/transmission -type f -exec chmod 664 {} \;
+sudo find /media/hd2t/media/video/movies -type d -exec chmod 775 {} \;
+sudo find /media/hd2t/media/video/movies -type f -exec chmod 664 {} \;
+sudo find /media/hd2t/downloads/transmission/complete -type d -exec chmod 775 {} \;
+sudo find /media/hd2t/downloads/transmission/complete -type f -exec chmod 664 {} \;
 ```
 
 La lógica operativa es esta:
@@ -118,6 +118,7 @@ La lógica operativa es esta:
 - Radarr necesita escribir en `/config`
 - Radarr necesita leer las descargas terminadas y escribir en la biblioteca final
 - si el mismo `PUID` y `PGID` se usan en Radarr y Transmission, la importación y los hardlinks funcionan con mucha menos fricción
+- usar la carpeta `complete/` evita que Radarr intente importar ficheros aún incompletos
 
 ### 3. Crear el fichero `.env`
 
@@ -229,7 +230,7 @@ Buenas prácticas al guardar:
 
 Punto importante de diseño:
 
-- como Transmission y Radarr montan la misma ruta del host bajo `/downloads`, en el despliegue base **no necesitas `Remote Path Mapping`**
+- como Transmission expone las descargas completas en `/downloads/complete` y Radarr monta esa misma ruta del host como `/downloads`, en el despliegue base **no necesitas `Remote Path Mapping`**
 - si en el futuro cambias las rutas internas y cada contenedor ve las descargas con un path distinto, entonces sí tendrás que añadir ese mapeo manualmente
 
 ### 8. Integrar Prowlarr para los indexadores
@@ -311,8 +312,8 @@ Rutas persistentes del servicio:
 - Compose: `/home/<user>/homelab/compose/downloads-radarr/docker-compose.yml`
 - Variables del stack: `/home/<user>/homelab/compose/downloads-radarr/.env`
 - Configuración, base de datos y logs: `/home/<user>/homelab/data/radarr/config`
-- Biblioteca final de películas: `/media/hd2t/media/jellyfin/movies`
-- Descargas observadas para importación: `/media/hd2t/downloads/transmission`
+- Biblioteca final de películas: `/media/hd2t/media/video/movies`
+- Descargas observadas para importación: `/media/hd2t/downloads/transmission/complete`
 
 Criterio de almacenamiento:
 
@@ -337,7 +338,7 @@ Eso cubre:
 - clientes de descarga
 - configuración de indexadores recibida desde Prowlarr
 
-La biblioteca final en `/media/hd2t/media/jellyfin/movies` forma parte de la estrategia general de backup del contenido multimedia, no del backup de la **aplicación** Radarr en sí.
+La biblioteca final en `/media/hd2t/media/video/movies` forma parte de la estrategia general de backup del contenido multimedia, no del backup de la **aplicación** Radarr en sí.
 
 Para una copia más consistente, detén brevemente el contenedor durante el backup:
 

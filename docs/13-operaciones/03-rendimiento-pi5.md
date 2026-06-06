@@ -27,7 +27,7 @@ Regla principal:
 - Haber completado [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md).
 - Haber completado [03-node-exporter.md](../05-monitorizacion/03-node-exporter.md).
 - Haber completado [01-mantenimiento-periodico.md](01-mantenimiento-periodico.md).
-- Tener refrigeración activa funcional en la carcasa de la Pi 5.
+- Tener una refrigeración adecuada y funcional en la carcasa de la Pi 5, ya sea pasiva bien dimensionada o activa.
 - Usar una fuente de alimentación estable y adecuada para la Pi 5 con **NVMe** y discos USB conectados.
 - Tener acceso administrativo por **SSH** o consola local.
 - Tener instaladas estas herramientas en el host:

@@ -14,6 +14,8 @@ En esta Raspberry Pi 5 conviene tratarlo como un servicio **stateless** y de uso
 
 Para este proyecto esa topología es la más coherente: despliegue muy simple, sin estado que respaldar y sin riesgo de mezclar documentación temporal con el almacenamiento persistente del resto del homelab.
 
+Como norma general, los servicios web del homelab deberían entrar por Caddy; aquí se documenta `16004/tcp` como una **excepción operativa consciente** para usar Stirling PDF de forma directa y puntual desde **LAN** o **Tailscale**, sin exponerlo a internet.
+
 ## Requisitos Previos
 
 - Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
@@ -66,11 +68,13 @@ STIRLING_DISABLE_ADDITIONAL_FEATURES=false
 Notas sobre este Compose:
 
 - `Stirling PDF` escucha internamente en `8080/tcp`, pero en este homelab se publica en `16004/tcp`
+- este acceso directo por `16004/tcp` debe entenderse como una excepción deliberada al patrón preferente con Caddy; si más adelante quieres homogeneizar la exposición web del homelab, publícalo solo en `127.0.0.1` o intégralo detrás del reverse proxy
 - `SECURITY_ENABLELOGIN=false` deja la interfaz sin autenticación local, algo aceptable aquí solo porque el servicio queda limitado a **LAN + Tailscale**
 - `DISABLE_ADDITIONAL_FEATURES=false` mantiene disponibles las funciones extra de la imagen estándar aunque el login esté desactivado
 - `tmpfs` en `/tmp`, `/configs` y `/logs` fuerza el carácter **stateless** del servicio: nada de lo que se genere ahí sobrevive a una recreación o reinicio del contenedor
 - no se usan bind mounts sobre el **SSD NVMe** porque este servicio no necesita persistencia
 - la etiqueta de Watchtower puede mantenerse activa porque el servicio es fácil de recrear y no arrastra estado propio
+- <!-- TODO: verificar una etiqueta concreta y estable de `stirlingtools/stirling-pdf` para ARM64 antes de pasar este stack a producción; `latest` simplifica el ejemplo, pero no fija una versión reproducible -->
 
 ## Configuración
 

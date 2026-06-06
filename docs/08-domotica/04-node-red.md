@@ -24,7 +24,7 @@ El servicio se publica solo en la **LAN** y a través de **Tailscale**. No hay e
 - Haber revisado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto del editor web.
 - Si se quiere acceso remoto, tener operativa la VPN de [04-tailscale.md](../03-red/04-tailscale.md).
 - Puertos necesarios en esta fase:
-  - **`1880/tcp`** para la interfaz web de Node-RED
+  - **`13002/tcp`** en el host para publicar la interfaz web de Node-RED (`1880/tcp` dentro del contenedor)
 
 ## Docker Compose
 
@@ -43,7 +43,7 @@ services:
     environment:
       TZ: Europe/Madrid
     ports:
-      - "1880:1880"
+      - "13002:1880"
     volumes:
       - /home/<user>/homelab/data/node-red:/data
     labels:
@@ -82,8 +82,8 @@ docker compose logs -f node-red
 
 Tras el primer arranque, la interfaz queda disponible en:
 
-- `http://IP_DE_LA_PI:1880`
-- `http://NOMBRE_TAILSCALE:1880` si accedes por Tailscale
+- `http://IP_DE_LA_PI:13002`
+- `http://pi-homelab.<tailnet>.ts.net:13002` si accedes por Tailscale con MagicDNS
 
 Este primer inicio crea en `/home/<user>/homelab/data/node-red/` los ficheros base del runtime, incluido `settings.js`.
 
@@ -126,7 +126,7 @@ En una LAN domestica de confianza puede bastar con restringir el acceso por red,
 - publicar Node-RED detras de [05-caddy.md](../03-red/05-caddy.md) y protegerlo con [01-authelia.md](../04-seguridad/01-authelia.md)
 - o bien activar autenticacion propia del editor mediante `adminAuth` en `settings.js`
 
-Si no vas a ponerlo detras de Caddy, la opcion mas simple es mantenerlo accesible solo por IP interna y por Tailscale.
+Si no vas a ponerlo detras de Caddy, la opcion mas simple es mantenerlo accesible solo por IP interna y por Tailscale en `13002/tcp`, que es el puerto reservado para este servicio en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 
 ### 5. Instalar la integracion con Home Assistant
 
@@ -134,7 +134,7 @@ Los nodos MQTT ya vienen en la instalacion base de Node-RED. Para Home Assistant
 
 Metodo recomendado:
 
-1. Abre Node-RED en `http://IP_DE_LA_PI:1880`.
+1. Abre Node-RED en `http://IP_DE_LA_PI:13002`.
 2. Ve a **Menu -> Manage palette -> Install**.
 3. Busca `node-red-contrib-home-assistant-websocket`.
 4. Instala el paquete y espera a que Node-RED termine de reiniciar internamente.
@@ -143,7 +143,8 @@ Alternativa por linea de comandos:
 
 ```bash
 docker exec -it node-red sh -lc 'cd /data && npm install --no-update-notifier --no-fund --only=production node-red-contrib-home-assistant-websocket'
-docker restart node-red
+cd /home/<user>/homelab/compose/iot-node-red
+docker compose restart node-red
 ```
 
 ### 6. Crear el servidor de Home Assistant

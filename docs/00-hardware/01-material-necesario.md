@@ -27,7 +27,7 @@ Este documento cubre solo materiales y criterios de compra. La conexión física
 | Disco externo `hd2t` | Sí | **2 TB, USB 3.0** | Multimedia general, descargas y backups | Reutilizable o según tienda |
 | Disco externo `hd5t` | Sí | **5 TB, USB 3.0** | Biblioteca multimedia dedicada | Reutilizable o según tienda |
 | Cable de red | Sí | Ethernet Cat 5e o superior | Conexión estable al router/switch | Bajo coste |
-| Adaptador Zigbee | Opcional | USB compatible con Zigbee2MQTT/Home Assistant | Integración domótica futura | Según modelo |
+| Adaptador Zigbee | Opcional | USB compatible con Zigbee2MQTT/Home Assistant, por ejemplo **SONOFF Zigbee 3.0 USB Dongle Plus** | Integración domótica futura | Según modelo |
 
 ## Selección Recomendada
 
@@ -36,6 +36,7 @@ Este documento cubre solo materiales y criterios de compra. La conexión física
 - **Raspberry Pi 5 de 8 GB**: margen suficiente para Docker, monitorización, reverse proxy y varios servicios concurrentes.
 - **Fuente oficial de 27 W**: no es un accesorio opcional cuando se usa NVMe. Es la opción segura para evitar inestabilidad, reinicios o problemas de alimentación bajo carga.
 - **microSD de 64 GB**: se usa para el arranque inicial y como soporte temporal durante la instalación. No debe ser el almacenamiento operativo final del homelab.
+- El acceso previsto es **solo LAN + Tailscale**, sin exposición directa a internet ni apertura de puertos en el router.
 
 ### Carcasa y almacenamiento NVMe
 
@@ -43,7 +44,7 @@ Este documento cubre solo materiales y criterios de compra. La conexión física
 - Evita confundir **NVMe** con **M.2 SATA**: el formato físico puede parecer similar, pero no son equivalentes.
 - Modelos de referencia:
   - **Argon NEO 5 M.2 NVME**: aproximadamente **35-45 EUR**.
-  - **Argon ONE V3**: aproximadamente **55-65 EUR**.
+  - **Argon ONE V3 M.2 NVME**: aproximadamente **55-65 EUR**.
 - Para el SSD, un **NVMe M.2 de 500 GB** es suficiente para Raspberry Pi OS, Docker, volúmenes, bases de datos, logs y crecimiento razonable de servicios.
 - Ejemplo válido: **Kingston NV2 500 GB**, aproximadamente **35-40 EUR**.
 

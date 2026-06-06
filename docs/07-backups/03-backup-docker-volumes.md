@@ -233,12 +233,12 @@ DEST=/media/hd2t/backups/exports/postgres
 
 mkdir -p "${DEST}"
 
-docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
-  pg_dump -U postgres -d appdb -Fc \
+docker exec postgres sh -c \
+  'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_dump -U postgres -d appdb -Fc' \
   > "${DEST}/appdb_${STAMP}.dump"
 
-docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
-  pg_dumpall -U postgres --globals-only \
+docker exec postgres sh -c \
+  'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_dumpall -U postgres --globals-only' \
   > "${DEST}/globals_${STAMP}.sql"
 ```
 
@@ -259,8 +259,8 @@ Ejemplo de restore de objetos globales:
 ```bash
 GLOBALS=/media/hd2t/backups/exports/postgres/globals_2026-05-07_023000.sql
 
-docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
-  psql -U postgres -d postgres \
+docker exec -i postgres sh -c \
+  'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql -U postgres -d postgres' \
   < "${GLOBALS}"
 ```
 
@@ -269,14 +269,14 @@ Ejemplo de restore de una base de datos en formato `custom`:
 ```bash
 DUMP=/media/hd2t/backups/exports/postgres/appdb_2026-05-07_023000.dump
 
-docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
-  dropdb -U postgres --if-exists appdb
+docker exec postgres sh -c \
+  'export PGPASSWORD="$POSTGRES_PASSWORD"; exec dropdb -U postgres --if-exists appdb'
 
-docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
-  createdb -U postgres appdb
+docker exec postgres sh -c \
+  'export PGPASSWORD="$POSTGRES_PASSWORD"; exec createdb -U postgres appdb'
 
-cat "${DUMP}" | docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
-  pg_restore -U postgres -d appdb --clean --if-exists
+cat "${DUMP}" | docker exec -i postgres sh -c \
+  'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_restore -U postgres -d appdb --clean --if-exists'
 ```
 
 Si restauras en un entorno distinto:
@@ -296,7 +296,10 @@ SQLite no necesita dump separado si el fichero vive dentro de un bind mount y el
 
 Ejemplo típico:
 
+<!-- TODO: verificar la ruta exacta del stack que contiene Vaultwarden -->
+
 ```bash
+cd /home/<user>/homelab/compose/<stack>
 docker compose stop vaultwarden
 sudo rsync -aHAX --delete \
   /media/hd2t/backups/restore-test/vaultwarden/ \
@@ -306,7 +309,7 @@ docker compose start vaultwarden
 
 ### 11. Integrar los dumps en `pre-backup.sh`
 
-El `pre-backup.sh` de [02-borgmatic.md](02-borgmatic.md) debe comportarse como un orquestador simple:
+El `pre-backup.sh` de [02-borgmatic.md](02-borgmatic.md) debe comportarse como un orquestador simple. Ese script se ejecuta **dentro del contenedor de Borgmatic**, así que debe usar las rutas internas montadas por ese stack, por ejemplo **`/mnt/borg-exports`** y no **`/media/hd2t/backups/exports`**.
 
 - crear directorios de export si no existen
 - generar dumps con timestamp
@@ -334,8 +337,8 @@ docker exec mariadb sh -c \
     --triggers' \
   > "/mnt/borg-exports/mariadb/mariadb_${STAMP}.sql"
 
-docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
-  pg_dumpall -U postgres --globals-only \
+docker exec postgres sh -c \
+  'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_dumpall -U postgres --globals-only' \
   > "/mnt/borg-exports/postgres/globals_${STAMP}.sql"
 ```
 
@@ -356,9 +359,12 @@ El restore correcto no consiste en extraer directamente encima del directorio ac
 
 Ejemplo de sincronización final:
 
+<!-- TODO: verificar la ruta exacta del stack que contiene este servicio -->
+
 ```bash
 SERVICE=vaultwarden
 
+cd /home/<user>/homelab/compose/<stack>
 docker compose stop "${SERVICE}"
 
 sudo rsync -aHAX --delete \

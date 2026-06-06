@@ -15,6 +15,7 @@ La decisión operativa es deliberada:
 - fuera de la LAN, el acceso sigue limitado a **Tailscale** y el cifrado HTTPS se apoya en `tailscale cert`
 - **Pi-hole** sigue resolviendo `*.lan` hacia la IP LAN del host
 - la IP del host queda libre porque **Pi-hole** y **Unbound** ya viven en `dns_lan` con IP propia, según [01-macvlan.md](01-macvlan.md), [02-pihole.md](02-pihole.md) y [03-unbound.md](03-unbound.md)
+<!-- TODO: verificar y alinear `SERVICES.md`, donde Caddy todavía aparece descrito con HTTPS/CA interna para LAN, mientras que el plan maestro y esta fase fijan HTTP en LAN + HTTPS solo por Tailscale -->
 
 ## Requisitos Previos
 
