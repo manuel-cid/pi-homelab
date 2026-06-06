@@ -6,6 +6,7 @@
 
 En este proyecto conviene mantener una topología simple y fácil de operar:
 
+- en todo el documento, sustituye los marcadores `<user>` y `<tailnet>` por tus valores reales antes de ejecutar comandos, definir rutas o publicar la URL final
 - la aplicación vive en `/home/<user>/homelab/compose/productivity-freshrss/`
 - los datos persistentes viven en `/home/<user>/homelab/data/freshrss/` sobre el **SSD NVMe**
 - el servicio se publica en `127.0.0.1:16005/tcp` para bootstrap local y para que **Caddy** lo publique de forma coherente con la política de red del proyecto
@@ -21,7 +22,7 @@ Para este homelab, esa combinación suele ser la más razonable: despliegue cort
 - Haber completado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar FreshRSS de forma coherente con la política general de exposición web del homelab.
 - Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder también desde fuera de casa por la tailnet.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto `16005/tcp`.
-- Revisar [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount del servicio en la estrategia de copias.
+- Revisar [02-borgmatic.md](../07-backups/02-borgmatic.md) y [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount del servicio en la estrategia de copias.
 - Disponer de `/home/<user>/homelab/` en el **SSD NVMe** con espacio suficiente para configuración, base de datos, favicon cache y extensiones.
 - Tener exportado a `.opml` el catálogo de feeds si vienes de otro lector RSS.
 - Puertos necesarios en esta fase:
@@ -37,7 +38,7 @@ name: productivity-freshrss
 
 services:
   freshrss:
-    image: freshrss/freshrss:latest
+    image: freshrss/freshrss:1.29.1
     restart: unless-stopped
     env_file:
       - .env
@@ -79,8 +80,11 @@ Notas sobre este Compose:
 - `FRESHRSS_CRON_MIN=13,43` refresca feeds aproximadamente dos veces por hora sin depender de cron en el host
 - `extensions/` queda separado para poder probar extensiones sin mezclarlo con la base de datos y la configuración
 - se excluye de WUD para evitar actualizaciones automáticas ciegas sobre una aplicación con migraciones y cambios de esquema posibles
-- este servicio debería entrar por **Caddy** para acceso desde la LAN o Tailscale; el bind en loopback evita exponerlo en `0.0.0.0` por comodidad, tal como fija [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
-- <!-- TODO: verificar una etiqueta concreta y estable de `freshrss/freshrss` para ARM64 antes de pasar este stack a producción; `latest` simplifica el ejemplo, pero no fija una versión reproducible -->
+- este servicio debería entrar por **Caddy** para acceso HTTP en LAN y, si lo decides, por la entrada HTTPS asociada a Tailscale; el bind en loopback evita exponerlo en `0.0.0.0` por comodidad, tal como fija [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
+- se fija `freshrss/freshrss:1.29.1` porque la documentación oficial reserva `:x.y.z` para releases concretas y la imagen oficial publica soporte multi-arquitectura incluyendo `linux/arm64`; así el despliegue queda reproducible sin depender de `latest`
+- `:latest` y `:1` apuntan hoy a la misma release estable, pero aquí conviene fijar la etiqueta exacta para que las actualizaciones sean deliberadas y no implícitas
+- alternativa razonable si quieres seguir recibiendo nuevas releases estables de la rama `1.x` con menos mantenimiento manual: `freshrss/freshrss:1`
+- alternativa razonable si priorizas una imagen algo más pequeña y aceptas la variante Alpine: `freshrss/freshrss:1.29.1-alpine`; en ese caso recuerda que varios comandos del documento tendrían que ejecutarse con el usuario `apache` en vez de `www-data`
 
 ## Configuración
 
@@ -124,11 +128,100 @@ ls -lah /home/<user>/homelab/data/freshrss
 Si todo ha arrancado bien, la interfaz quedará accesible en una de estas URLs:
 
 - `http://127.0.0.1:16005` desde la propia Raspberry Pi o mediante un túnel SSH
-- la URL que publiques después en **Caddy** para LAN o Tailscale
+- la URL que publiques después en **Caddy** para HTTP en LAN o, si aplica, para acceso remoto por Tailscale
 
-<!-- TODO: verificar y documentar el bloque exacto de Caddy para FreshRSS si finalmente se publica como `freshrss.lan`, bajo un hostname dedicado de Tailscale o en una subruta del hostname principal. -->
+### 3. Publicar FreshRSS con Caddy
 
-### 3. Completar la instalación inicial
+Para este servicio, la opción más coherente con el resto del homelab es usar **una única URL canónica** y dejar que **Caddy** proxye al upstream local `host.docker.internal:16005`.
+
+Recomendación para este proyecto:
+
+- si quieres acceso también fuera de casa, usa como URL canónica `https://pi-homelab.<tailnet>.ts.net/freshrss/`
+- si FreshRSS va a ser solo LAN, la alternativa razonable es `http://freshrss.lan`
+- evita mantener `freshrss.lan` y `/freshrss/` como URLs equivalentes para uso diario; FreshRSS espera que `base_url` coincida con la URL real de publicación
+- si ya tienes otros `handle`, `handle_path`, `redir` o el bloque `@health` dentro de `https://{$TAILSCALE_DOMAIN}`, integra solo las directivas de FreshRSS sin duplicar bloques ya definidos en [05-caddy.md](../03-red/05-caddy.md)
+
+#### Opción recomendada: subruta HTTPS sobre el hostname Tailscale
+
+Edita `/home/<user>/homelab/config/caddy/Caddyfile` e integra este bloque dentro del `https://{$TAILSCALE_DOMAIN}` que ya existe en [05-caddy.md](../03-red/05-caddy.md):
+
+```caddyfile
+https://{$TAILSCALE_DOMAIN} {
+	import common_proxy
+	tls /certs/{$TAILSCALE_DOMAIN}.crt /certs/{$TAILSCALE_DOMAIN}.key
+
+	@health path /healthz
+	handle @health {
+		respond "ok" 200
+	}
+
+	redir /freshrss /freshrss/ 308
+
+	handle_path /freshrss/* {
+		reverse_proxy host.docker.internal:16005 {
+			header_up X-Forwarded-Prefix "/freshrss"
+		}
+	}
+
+	handle {
+		respond "Caddy activo." 200
+	}
+}
+```
+
+Este patrón encaja bien aquí por tres motivos:
+
+- FreshRSS documenta explícitamente en Caddy el uso en **subruta** con `handle_path`, redirección a la barra final y cabecera `X-Forwarded-Prefix`
+- el stack actual publica FreshRSS solo en `127.0.0.1:16005`, así que desde el contenedor de Caddy el upstream correcto es `host.docker.internal:16005`
+- reutiliza el certificado Tailscale ya emitido para el hostname principal y evita abrir otro frente de DNS o TLS
+- si tu bloque `https://{$TAILSCALE_DOMAIN}` ya contiene `@health` o el `handle` final por defecto, inserta solo `redir /freshrss /freshrss/ 308` y `handle_path /freshrss/*` respetando el orden actual
+- esta opción remota por subruta debe considerarse la URL canónica solo si confirmas que te interesa acceso por Tailscale; si no, mantén `http://freshrss.lan` como URL principal y omite la subruta HTTPS
+
+#### Alternativa razonable: hostname LAN dedicado
+
+Si no quieres acceso remoto por Tailscale y prefieres la opción más simple para la red local, añade además o en su lugar este bloque:
+
+```caddyfile
+http://freshrss.lan {
+	import common_proxy
+	reverse_proxy host.docker.internal:16005
+}
+```
+
+Para esta variante, la URL canónica pasa a ser `http://freshrss.lan` y no hace falta `X-Forwarded-Prefix` porque FreshRSS queda servido en la raíz del sitio.
+
+#### Ajuste obligatorio de `base_url`
+
+Después de completar el asistente inicial y generar `/home/<user>/homelab/data/freshrss/data/config.php`, confirma que `base_url` coincide con la opción elegida:
+
+```php
+'base_url' => 'https://pi-homelab.<tailnet>.ts.net/freshrss',
+```
+
+o, si eliges solo LAN:
+
+```php
+'base_url' => 'http://freshrss.lan/',
+```
+
+Sin esa coherencia entre proxy y aplicación pueden aparecer redirecciones raras, cookies de login incorrectas o URLs absolutas mal formadas.
+
+Aplica cambios:
+
+```bash
+cd /home/<user>/homelab/compose/infra-caddy
+docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile
+docker compose up -d
+```
+
+Validaciones rápidas según la opción elegida:
+
+```bash
+curl -I -H 'Host: freshrss.lan' http://127.0.0.1
+curl -kI https://pi-homelab.<tailnet>.ts.net/freshrss/
+```
+
+### 4. Completar la instalación inicial
 
 En un despliegue nuevo, FreshRSS puede terminar de configurarse desde la interfaz web.
 
@@ -139,10 +232,11 @@ Flujo recomendado:
 3. Usa **SQLite** como base de datos.
 4. Crea el usuario administrador principal.
 5. Finaliza el asistente y vuelve a iniciar sesión con esa cuenta.
+6. Si vas a publicar FreshRSS detrás de **Caddy**, ajusta después `base_url` para que coincida exactamente con la URL canónica elegida.
 
 Para este homelab no hace falta complicarlo con una base externa salvo que más adelante quieras una topología distinta o varios usuarios con carga muy alta.
 
-### 4. Ajustes iniciales en la UI
+### 5. Ajustes iniciales en la UI
 
 Después del primer login, revisa como mínimo:
 
@@ -154,7 +248,7 @@ Después del primer login, revisa como mínimo:
 
 En un homelab personal suele funcionar bien empezar con pocas categorías y refinar después, una vez veas qué volumen real de feeds mantienes.
 
-### 5. Importación de feeds OPML
+### 6. Importación de feeds OPML
 
 La forma más limpia de migrar desde otro lector RSS es importar un fichero `.opml`.
 
@@ -175,7 +269,7 @@ Comprobaciones posteriores a la importación:
 
 Si el archivo OPML viene muy cargado, conviene hacer la primera importación y actualización en un momento tranquilo para no mezclar ese pico de CPU con otras tareas pesadas de la Raspberry Pi.
 
-### 6. Operación básica y comprobaciones
+### 7. Operación básica y comprobaciones
 
 Comandos útiles de mantenimiento:
 
@@ -188,7 +282,6 @@ docker compose exec -u www-data freshrss php cli/list-users.php
 
 Señales de que el servicio está sano:
 
-- la UI carga sin errores en `:16005`
 - la UI carga sin errores en `127.0.0.1:16005` o en la URL final servida por Caddy
 - puedes iniciar sesión con el usuario creado
 - los feeds importados se actualizan y aparecen artículos nuevos
@@ -265,9 +358,13 @@ Buenas prácticas de restore:
 
 - [FreshRSS - Sitio oficial](https://freshrss.org/)
 - [FreshRSS - Documentación](https://freshrss.github.io/FreshRSS/)
+- [FreshRSS - Uso de Caddy como reverse proxy](https://freshrss.github.io/FreshRSS/en/admins/Caddy.html)
 - [FreshRSS - Docker README oficial](https://github.com/FreshRSS/FreshRSS/blob/edge/Docker/README.md)
 - [FreshRSS - Gestión de suscripciones e importación OPML](https://github.com/FreshRSS/FreshRSS/blob/edge/docs/en/users/04_Subscriptions.md)
 - [FreshRSS - Repositorio oficial](https://github.com/FreshRSS/FreshRSS)
 - [Imagen Docker `freshrss/freshrss`](https://hub.docker.com/r/freshrss/freshrss)
 - [02-estructura-compose.md](../02-docker/02-estructura-compose.md)
+- [05-caddy.md](../03-red/05-caddy.md)
+- [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
+- [02-borgmatic.md](../07-backups/02-borgmatic.md)
 - [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md)

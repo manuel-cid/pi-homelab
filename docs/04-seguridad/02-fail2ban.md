@@ -2,12 +2,12 @@
 
 ## Descripción
 
-En [03-seguridad-base.md](../01-sistema/03-seguridad-base.md) **Fail2ban** quedó instalado y activo solo para el jail `sshd`. En esta guía se amplía esa instalación para cubrir también **servicios Dockerizados** del homelab, en particular **Authelia** y **Vaultwarden**, leyendo sus logs persistidos en el **SSD NVMe** y aplicando bans a nivel de host.
+En [03-seguridad-base.md](../01-sistema/03-seguridad-base.md) **Fail2ban** quedó instalado y activo solo para el jail `sshd`. En esta guía se amplía esa instalación para cubrir también servicios web del homelab que terminan entrando por **Caddy** en Docker, en particular los flujos de autenticación de **Authelia** y **Vaultwarden**, leyendo sus logs persistidos en el **SSD NVMe** y aplicando bans a nivel de host.
 
 Hay una decisión de diseño importante en esta fase:
 
 - el jail `sshd` del host puede seguir usando `ufw`, tal como se definió en la guía base
-- los jails de servicios publicados mediante **Docker** no deben reutilizar ciegamente ese mismo mecanismo
+- los jails de servicios que entran por **Caddy** no deben reutilizar ciegamente ese mismo mecanismo
 - para tráfico que entra por contenedores publicados en el host conviene aplicar el ban en la cadena **`DOCKER-USER`**
 - por eso, en esta guía los jails de **Authelia** y **Vaultwarden** usan una acción basada en `iptables-allports` sobre `DOCKER-USER`
 
@@ -18,6 +18,8 @@ El resultado buscado es este:
 - dejar preparado el jail de **Vaultwarden** para activarlo cuando ese servicio quede desplegado
 - consumir logs persistentes y legibles desde el host, sin depender de rutas efímeras dentro de contenedores
 
+En todo el documento, sustituye los marcadores `<user>` y `<tailnet>` por tus valores reales antes de aplicar comandos o rutas.
+
 ## Requisitos Previos
 
 - Haber completado [03-seguridad-base.md](../01-sistema/03-seguridad-base.md).
@@ -26,13 +28,13 @@ El resultado buscado es este:
 - Tener Docker Engine operativo y con los stacks de infraestructura levantados.
 - Tener el servicio `fail2ban` activo en el host.
 - Poder usar `sudo` sobre la Raspberry Pi.
-- Tener disponible la cadena `DOCKER-USER`, lo habitual cuando Docker está arrancado.
+- Tener disponible la cadena `DOCKER-USER`, lo habitual cuando Docker está arrancado y publica `80/tcp` o `443/tcp` mediante Caddy.
 - Tener almacenamiento persistente en el **SSD NVMe** dentro de `/home/<user>/homelab/data/`.
 - Puertos relevantes en esta fase:
   - **`22/tcp`** para el jail `sshd` ya existente
-  - **`80/tcp`** solo si un servicio también queda publicado por **Caddy** en la LAN
-  - **`443/tcp`** para servicios web publicados en el hostname HTTPS de **Tailscale** mediante Caddy
-  - **`9091/tcp`** solo interno entre Caddy y Authelia, no expuesto directamente al exterior
+  - **`80/tcp`** como entrada HTTP en LAN a través de **Caddy**
+  - **`443/tcp`** como entrada HTTPS por **Tailscale** a través de **Caddy**
+  - **`9091/tcp`** solo interno entre Caddy y Authelia; no es un puerto publicado en el host ni el punto de entrada del ban
 
 ## Docker Compose
 
@@ -66,17 +68,17 @@ Si `DOCKER-USER` no existe, no continúes todavía con los jails de servicios. A
 En este homelab conviene distinguir claramente dos casos:
 
 - **host**: `sshd`, con bans integrados en `ufw`
-- **contenedores publicados por Docker**: Authelia, Vaultwarden y otros servicios web, con bans en `DOCKER-USER`
+- **tráfico web que entra por Caddy publicado en Docker**: Authelia, Vaultwarden y otros servicios web, con bans en `DOCKER-USER`
 
 No sustituyas ni reescribas el fichero `sshd.local` definido en [03-seguridad-base.md](../01-sistema/03-seguridad-base.md). La ampliación de esta guía debe convivir con él.
 
 ### 3. Hacer persistente el log de Authelia
 
-Para que **Fail2ban** pueda leer los eventos de autenticación de **Authelia** desde el host, modifica el bloque `log` en:
+Para que **Fail2ban** pueda leer los eventos de autenticación de **Authelia** desde el host, verifica que el bloque `log` en:
 
 - `/home/<user>/homelab/config/authelia/configuration.yml`
 
-Déjalo así:
+quede exactamente así, en línea con lo documentado en [01-authelia.md](01-authelia.md):
 
 ```yaml
 log:
@@ -105,7 +107,7 @@ Haz un intento fallido de login y valida después que el log contiene la IP real
 
 ### 4. Preparar Vaultwarden para logging persistente
 
-Cuando despliegues **Vaultwarden** según [01-vaultwarden.md](../11-productividad/01-vaultwarden.md), añade en su servicio estos valores de entorno:
+Cuando despliegues **Vaultwarden** según [01-vaultwarden.md](../11-productividad/01-vaultwarden.md), asegúrate de que su servicio mantenga estos valores de entorno, exactamente igual que en esa guía:
 
 ```yaml
 environment:
@@ -121,7 +123,7 @@ Con esta decisión:
 - el fichero persistente visible desde el host será `/home/<user>/homelab/data/vaultwarden/vaultwarden.log`
 - `warn` sigue siendo suficiente para que los eventos relevantes de Fail2ban aparezcan en el log
 
-Si **Vaultwarden** va detrás de **Caddy**, revisa además su bloque `reverse_proxy` para que el backend reciba la IP real del cliente. Un patrón típico es este:
+Si **Vaultwarden** va detrás de **Caddy**, revisa además su bloque `reverse_proxy` para que el backend reciba la IP real del cliente. El patrón documentado en [01-vaultwarden.md](../11-productividad/01-vaultwarden.md) incluye este encabezado:
 
 ```caddyfile
 reverse_proxy vaultwarden:80 {
@@ -243,8 +245,9 @@ Notas sobre este diseño:
 - **Authelia** queda habilitado ya en esta fase
 - **Vaultwarden** y `vaultwarden-admin` quedan preparados pero deshabilitados hasta que el servicio exista y el log esté realmente disponible
 - cuando despliegues Vaultwarden, cambia `enabled = false` por `enabled = true` en el jail correspondiente
-- los bans afectan a todo el tráfico del origen contra el host a través de `DOCKER-USER`, no solo a un contenedor concreto
-- aunque aquí se documente `port = 443`, el ban se aplica igualmente sobre cualquier tráfico Dockerizado que atraviese `DOCKER-USER`; ese campo queda como referencia operativa del punto de entrada HTTPS canónico del proyecto
+- los bans afectan a todo el tráfico del origen contra el host a través de `DOCKER-USER`, no solo al backend concreto que generó el log
+- el jail `sshd` sigue usando `ufw` como en [03-seguridad-base.md](../01-sistema/03-seguridad-base.md); estos jails web usan `DOCKER-USER` porque el punto de entrada real es **Caddy** en Docker
+- aunque aquí se documente `port = 443`, el ban se aplica igualmente sobre cualquier tráfico Dockerizado que atraviese `DOCKER-USER`; ese campo queda como referencia operativa del punto de entrada HTTPS canónico del proyecto y el mismo origen quedará bloqueado también si intenta entrar por `80/tcp`
 
 ### 8. Validar filtros antes de reiniciar
 
@@ -345,6 +348,7 @@ Los fallos más habituales en esta fase suelen ser estos:
 - la IP registrada en el log es `127.0.0.1` o una IP de Docker, así que Fail2ban termina baneando la dirección equivocada
 - el jail apunta a una ruta distinta de la ruta real del log
 - `DOCKER-USER` no existe todavía porque Docker no estaba arrancado al validar
+- Caddy está publicando `80/443`, pero el backend no recibe la IP real del cliente por falta de cabeceras como `X-Real-IP`
 - el filtro regex no coincide con el formato real del log en tu versión del servicio
 
 Regla práctica: primero valida el **log**, luego el **filtro**, después el **jail** y solo al final el **ban**.
@@ -387,8 +391,8 @@ No es necesario respaldar el estado temporal de bans ni los logs completos para 
 - [05-caddy.md](../03-red/05-caddy.md)
 - [01-authelia.md](01-authelia.md)
 - [01-vaultwarden.md](../11-productividad/01-vaultwarden.md)
-- Fail2ban
-- Authelia Docs: Security Measures
-- Authelia Docs: Log Configuration
-- Vaultwarden Wiki: Logging
-- Vaultwarden Wiki: Fail2Ban Setup
+- [Fail2ban](https://www.fail2ban.org/wiki/index.php/Main_Page)
+- [Authelia Docs: Security Measures](https://www.authelia.com/configuration/security/regulation/)
+- [Authelia Docs: Log Configuration](https://www.authelia.com/configuration/miscellaneous/logging/)
+- [Vaultwarden Wiki: Logging](https://github.com/dani-garcia/vaultwarden/wiki/Enabling-logging)
+- [Vaultwarden Wiki: Fail2Ban Setup](https://github.com/dani-garcia/vaultwarden/wiki/Fail2Ban-Setup)

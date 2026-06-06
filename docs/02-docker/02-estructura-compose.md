@@ -6,7 +6,7 @@ Este documento define la **estrategia de organización** de los despliegues Dock
 
 Para este proyecto, la recomendación es clara: **no** usar un único `docker-compose.yml` monolítico para todo el homelab y **no** fragmentar sin criterio en un fichero por contenedor. El punto de equilibrio es usar **un `docker-compose.yml` por stack funcional**, entendiendo por stack un conjunto de servicios que comparten ciclo de vida, dependencias y contexto operativo.
 
-Esto encaja especialmente bien con una Raspberry Pi 5: simplifica actualizaciones, reduce el riesgo de tocar servicios no relacionados y hace más cómoda la gestión posterior desde terminal y desde [03-portainer.md](03-portainer.md).
+Esto encaja especialmente bien con una Raspberry Pi 5: simplifica actualizaciones, reduce el riesgo de tocar servicios no relacionados y hace más cómoda la gestión posterior desde terminal y desde Portainer (→ ver [03-portainer.md](03-portainer.md)).
 
 ## Requisitos Previos
 
@@ -21,6 +21,8 @@ Esto encaja especialmente bien con una Raspberry Pi 5: simplifica actualizacione
 - Puertos necesarios en esta fase:
   - ninguno obligatorio a nivel host
   - se recomienda reservar el nombre de la red compartida Docker `homelab_proxy`
+
+Cuando este documento use placeholders como `<user>`, `<stack>` o `<servicio>`, deben sustituirse por valores reales del entorno antes de ejecutar ningún comando.
 
 ## Objetivo de esta Fase
 
@@ -179,14 +181,15 @@ La política recomendada es esta:
 
 Casos típicos en los que **sí** conviene usarla:
 
-- servicios HTTP/S publicados detrás de Caddy
-- aplicaciones que Portainer o un dashboard deban alcanzar por nombre DNS interno de Docker
+- servicios web publicados detrás de Caddy para acceso interno desde LAN o a través de Tailscale
+- dashboards o servicios auxiliares que deban alcanzar otros contenedores por nombre DNS interno de Docker
 
 Casos en los que **no** conviene usarla por defecto:
 
 - bases de datos que solo usa su propia aplicación
 - Redis, PostgreSQL o MariaDB internos de un stack
 - servicios que no necesitan exposición transversal
+- Pi-hole y Unbound cuando se desplieguen con IP propia en la LAN mediante `macvlan` (→ ver [01-macvlan.md](../03-red/01-macvlan.md))
 
 ### 4. Convenciones de nombres
 
@@ -273,12 +276,15 @@ Ejemplos típicos:
   - Portainer
   - Jellyfin
   - Samba
-  - Pi-hole en sus puertos DNS y web según el diseño final
 - **no** suele necesitar acceso directo:
   - Linkding
   - Mealie
   - FreshRSS
   - Vaultwarden detrás de proxy
+
+Caso especial:
+
+- **Pi-hole** y **Unbound** no deben modelarse aquí como servicios con `ports:` sobre la IP del host; su publicación en LAN se documenta aparte mediante red `macvlan` con IP dedicada
 
 Regla importante para evitar errores de diseño:
 
@@ -297,6 +303,8 @@ docker compose config
 docker compose up -d
 docker compose ps
 ```
+
+Sustituye `<user>`, `<stack>` y `<servicio>` por el usuario, el nombre del stack y el nombre del servicio reales. No ejecutes estos comandos literalmente con los marcadores.
 
 Antes de levantar un stack:
 

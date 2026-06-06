@@ -21,7 +21,8 @@ Para este homelab esa combinación es suficiente: instalación sencilla, backup 
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto asignado al servicio.
 - Revisar [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount de Mealie en la estrategia de copias.
 - Disponer de `/home/<user>/homelab/` en el **SSD NVMe** con permisos normales para el usuario administrador.
-- Tener decidido el hostname o URL que usarás como `BASE_URL`; para acceso directo sin reverse proxy suele bastar `http://pi-homelab.<tailnet>.ts.net:16003`.
+- Tener decidida la **URL canónica** que usarás como `BASE_URL` y sustituir cualquier placeholder antes de desplegar. Para acceso directo sin reverse proxy suele bastar `http://pi-homelab.<tailnet>.ts.net:16003` o `http://<ip-lan-de-la-pi>:16003`, pero conviene escoger **una sola** como referencia operativa y mantenerla en clientes, bookmarklets y pruebas.
+- Permitir salida a internet para el contenedor si vas a usar la importación de recetas desde URL; Mealie la necesita para recuperar contenido remoto, aunque el homelab siga sin exponer puertos entrantes.
 - Puertos necesarios en esta fase:
   - **`16003/tcp` publicado en el host** para acceso web desde LAN y Tailscale
   - **`9000/tcp`** es el puerto interno del contenedor
@@ -35,7 +36,7 @@ name: productivity-mealie
 
 services:
   mealie:
-    image: ghcr.io/mealie-recipes/mealie:v3.17.0
+    image: ghcr.io/mealie-recipes/mealie:v3.19.2
     container_name: mealie
     restart: unless-stopped
     env_file:
@@ -46,6 +47,7 @@ services:
       TZ: ${TZ}
       BASE_URL: ${MEALIE_BASE_URL}
       ALLOW_SIGNUP: ${MEALIE_ALLOW_SIGNUP}
+      DEFAULT_EMAIL: ${MEALIE_DEFAULT_EMAIL}
       DEFAULT_GROUP: ${MEALIE_DEFAULT_GROUP}
       DEFAULT_HOUSEHOLD: ${MEALIE_DEFAULT_HOUSEHOLD}
       SECURITY_MAX_LOGIN_ATTEMPTS: ${MEALIE_MAX_LOGIN_ATTEMPTS}
@@ -71,6 +73,7 @@ MEALIE_BIND_IP=0.0.0.0
 MEALIE_PORT=16003
 MEALIE_BASE_URL=http://pi-homelab.<tailnet>.ts.net:16003
 MEALIE_ALLOW_SIGNUP=true
+MEALIE_DEFAULT_EMAIL=admin@homelab.lan
 MEALIE_DEFAULT_GROUP=Home
 MEALIE_DEFAULT_HOUSEHOLD=Family
 MEALIE_MAX_LOGIN_ATTEMPTS=5
@@ -83,9 +86,10 @@ Notas sobre este Compose:
 - `Mealie` escucha internamente en `9000/tcp`, pero en este homelab se publica en `16003/tcp`
 - `SQLite` es una buena opción aquí porque todo el estado vive en almacenamiento local del host, no en un NAS remoto
 - `mem_limit: 1g` ayuda a contener el uso de memoria en una Raspberry Pi 5 sin complicar el despliegue
+- `MEALIE_DEFAULT_EMAIL` conviene dejarlo definido desde el primer arranque para no depender de valores implícitos durante el bootstrap inicial
 - `MEALIE_ALLOW_SIGNUP=true` solo es recomendable para el **bootstrap inicial**; después conviene dejarlo en `false`
 - se excluye de WUD porque el propio proyecto recomienda usar una **versión fijada** y actualizar deliberadamente
-- antes de una instalación nueva conviene comprobar si existe una versión más reciente de `v3.17.0` y sustituirla conscientemente en el Compose
+- antes de una instalación nueva conviene comprobar si existe una versión más reciente de `v3.19.2` y sustituirla conscientemente en el Compose
 
 ## Configuración
 
@@ -136,6 +140,8 @@ Si todo ha arrancado bien, la UI quedará accesible en una de estas URLs:
 - `http://<ip-lan-de-la-pi>:16003`
 - `http://pi-homelab.<tailnet>.ts.net:16003`
 
+Para la operación diaria, usa preferentemente la misma URL que hayas fijado en `MEALIE_BASE_URL`.
+
 ### 3. Bootstrap inicial y cierre del registro abierto
 
 Con `MEALIE_ALLOW_SIGNUP=true` puedes crear la primera cuenta directamente desde la UI.
@@ -181,6 +187,8 @@ Mealie permite importar recetas de varias formas útiles para este homelab:
 - **bookmarklet** del navegador para enviar la página actual a Mealie
 - **importación masiva** desde una lista de URLs usando la API
 
+Ten en cuenta que estos flujos dependen de que el contenedor pueda resolver DNS y salir por HTTP/HTTPS hacia internet para descargar el contenido original de las recetas.
+
 Flujo práctico recomendado:
 
 1. Empieza probando la importación de una receta concreta desde la UI.
@@ -191,6 +199,8 @@ Para el bookmarklet oficial de la comunidad solo necesitas adaptar dos valores:
 
 - la URL base de tu instancia, por ejemplo `http://pi-homelab.<tailnet>.ts.net:16003`
 - el `group slug` de tu grupo principal
+
+Sustituye siempre `<tailnet>` por tu dominio MagicDNS real antes de guardar el bookmarklet.
 
 El bookmarklet abrirá una URL con este patrón:
 
@@ -248,6 +258,7 @@ Estrategia recomendada en este homelab:
 - usar como base el backup de filesystem del directorio completo
 - complementar con los backups integrados de la UI para exportaciones puntuales
 - evitar copiar la base SQLite en caliente como único método de protección
+- no tratar los backups generados dentro de `/app/data` como copia independiente hasta haberlos copiado también fuera del **SSD NVMe**
 
 Procedimiento manual consistente para copia de filesystem:
 

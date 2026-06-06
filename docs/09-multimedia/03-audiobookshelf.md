@@ -7,9 +7,10 @@
 La política de almacenamiento de este proyecto se mantiene igual que en el resto de servicios:
 
 - la configuración, el estado del servicio, la metadata descargada y la base de datos viven en `/home/<user>/homelab/data/audiobookshelf/` sobre el **SSD NVMe**
-- la biblioteca de audiolibros y podcasts vive en la categoría global `/media/hd2t/media/audiobooks/`
-- el acceso principal se hace desde la **LAN**
-- el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
+- la biblioteca de audiolibros vive en `/media/hd2t/media/audiobooks/` y la de podcasts en `/media/hd2t/media/podcasts/`
+- el acceso principal en la **LAN** se hace preferentemente a través de **Caddy**
+- el acceso remoto se hace por **Tailscale**, preferentemente a través de **Caddy**, sin abrir puertos en el router
+- la publicación directa de un puerto en el host queda solo como opción temporal de bootstrap o diagnóstico
 - **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
 
 Audiobookshelf encaja bien en este homelab porque separa bien el **contenido multimedia** de la **metadata y el estado de lectura/escucha**. Eso permite mantener los ficheros grandes en `hd2t` y dejar en el SSD NVMe lo sensible al rendimiento: base de datos, índices, progreso de reproducción y carátulas.
@@ -25,8 +26,8 @@ Audiobookshelf encaja bien en este homelab porque separa bien el **contenido mul
 - Tener montado `hd2t` en `/media/hd2t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:
-  - `13378/tcp` en el host para acceso web y API desde LAN o Tailscale
   - `80/tcp` como puerto interno del contenedor
+  - `13378/tcp` en `127.0.0.1` solo si quieres mantener acceso temporal directo para bootstrap o diagnóstico
 
 ## Docker Compose
 
@@ -44,11 +45,11 @@ services:
       - .env
     environment:
       TZ: ${TZ}
-    ports:
-      - "${AUDIOBOOKSHELF_BIND_IP}:${AUDIOBOOKSHELF_HTTP_PORT}:80"
+    expose:
+      - "80"
     volumes:
-      - /media/hd2t/media/audiobooks/books:/audiobooks:ro
-      - /media/hd2t/media/audiobooks/podcasts:/podcasts
+      - /media/hd2t/media/audiobooks:/audiobooks:ro
+      - /media/hd2t/media/podcasts:/podcasts
       - /home/<user>/homelab/data/audiobookshelf/metadata:/metadata
       - /home/<user>/homelab/data/audiobookshelf/config:/config
     networks:
@@ -67,10 +68,11 @@ Notas sobre este Compose:
 
 - el stack queda aislado bajo `media-audiobookshelf`
 - `config/` y `metadata/` persisten en el **SSD NVMe**
-- la biblioteca multimedia vive en `hd2t`
+- las bibliotecas multimedia viven en `hd2t` siguiendo la estructura global `/media/hd2t/media/audiobooks/` y `/media/hd2t/media/podcasts/`
 - los audiolibros se montan en modo lectura para reducir riesgo de borrados o cambios accidentales
 - la carpeta de podcasts se deja con escritura para permitir descargas o gestión desde Audiobookshelf si decides usar esa función
 - el servicio se conecta también a `homelab_proxy` para que **Caddy** pueda alcanzarlo por nombre interno Docker
+- con `expose:` basta para publicarlo detrás de **Caddy**; no hace falta publicar `80` en la IP del host
 
 ## Configuración
 
@@ -79,15 +81,15 @@ Notas sobre este Compose:
 ```bash
 mkdir -p /home/<user>/homelab/compose/media-audiobookshelf
 mkdir -p /home/<user>/homelab/data/audiobookshelf/{config,metadata}
-sudo mkdir -p /media/hd2t/media/audiobooks/{books,podcasts}
+sudo mkdir -p /media/hd2t/media/{audiobooks,podcasts}
 ```
 
 Una organización razonable de la biblioteca puede ser:
 
 ```bash
-sudo mkdir -p /media/hd2t/media/audiobooks/{books,podcasts}
-sudo mkdir -p /media/hd2t/media/audiobooks/books/{fiction,non-fiction,courses}
-sudo mkdir -p /media/hd2t/media/audiobooks/podcasts/{subscriptions,archives}
+sudo mkdir -p /media/hd2t/media/{audiobooks,podcasts}
+sudo mkdir -p /media/hd2t/media/audiobooks/{fiction,non-fiction,courses}
+sudo mkdir -p /media/hd2t/media/podcasts/{subscriptions,archives}
 ```
 
 No es obligatorio seguir ese esquema exacto, pero sí conviene mantener una estructura estable para que las bibliotecas y los escaneos sean previsibles.
@@ -100,19 +102,21 @@ Usa el mismo usuario operativo del host que administra Docker y las carpetas del
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/audiobookshelf
 sudo chown -R <user>:<user> /media/hd2t/media/audiobooks
+sudo chown -R <user>:<user> /media/hd2t/media/podcasts
 
 sudo find /home/<user>/homelab/data/audiobookshelf -type d -exec chmod 775 {} \;
 sudo find /home/<user>/homelab/data/audiobookshelf -type f -exec chmod 664 {} \;
 sudo find /media/hd2t/media/audiobooks -type d -exec chmod 755 {} \;
 sudo find /media/hd2t/media/audiobooks -type f -exec chmod 644 {} \;
-sudo chmod 775 /media/hd2t/media/audiobooks/podcasts
+sudo find /media/hd2t/media/podcasts -type d -exec chmod 775 {} \;
+sudo find /media/hd2t/media/podcasts -type f -exec chmod 664 {} \;
 ```
 
 La idea es simple:
 
 - Audiobookshelf necesita escritura en `config/` y `metadata/`
 - la biblioteca de audiolibros no necesita permisos de escritura desde el contenedor en un despliegue base
-- si quieres que Audiobookshelf descargue o gestione podcasts, la carpeta `podcasts/` sí debe permanecer escribible
+- si quieres que Audiobookshelf descargue o gestione podcasts, la carpeta `/media/hd2t/media/podcasts/` sí debe permanecer escribible
 
 Si prefieres no usar descargas de podcasts desde Audiobookshelf y solo vas a indexar ficheros existentes, puedes montar también `/podcasts` en modo lectura.
 
@@ -124,16 +128,14 @@ Archivo: `/home/<user>/homelab/compose/media-audiobookshelf/.env`
 TZ=Europe/Madrid
 PUID=1000
 PGID=1000
-AUDIOBOOKSHELF_BIND_IP=0.0.0.0
-AUDIOBOOKSHELF_HTTP_PORT=13378
 PROXY_NETWORK=homelab_proxy
 ```
 
 Notas prácticas:
 
 - `PUID` y `PGID` deben coincidir con el usuario real del host
-- `AUDIOBOOKSHELF_BIND_IP=0.0.0.0` deja el servicio accesible desde la LAN y también desde la IP Tailscale del host
-- si prefieres acceso solo detrás de Caddy, puedes publicar `127.0.0.1:13378`
+- con este patrón el acceso normal entra por Caddy a través de `homelab_proxy`
+- si necesitas bootstrap o diagnóstico directo, añade temporalmente `ports: - "127.0.0.1:13378:80"` y retíralo al terminar
 
 ### 4. Desplegar el stack
 
@@ -148,18 +150,14 @@ docker compose logs --tail=50 audiobookshelf
 Validaciones útiles:
 
 ```bash
-ss -ltnp | grep 13378
-curl -I http://127.0.0.1:13378
+docker inspect media-audiobookshelf-audiobookshelf-1 --format '{{json .NetworkSettings.Networks}}'
+curl -I -H 'Host: audiobookshelf.lan' http://127.0.0.1
 ```
 
 Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en:
 
-- `http://IP_DE_LA_PI:13378`
-- `http://pi-homelab.<tailnet>.ts.net:13378` desde dispositivos unidos a Tailscale
-
-Y, si ya tienes Caddy operativo:
-
 - `http://audiobookshelf.lan`
+- `https://pi-homelab.<tailnet>.ts.net/...` únicamente cuando añadas en Caddy la ruta o el hostname remoto que decidas usar y lo valides de extremo a extremo
 
 ### 5. Primer arranque y creación de bibliotecas
 
@@ -191,11 +189,37 @@ Puntos prácticos a revisar después del primer acceso:
 
 Recomendación operativa:
 
-- para la **LAN**, usa `http://audiobookshelf.lan` o acceso directo a `:13378`
-- para acceso remoto sencillo, Tailscale directo a `:13378` suele ser la opción más simple
-- usa Caddy delante de Audiobookshelf cuando quieras centralizar nombres internos del homelab
+- para la **LAN**, usa preferentemente `http://audiobookshelf.lan`
+- reserva un puerto directo en `127.0.0.1` solo para bootstrap o pruebas puntuales
+- para acceso remoto, publícalo a través de Tailscale y Caddy sin abrir puertos adicionales en el host
+- usa Caddy delante de Audiobookshelf cuando quieras centralizar nombres internos del homelab y mantener una entrada coherente con el resto de servicios web
 
-<!-- TODO: verificar si la versión elegida de Audiobookshelf soporta publicación estable bajo subruta (por ejemplo `/audiobookshelf/`) antes de depender de ese patrón detrás de Caddy para acceso remoto por Tailscale. -->
+Recomendación de publicación detrás de **Caddy**:
+
+- **opción recomendada en este repositorio: hostname dedicado**. El patrón ya documentado en [05-caddy.md](../03-red/05-caddy.md) expone Audiobookshelf en `http://audiobookshelf.lan` con `reverse_proxy` directo, evitando ambigüedades con subrutas.
+- si más adelante quieres publicarlo dentro del hostname HTTPS común de Tailscale, conserva el prefijo completo al reenviar la petición y valida después login, navegación y websockets.
+- <!-- TODO: verificar el patrón remoto definitivo de Audiobookshelf bajo `https://pi-homelab.<tailnet>.ts.net/` antes de fijarlo como convención estable. -->
+
+Ejemplo recomendado con hostname dedicado en LAN:
+
+```caddyfile
+http://audiobookshelf.lan {
+    reverse_proxy audiobookshelf:80
+}
+```
+
+Ejemplo orientativo para acceso remoto sobre el hostname HTTPS común:
+
+```caddyfile
+https://pi-homelab.<tailnet>.ts.net {
+    @audiobookshelf path /audiobookshelf /audiobookshelf/*
+    handle @audiobookshelf {
+        reverse_proxy audiobookshelf:80
+    }
+}
+```
+
+Si añades la ruta remota, valida siempre después del despliegue el login web, la reproducción y la sincronización en tiempo real porque Audiobookshelf necesita websockets funcionando correctamente detrás del proxy.
 
 ### 7. Organización de la biblioteca y buenas prácticas
 
@@ -220,8 +244,8 @@ Rutas persistentes del servicio:
 - Variables del stack: `/home/<user>/homelab/compose/media-audiobookshelf/.env`
 - Configuración, base de datos y usuarios: `/home/<user>/homelab/data/audiobookshelf/config`
 - Metadata descargada, carátulas e índices: `/home/<user>/homelab/data/audiobookshelf/metadata`
-- Biblioteca de audiolibros: `/media/hd2t/media/audiobooks/books`
-- Biblioteca de podcasts: `/media/hd2t/media/audiobooks/podcasts`
+- Biblioteca de audiolibros: `/media/hd2t/media/audiobooks`
+- Biblioteca de podcasts: `/media/hd2t/media/podcasts`
 
 Criterio de almacenamiento:
 
@@ -239,6 +263,7 @@ Respaldar como mínimo:
 - `/home/<user>/homelab/data/audiobookshelf/metadata`
 
 La biblioteca de `/media/hd2t/media/audiobooks/` no forma parte del backup de la aplicación en sí; es el **contenido multimedia** y debe tratarse según la estrategia general de copias del homelab.
+La biblioteca de `/media/hd2t/media/podcasts/` sigue el mismo criterio: es contenido multimedia, no estado operativo de la aplicación.
 
 Para una copia más consistente de la base de datos interna, detén brevemente el contenedor durante el backup:
 
@@ -255,5 +280,7 @@ Si el volumen de `metadata/` crece mucho, sigue siendo prioritario respaldarlo: 
 
 - Documentación oficial de Audiobookshelf: https://www.audiobookshelf.org/docs
 - Guía oficial de instalación en Docker: https://www.audiobookshelf.org/guides/docker-install
+- Sección oficial de reverse proxy en el README: https://github.com/advplyr/audiobookshelf#reverse-proxy-set-up
+- Discusión oficial sobre soporte de subdirectorio `/audiobookshelf`: https://github.com/advplyr/audiobookshelf/discussions/3535
 - Repositorio oficial con ejemplo de `docker-compose.yml`: https://github.com/advplyr/audiobookshelf/blob/master/docker-compose.yml
 - Imagen oficial Docker en GHCR: https://github.com/advplyr/audiobookshelf/pkgs/container/audiobookshelf

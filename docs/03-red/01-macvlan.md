@@ -44,6 +44,8 @@ En esta fase no se despliega todavía el stack definitivo de DNS, pero sí convi
 
 Archivo: `/home/<user>/homelab/compose/infra-macvlan-test/docker-compose.yml`
 
+<!-- TODO: verificar el usuario real que sustituye a <user> en las rutas del homelab antes de aplicar los comandos tal cual. -->
+
 ```yaml
 name: infra-macvlan-test
 
@@ -99,6 +101,7 @@ Notas importantes:
 - `192.168.1.192/27` ofrece IPs utilizables de `192.168.1.193` a `192.168.1.222`.
 - La IP `192.168.1.222` se reserva para el host y **no** debe asignarse a contenedores.
 - Si tu red no es `192.168.1.0/24`, cambia `subnet`, `gateway`, `ip-range` e IPs fijas en bloque; no mezcles valores de ejemplo con valores reales.
+- Antes de ejecutar ningún comando de este documento, sustituye también la IP de prueba `192.168.1.196` y cualquier otra IP fija de ejemplo por valores válidos dentro de tu rango reservado.
 
 ### 2. Reservar direcciones en el router y ajustar DHCP
 
@@ -202,12 +205,12 @@ Requires=docker.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStartPre=-/sbin/ip link delete macvlan-shim
-ExecStart=/sbin/ip link add macvlan-shim link eth0 type macvlan mode bridge
-ExecStart=/sbin/ip addr add 192.168.1.222/32 dev macvlan-shim
-ExecStart=/sbin/ip link set macvlan-shim up
-ExecStart=/sbin/ip route replace 192.168.1.192/27 dev macvlan-shim
-ExecStop=-/sbin/ip link delete macvlan-shim
+ExecStartPre=-/usr/sbin/ip link delete macvlan-shim
+ExecStart=/usr/sbin/ip link add macvlan-shim link eth0 type macvlan mode bridge
+ExecStart=/usr/sbin/ip addr add 192.168.1.222/32 dev macvlan-shim
+ExecStart=/usr/sbin/ip link set macvlan-shim up
+ExecStart=/usr/sbin/ip route replace 192.168.1.192/27 dev macvlan-shim
+ExecStop=-/usr/sbin/ip link delete macvlan-shim
 
 [Install]
 WantedBy=multi-user.target
@@ -231,6 +234,8 @@ Prepara el directorio del stack temporal:
 mkdir -p /home/<user>/homelab/compose/infra-macvlan-test
 ```
 
+Si tu usuario no coincide con `<user>`, sustituye la ruta completa antes de continuar.
+
 Crea el `docker-compose.yml` del apartado anterior y despliega:
 
 ```bash
@@ -246,6 +251,8 @@ Valida desde el host:
 curl http://192.168.1.196
 ping -c 3 192.168.1.196
 ```
+
+Usa aquí la IP real que hayas asignado al contenedor temporal, no `192.168.1.196` si elegiste otra.
 
 Valida desde otro equipo de la LAN:
 
@@ -281,7 +288,7 @@ La macvlan debe reservarse para los casos que realmente necesitan presencia prop
 Esta fase apenas necesita almacenamiento persistente, pero sí deja varios artefactos operativos que conviene ubicar de forma ordenada:
 
 - `docker-compose.yml` de prueba: `/home/<user>/homelab/compose/infra-macvlan-test/docker-compose.yml`
-- documentación del proyecto: `docs/03-red/01-macvlan.md`
+- documentación del proyecto: [01-macvlan.md](01-macvlan.md)
 - servicio `systemd` del host: `/etc/systemd/system/macvlan-shim.service`
 
 Notas importantes:
@@ -294,7 +301,7 @@ Notas importantes:
 
 En esta fase, lo que debe respaldarse no es tanto dato de aplicación como **la definición de red y su persistencia**:
 
-- `docs/03-red/01-macvlan.md`
+- [01-macvlan.md](01-macvlan.md)
 - `/home/<user>/homelab/compose/infra-macvlan-test/docker-compose.yml` si decides conservar el stack de prueba
 - `/etc/systemd/system/macvlan-shim.service`
 - cualquier export o captura de la configuración DHCP del router donde quede excluido el rango macvlan

@@ -24,7 +24,7 @@ Este documento aplica a discos nuevos o vacíos que se pueden reformatear. Si al
 
 | Disco | Sistema de archivos | Etiqueta | Punto de montaje | Uso |
 |-------|---------------------|----------|------------------|-----|
-| SSD NVMe | Gestionado por la instalación del sistema | Según instalación | `/` y sistema base | Raspberry Pi OS, Docker, configs, volúmenes, bases de datos y logs |
+| SSD NVMe | Gestionado por la instalación del sistema | Según instalación | `/` y sistema base | Raspberry Pi OS, Docker Engine, `/home/<user>/homelab/`, configuraciones, volúmenes, bases de datos y logs |
 | Disco USB 2 TB | `ext4` | `hd2t` | `/media/hd2t` | Multimedia general, descargas y backups |
 | Disco USB 5 TB | `ext4` | `hd5t` | `/media/hd5t` | Biblioteca multimedia de Stash |
 
@@ -198,10 +198,12 @@ lsblk -f
 Si el montaje es correcto, crea ya la estructura inicial dentro de cada disco:
 
 ```bash
-sudo mkdir -p /media/hd2t/media/video
+sudo mkdir -p /media/hd2t/media/movies
+sudo mkdir -p /media/hd2t/media/tv
 sudo mkdir -p /media/hd2t/media/music
-sudo mkdir -p /media/hd2t/media/audiobooks
 sudo mkdir -p /media/hd2t/media/books
+sudo mkdir -p /media/hd2t/media/audiobooks
+sudo mkdir -p /media/hd2t/media/podcasts
 sudo mkdir -p /media/hd2t/downloads
 sudo mkdir -p /media/hd2t/backups
 sudo mkdir -p /media/hd5t/media
@@ -287,11 +289,16 @@ Usa desde el inicio una separación clara de contenidos:
 |------|-----------|
 | `/` sobre SSD NVMe | Raspberry Pi OS y sistema base |
 | `/var/lib/docker` sobre SSD NVMe | Imágenes, capas y red de Docker |
-| Volúmenes persistentes de servicios sobre SSD NVMe | Configuraciones, bases de datos, uploads y logs |
-| `/media/hd2t/media/video` | Películas, series y vídeos |
+| `/home/<user>/homelab/compose/` sobre SSD NVMe | Stacks Docker Compose y ficheros `.env` por stack |
+| `/home/<user>/homelab/config/` sobre SSD NVMe | Configuraciones editables de los servicios |
+| `/home/<user>/homelab/data/` sobre SSD NVMe | Volúmenes persistentes de servicios, bases de datos y uploads |
+| `/home/<user>/homelab/logs/` sobre SSD NVMe | Logs centralizados del homelab y scripts operativos |
+| `/media/hd2t/media/movies` | Películas |
+| `/media/hd2t/media/tv` | Series |
 | `/media/hd2t/media/music` | Biblioteca musical |
-| `/media/hd2t/media/audiobooks` | Audiolibros y podcasts |
 | `/media/hd2t/media/books` | Ebooks y documentos |
+| `/media/hd2t/media/audiobooks` | Audiolibros |
+| `/media/hd2t/media/podcasts` | Podcasts |
 | `/media/hd2t/downloads` | Descargas temporales o de ingestión |
 | `/media/hd2t/backups` | Backups locales del host y de servicios |
 | `/media/hd5t/media` | Biblioteca multimedia dedicada |
@@ -303,7 +310,7 @@ Usa desde el inicio una separación clara de contenidos:
 - Volúmenes con escrituras frecuentes.
 - Logs operativos del host o de Docker.
 
-Ese contenido debe permanecer en el **SSD NVMe** para reducir latencia, mejorar estabilidad y evitar depender de discos USB para el funcionamiento básico del homelab.
+Ese contenido debe permanecer en el **SSD NVMe** para reducir latencia, mejorar estabilidad y mantener la estructura de directorios del proyecto centrada en `/home/<user>/homelab/`.
 
 ## Errores Comunes a Evitar
 

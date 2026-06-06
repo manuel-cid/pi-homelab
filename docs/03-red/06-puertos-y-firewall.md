@@ -32,10 +32,12 @@ Este documento es un **registro vivo**. Cada vez que se despliegue un servicio n
 - Elegir **una sola** tecnología de firewall en el host:
   - `ufw`, recomendada por simplicidad
   - `nftables`, válida si prefieres control más fino
+- Sustituir antes de aplicar esta guía todos los placeholders de ejemplo, especialmente `192.168.1.10`, `192.168.1.194`, `192.168.1.195`, `192.168.1.222`, `192.168.1.1` y `<tailnet>`, si en tu red real usas otros valores.
 - Puertos necesarios en el estado actual de la fase:
   - host `22/tcp` para SSH
   - host `80/tcp` para Caddy en LAN
   - host `443/tcp` para Caddy vía Tailscale
+  - host `41641/udp` para conectividad directa de Tailscale
   - Pi-hole `53/tcp`, `53/udp` y `80/tcp` en su IP macvlan
   - Unbound `5335/tcp` y `5335/udp` en su IP macvlan
 
@@ -83,7 +85,7 @@ El diseño de red de este proyecto queda dividido en cuatro superficies distinta
 
 | Superficie | Ejemplo | Regla |
 |-----------|---------|-------|
-| IP LAN del host | `192.168.1.10` | Exponer solo `22/tcp`, `80/tcp` y, por Tailscale, `443/tcp` |
+| IP LAN del host | `192.168.1.10` | Permitir por firewall solo `22/tcp` y `80/tcp`; `443/tcp` se publica en el host pero debe quedar accesible solo por `tailscale0` |
 | IPs macvlan | `192.168.1.194`, `192.168.1.195` | Reservadas a DNS e infraestructura que necesita IP propia |
 | Redes Docker internas | `bridge`, `homelab_proxy` | Sin acceso directo desde la LAN salvo publicación explícita |
 | Red Tailscale | `tailscale0`, `*.ts.net` | Acceso remoto autenticado, sin abrir puertos WAN |
@@ -139,48 +141,28 @@ Infraestructura base ya fijada en esta fase:
 |-------|----------------|--------|----------|-----|------------|
 | Host | `192.168.1.10` | `22/tcp` | SSH | administración del host | LAN + Tailscale |
 | Host | `192.168.1.10` | `80/tcp` | Caddy | acceso HTTP en LAN a `*.lan` | solo LAN |
-| Host | `tailscale0` | `443/tcp` | Caddy | acceso HTTPS remoto a `pi-homelab.<tailnet>.ts.net` | solo Tailscale |
+| Host | `192.168.1.10` + `tailscale0` | `443/tcp` | Caddy | acceso HTTPS remoto a `pi-homelab.<tailnet>.ts.net` | solo Tailscale por firewall |
+| Host | `eth0` | `41641/udp` | Tailscale | conectividad directa WireGuard-like | entrante al host cuando Tailscale logra camino directo, sin `port forwarding` dedicado |
 | Macvlan | `192.168.1.194` | `53/tcp` | Pi-hole | DNS TCP | LAN |
 | Macvlan | `192.168.1.194` | `53/udp` | Pi-hole | DNS UDP | LAN |
 | Macvlan | `192.168.1.194` | `80/tcp` | Pi-hole | panel web | LAN |
 | Macvlan | `192.168.1.195` | `5335/tcp` | Unbound | upstream DNS TCP | interno DNS |
 | Macvlan | `192.168.1.195` | `5335/udp` | Unbound | upstream DNS UDP | interno DNS |
 
-Registro vivo de servicios ya documentados en el repositorio:
+Registro vivo de puertos ya fijados por otros documentos existentes del repositorio:
 
 | Servicio | Puerto recomendado | Nota |
 |---------|--------------------|------|
 | Portainer | `9443/tcp` | publicado en host según [03-portainer.md](../02-docker/03-portainer.md); si lo pasas por Caddy, mejor moverlo a `127.0.0.1` |
-| Prometheus | `11000/tcp` | publicado solo en `127.0.0.1` según su documento |
-| Grafana | `13000/tcp` | publicado solo en `127.0.0.1`; queda fuera del rango inicialmente sugerido para monitorización |
-| Uptime Kuma | `11002/tcp` | publicado solo en `127.0.0.1` |
-| Syncthing UI | `12000/tcp` | la sincronización usa además `22000/tcp`, `22000/udp` y `21027/udp` |
-| Home Assistant | `13000/tcp` | <!-- TODO: verificar el puerto final de Home Assistant; `13000/tcp` quedó reservado en esta fase, pero hoy ese bind ya aparece usado por Grafana --> |
-| Zigbee2MQTT UI | `13001/tcp` | candidato natural para Caddy mientras no exista una necesidad de acceso directo |
-| Node-RED | `13002/tcp` | candidato natural para Caddy mientras no exista una necesidad de acceso directo |
-| Jellyfin | `8096/tcp` | publicado en host según [01-jellyfin.md](../09-multimedia/01-jellyfin.md) |
-| Navidrome | `14001/tcp` | publicado en host según [02-navidrome.md](../09-multimedia/02-navidrome.md) |
-| Audiobookshelf | `13378/tcp` | publicado en host según [03-audiobookshelf.md](../09-multimedia/03-audiobookshelf.md) |
-| Calibre-Web | `14003/tcp` | publicado en host según [04-calibre-web.md](../09-multimedia/04-calibre-web.md) |
-| Stash | `14004/tcp` | publicado en host; revisar si más adelante conviene dejarlo detrás de Caddy |
-| Transmission Web UI | `15000/tcp` | usa además `51413/tcp` y `51413/udp` para pares |
-| Prowlarr | `15001/tcp` | publicado en host según [02-prowlarr.md](../10-descargas/02-prowlarr.md) |
-| Sonarr | `15002/tcp` | publicado en host según [03-sonarr.md](../10-descargas/03-sonarr.md) |
-| Radarr | `15003/tcp` | publicado en host según [04-radarr.md](../10-descargas/04-radarr.md) |
-| Vaultwarden | puerto interno `80/tcp` | preferible detrás de Caddy, sin publicación directa en host según [01-vaultwarden.md](../11-productividad/01-vaultwarden.md) |
-| Linkding | `9090/tcp` | publicado en host según [02-linkding.md](../11-productividad/02-linkding.md) |
-| Paperless-ngx | `16002/tcp` | publicado en host según [03-paperless-ngx.md](../11-productividad/03-paperless-ngx.md) |
-| Mealie | `16003/tcp` | publicado en host según [04-mealie.md](../11-productividad/04-mealie.md) |
-| Stirling PDF | `16004/tcp` | publicado en host según [05-stirling-pdf.md](../11-productividad/05-stirling-pdf.md) |
-| FreshRSS | `16005/tcp` | publicado en host según [06-freshrss.md](../11-productividad/06-freshrss.md) |
-| Homepage | `17000/tcp` | publicado en host según [01-homepage.md](../12-dashboards/01-homepage.md) |
-| Authelia | puerto interno `9091/tcp` | backend interno para Caddy según [01-authelia.md](../04-seguridad/01-authelia.md) |
 
 Regla de interpretación para esta tabla:
 
 - si un documento de servicio ya fija un puerto concreto, ese valor pasa a ser la referencia operativa de este registro vivo
 - la convención por rangos sigue siendo útil para servicios futuros, pero no debe pisar puertos estándar o ya documentados
+- esta tabla solo debe crecer cuando exista el documento del servicio correspondiente y el puerto haya quedado fijado allí
 - cuando un servicio pase a `127.0.0.1` o quede solo detrás de Caddy, actualiza aquí su nota de exposición
+
+<!-- TODO: verificar y añadir aquí los puertos de fases posteriores cuando existan sus documentos en el repositorio. -->
 
 Puertos estándar que conviene documentar como excepción cuando esos servicios se desplieguen:
 
@@ -206,11 +188,12 @@ Base mínima recomendada:
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 
-sudo ufw allow from 192.168.1.0/24 to any port 22 proto tcp comment 'SSH desde LAN'
+sudo ufw allow in on eth0 proto tcp from 192.168.1.0/24 to any port 22 comment 'SSH desde LAN'
 sudo ufw allow in on tailscale0 to any port 22 proto tcp comment 'SSH desde Tailscale'
 
-sudo ufw allow from 192.168.1.0/24 to any port 80 proto tcp comment 'Caddy HTTP LAN'
+sudo ufw allow in on eth0 proto tcp from 192.168.1.0/24 to any port 80 comment 'Caddy HTTP LAN'
 sudo ufw allow in on tailscale0 to any port 443 proto tcp comment 'Caddy HTTPS Tailscale'
+sudo ufw allow in on eth0 to any port 41641 proto udp comment 'Tailscale direct UDP'
 
 sudo ufw enable
 sudo ufw status verbose
@@ -221,6 +204,7 @@ Qué deja abierto esta política:
 - `22/tcp` en la IP del host para administración desde la LAN y desde Tailscale
 - `80/tcp` en la IP del host solo para la red local
 - `443/tcp` solo en la interfaz `tailscale0`
+- `41641/udp` en `eth0` para que Tailscale pueda establecer conectividad directa cuando sea posible
 
 Qué deja cerrado:
 
@@ -262,11 +246,12 @@ table inet filter {
     ip protocol icmp accept
     ip6 nexthdr icmpv6 accept
 
-    ip saddr 192.168.1.0/24 tcp dport 22 accept
-    ip saddr 192.168.1.0/24 tcp dport 80 accept
+    iifname "eth0" ip saddr 192.168.1.0/24 tcp dport 22 accept
+    iifname "eth0" ip saddr 192.168.1.0/24 tcp dport 80 accept
 
     iifname "tailscale0" tcp dport 22 accept
     iifname "tailscale0" tcp dport 443 accept
+    iifname "eth0" udp dport 41641 accept
   }
 
   chain forward {
@@ -345,7 +330,7 @@ La política de puertos y firewall no consume apenas espacio, pero su configurac
 
 Rutas relevantes:
 
-- documentación viva: `/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md`
+- documentación viva: [06-puertos-y-firewall.md](06-puertos-y-firewall.md)
 - Compose de prueba: `/home/<user>/homelab/compose/infra-port-policy-test/docker-compose.yml`
 - si usas `ufw`: `/etc/ufw/` y `/etc/default/ufw`
 - si usas `nftables`: `/etc/nftables.conf`
@@ -372,9 +357,9 @@ Cuando cambies reglas:
 
 ## Referencias
 
-- Docker Docs: `https://docs.docker.com/engine/network/port-publishing/`
-- Docker Docs: `https://docs.docker.com/engine/network/drivers/macvlan/`
-- Ubuntu UFW Docs: `https://help.ubuntu.com/community/UFW`
-- nftables Wiki: `https://wiki.nftables.org/`
-- Tailscale Docs: `https://tailscale.com/kb/`
-- Pi-hole Docs: `https://docs.pi-hole.net/`
+- Docker Docs: [Publishing and exposing ports](https://docs.docker.com/engine/network/port-publishing/)
+- Docker Docs: [Macvlan network driver](https://docs.docker.com/engine/network/drivers/macvlan/)
+- Ubuntu Community Help Wiki: [UFW](https://help.ubuntu.com/community/UFW)
+- nftables Wiki: [Main page](https://wiki.nftables.org/)
+- Tailscale Docs: [Knowledge Base](https://tailscale.com/kb/)
+- Pi-hole Docs: [Documentation portal](https://docs.pi-hole.net/)

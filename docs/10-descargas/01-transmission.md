@@ -6,7 +6,7 @@
 
 La política de este proyecto se mantiene igual que en el resto de servicios:
 
-- la configuración, el estado del cliente, la sesión y el fichero `settings.json` viven en `/home/<user>/homelab/data/transmission/` sobre el **SSD NVMe**
+- la configuración, el estado del cliente, la sesión y el fichero `settings.json` viven en `/home/<user>/homelab/data/transmission/config/` sobre el **SSD NVMe**
 - las descargas incompletas, completas y la carpeta de vigilancia viven en `/media/hd2t/downloads/transmission/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
@@ -39,7 +39,6 @@ services:
   transmission:
     image: lscr.io/linuxserver/transmission:latest
     restart: unless-stopped
-    user: "${PUID}:${PGID}"
     env_file:
       - .env
     environment:
@@ -77,6 +76,7 @@ Notas sobre este Compose:
 - la configuración persistente vive en el **SSD NVMe**
 - el contenido pesado de descarga vive en `hd2t`
 - `PUID` y `PGID` se pasan también como variables de entorno porque la imagen de LinuxServer usa ese patrón para ajustar permisos internos
+- no se fuerza `user:` en el servicio porque esta imagen ya gestiona permisos mediante `PUID` y `PGID`
 - el puerto de peers se fija en `51413` para evitar cambios aleatorios tras reinicios
 - la carpeta `/downloads` agrupa `complete/`, `incomplete/` y otras subcarpetas sin mezclar descargas con las bibliotecas finales
 - el servicio se conecta también a `homelab_proxy` para que futuros stacks como Sonarr o Radarr puedan alcanzar `transmission:9091` por nombre interno Docker
@@ -161,13 +161,22 @@ Validaciones útiles:
 
 ```bash
 ss -ltnup | grep -E '15000|51413'
-curl -I http://127.0.0.1:15000
+curl -sI http://127.0.0.1:15000 | head -n 5
 ```
 
 Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en:
 
 - `http://IP_DE_LA_PI:15000`
-- `http://<hostname>.<tailnet>.ts.net:15000` desde dispositivos unidos a Tailscale con MagicDNS
+- `http://<hostname-de-tu-pi>.<tailnet>.ts.net:15000` desde dispositivos unidos a Tailscale con MagicDNS
+
+Si tienes `ufw` activo y mantienes este acceso directo publicado en `0.0.0.0`, añade al menos la excepción del puerto web para no contradecir la política base de [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md):
+
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 15000 proto tcp comment 'Transmission UI desde LAN'
+sudo ufw allow in on tailscale0 to any port 15000 proto tcp comment 'Transmission UI desde Tailscale'
+```
+
+El puerto de peers `51413/tcp` y `51413/udp` puede permanecer publicado en Docker aunque el router no haga `port forwarding`; eso no expone el servicio a internet por sí solo, pero sí conviene revisar que no lo estés bloqueando localmente si esperas tráfico BitTorrent desde la propia LAN.
 
 ### 5. Primer arranque y autenticación básica
 
@@ -201,7 +210,7 @@ Si prefieres editar el fichero directamente, detén primero el contenedor para e
 ```bash
 cd /home/<user>/homelab/compose/downloads-transmission
 docker compose stop transmission
-nano /home/<user>/homelab/data/transmission/config/settings.json
+sudoedit /home/<user>/homelab/data/transmission/config/settings.json
 docker compose start transmission
 ```
 
@@ -314,6 +323,7 @@ Criterio de almacenamiento:
 - `hd2t` solo almacena los payloads de descarga
 - no se guarda el estado del cliente ni `settings.json` en discos USB
 - no se descargan torrents directamente en las bibliotecas finales del resto de servicios
+- la ruta base compartida con otros stacks es `/media/hd2t/downloads/transmission/`: **Sonarr** y **Radarr** montan el mismo árbol base para ver las rutas exactamente igual que Transmission y evitar `Remote Path Mappings` en el caso base
 
 ## Backup
 

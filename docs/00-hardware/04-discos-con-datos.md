@@ -11,7 +11,7 @@ Este documento cubre los casos habituales de reutilización de discos en **ext4*
 - Haber completado o validado [01-material-necesario.md](01-material-necesario.md).
 - Tener conectados físicamente el **SSD NVMe**, **`hd2t`** y **`hd5t`** según [02-esquema-conexiones.md](02-esquema-conexiones.md).
 - Arrancar con **Raspberry Pi OS Lite 64-bit** y disponer de acceso por terminal con un usuario con permisos de `sudo`.
-- Si la carcasa es una **Argon ONE V3**, haber instalado los scripts de control del ventilador y botón de power según se indica en [02-esquema-conexiones.md](02-esquema-conexiones.md#scripts-de-la-carcasa-si-aplica).
+- Si la carcasa es una **Argon ONE V3**, haber instalado los scripts de control del ventilador y botón de power según se indica en [02-esquema-conexiones.md](02-esquema-conexiones.md#scripts-de-la-carcasa).
 - Confirmar qué disco reutilizado será **`hd2t`** y cuál será **`hd5t`** según su contenido real.
 - Asumir que en esta fase **no se reformatea nada**.
 
@@ -32,7 +32,7 @@ Aunque el homelab está pensado para trabajar idealmente con discos USB en **ext
 ### Reparto previsto
 
 - **`hd2t`**: multimedia general, descargas y backups.
-- **`hd5t`**: biblioteca multimedia dedicada de Stash.
+- **`hd5t`**: biblioteca multimedia dedicada.
 
 ### Criterio operativo
 
@@ -169,12 +169,32 @@ La recomendación es:
 
 No hace falta que la etiqueta original del volumen coincida con `hd2t` o `hd5t` si usas **UUID** en `fstab`.
 
-Si el disco ya contiene datos con otra estructura, no hace falta reorganizarlo en esta fase. Aun así, para que los servicios del homelab puedan reutilizar rutas coherentes más adelante, conviene validar si el contenido ya encaja con la estructura objetivo:
+Si el disco ya contiene datos con otra estructura, no hace falta reorganizarlo en esta fase. Aun así, para que los servicios del homelab puedan reutilizar rutas coherentes más adelante, conviene validar si el contenido ya encaja con la estructura objetivo definida en `plan/plan.md` y `SERVICES.md`:
 
-- **`hd2t`**: `/media/hd2t/media/video`, `/media/hd2t/media/music`, `/media/hd2t/media/audiobooks`, `/media/hd2t/media/books`, `/media/hd2t/downloads`, `/media/hd2t/backups`
+- **`hd2t`**: `/media/hd2t/media/movies`, `/media/hd2t/media/tv`, `/media/hd2t/media/music`, `/media/hd2t/media/books`, `/media/hd2t/media/audiobooks`, `/media/hd2t/media/podcasts`, `/media/hd2t/downloads`, `/media/hd2t/backups`
 - **`hd5t`**: `/media/hd5t/media/`
 
-<!-- TODO: verificar si los datos heredados ya siguen la estructura esperada por los futuros `docker-compose.yml` o si habrá que adaptar rutas de biblioteca al desplegar cada servicio. -->
+### Compatibilidad con la estructura del proyecto
+
+La validación importante en esta fase es estructural, no por servicio individual:
+
+- **`hd2t`** debe seguir siendo el disco para contenido multimedia general, descargas y backups.
+- **`hd5t`** debe seguir siendo el disco dedicado a la biblioteca multimedia específica.
+- El **SSD NVMe** debe seguir reservado para sistema, configuraciones, bases de datos, cachés y volúmenes persistentes de los servicios.
+
+Si el disco heredado usa otra jerarquía y no quieres mover datos todavía, la alternativa razonable es adaptar los `bind mounts` del servicio correspondiente cuando lo despliegues, manteniendo la misma política general:
+
+- contenido pesado en `hd2t` o `hd5t`
+- configuración, bases de datos, caché y metadatos en el **SSD NVMe**
+
+Antes de desplegar los servicios, revisa al menos esta parte del árbol heredado:
+
+```bash
+find /media/hd2t -maxdepth 3 -type d | sort
+find /media/hd5t -maxdepth 2 -type d | sort
+```
+
+Si esas rutas no existen todavía, no es un problema: puedes crearlas más adelante o ajustar el Compose correspondiente cuando importes cada biblioteca.
 
 ## Montaje Manual de Prueba
 
@@ -240,7 +260,7 @@ Valida estas tres cosas:
 Consulta eventos recientes si algo falla:
 
 ```bash
-dmesg | tail -n 50
+sudo dmesg | tail -n 50
 ```
 
 Cuando termines la prueba manual:
@@ -361,7 +381,7 @@ lsusb
 dmesg | grep -iE 'usb|sd[a-z]' | tail -30
 ```
 
-#### Caso más habitual: over-current / alimentación insuficiente
+#### Caso más habitual: alimentación insuficiente o negociación USB inestable
 
 Si en la salida de `dmesg` ves mensajes como:
 
@@ -371,31 +391,38 @@ sd X:0:0:0: [sdX] Spinning up disk...
 sd X:0:0:0: [sdX] tag#N uas_eh_abort_handler
 ```
 
-El problema es que la Raspberry Pi 5 **limita por defecto la corriente USB a 600 mA** en total para todos los puertos. Dos discos mecánicos necesitan mucho más que eso, especialmente durante el arranque (spin-up), y la Pi corta la alimentación por protección.
+El síntoma apunta normalmente a un problema de alimentación USB, de la carcasa/controladora o del bridge SATA/USB del disco, especialmente durante el arranque del motor del HDD (spin-up).
 
-**Solución**: si tu carcasa o tu montaje lo requieren, habilitar la entrega de alta corriente USB añadiendo `usb_max_current_enable=1` en `/boot/firmware/config.txt`. Esto requiere una fuente de alimentación de al menos **5 V / 5 A** (la fuente oficial de la Raspberry Pi 5).
+**Solución recomendada**: en **Raspberry Pi 5**, no trates `usb_max_current_enable=1` como un ajuste obligatorio por defecto. La documentación oficial de Raspberry Pi indica que el límite alto de corriente USB se habilita automáticamente cuando la placa detecta una fuente capaz de **5 A**. En la práctica, si usas la **fuente oficial USB-C de 27 W**, no deberías añadir esta línea manualmente solo "por si acaso".
 
-<!-- TODO: verificar en la carcasa/controladora USB concreta si `usb_max_current_enable=1` sigue siendo necesario en Raspberry Pi 5 o si ya viene resuelto por firmware o scripts del fabricante. -->
+En una **Argon ONE V3**, el manual del fabricante indica además que los scripts oficiales para Pi 5 automatizan `usb_max_current_enable=1` junto con `PSU_MAX_CURRENT=5000` y otros ajustes de EEPROM/configuración. Para este homelab, la recomendación práctica es:
 
-Si la carcasa es una **Argon ONE V3** y ya se instalaron los scripts del fabricante según [02-esquema-conexiones.md](02-esquema-conexiones.md#scripts-de-la-carcasa-si-aplica), esta línea **ya se añadió automáticamente**. Verifica que existe:
+- Si usas **Argon ONE V3** con **Raspberry Pi OS** y ya instalaste los **scripts oficiales de Argon40**, **no dupliques** la línea manualmente: verifica primero qué dejaron configurado.
+- Si usas una **Pi 5 sin Argon**, o una carcasa distinta, y además alimentas con la **fuente oficial de 27 W**, **no hace falta forzar** `usb_max_current_enable=1` salvo que sigas viendo síntomas reales de falta de corriente.
+- Solo añádelo manualmente si **no** has usado los scripts del fabricante, si tu carcasa/controladora no anuncia correctamente la capacidad de 5 A, o si tras revisar **fuente, cable y caja USB** continúas viendo errores de alimentación durante el arranque del disco.
+
+En el caso específico de **Argon ONE V3**, verifica primero lo que ya dejaron los scripts:
 
 ```bash
 grep usb_max_current_enable /boot/firmware/config.txt
+sudo rpi-eeprom-config | grep PSU_MAX_CURRENT
 ```
 
-Si aparece `usb_max_current_enable=1`, solo necesitas reiniciar para que surta efecto (si no lo has hecho tras instalar el script):
+Si aparece `usb_max_current_enable=1` y en la EEPROM ves `PSU_MAX_CURRENT=5000`, da por buena la configuración del fabricante y solo reinicia si todavía no lo hiciste tras instalar los scripts:
 
 ```bash
 sudo reboot
 ```
 
-Si la línea **no** está presente (carcasas sin script de Argon u otros modelos), añádela manualmente:
+Si la línea **no** está presente y sigues en uno de los casos en los que sí conviene forzarla, añádela manualmente:
 
 ```bash
 sudo cp /boot/firmware/config.txt /boot/firmware/config.txt.bak
 echo 'usb_max_current_enable=1' | sudo tee -a /boot/firmware/config.txt
 sudo reboot
 ```
+
+Ten en cuenta que este ajuste **no sustituye** una fuente insuficiente: solo sirve para permitir el límite alto cuando el hardware y la alimentación realmente pueden sostenerlo.
 
 Tras el reinicio, comprueba que los discos ya aparecen:
 
@@ -409,6 +436,9 @@ Con los discos reutilizados ya validados y montados, el siguiente documento a co
 
 ## Referencias
 
+- Documentación oficial de Raspberry Pi 5 sobre alimentación y límite de corriente USB
+- Documentación oficial de Raspberry Pi sobre `usb_max_current_enable` y `PSU_MAX_CURRENT`
+- Manual oficial de Argon ONE V3 / M.2 para Raspberry Pi 5
 - `smartctl`
 - `lsblk`
 - `blkid`

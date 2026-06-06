@@ -16,18 +16,28 @@ La decisión de almacenamiento en este proyecto es clara:
 - la carpeta de entrada `consume/` también vive en el **SSD NVMe**
 - `hd2t` y `hd5t` no se usan para datos activos de Paperless-ngx
 
-Para este homelab la topología más simple y compatible es publicar Paperless-ngx directamente en `16002/tcp` para acceso desde **LAN** y **Tailscale**. Esto evita complicaciones con subrutas en reverse proxy y mantiene una URL directa para la UI.
+Para este homelab conviene alinearlo con la política general del repositorio:
+
+- **Caddy** publica la URL LAN del servicio
+- el contenedor expone `8000/tcp` dentro de Docker para el upstream del proxy
+- `16002/tcp` se reserva solo como **bootstrap local en loopback** (`127.0.0.1`) para validación inicial o diagnóstico
+
+Cuando en este documento aparezcan `<user>`, `<tailnet>`, `paperless.lan` o rutas del tipo `/home/<user>/...`, sustitúyelos por los valores reales de tu entorno antes de aplicar comandos o dar por válidas las URLs.
 
 ## Requisitos Previos
 
 - Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
-- Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder también desde fuera de casa por la tailnet.
+- Haber completado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Paperless-ngx con el patrón recomendado del proyecto.
+- Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceso remoto por la tailnet después de validar la publicación HTTPS.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para documentar el puerto del servicio.
 - Revisar [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir sus bind mounts en la estrategia de copias.
 - Disponer de `/home/<user>/homelab/` en el **SSD NVMe** con permisos normales para el usuario administrador.
 - Tener decidido el idioma principal de OCR. Para un uso doméstico en España suele ser razonable empezar con `spa+eng`.
 - Puertos necesarios en esta fase:
-  - **`16002/tcp` publicado en el host** para acceso web desde LAN y Tailscale
+  - **`8000/tcp` solo como puerto interno del contenedor** para el upstream de Caddy
+  - **`16002/tcp` publicado solo en `127.0.0.1`** para bootstrap local y diagnóstico
+  - **`80/tcp` en el host** si Caddy sirve `http://paperless.lan` dentro de la LAN
+  - **`443/tcp` en `tailscale0`** solo si más adelante validas un acceso remoto HTTPS dentro del bloque común de Caddy
   - **`5432/tcp` y `6379/tcp` no se publican**; quedan solo en la red interna del stack
 
 ## Docker Compose
@@ -88,8 +98,18 @@ services:
       - /home/<user>/homelab/data/paperless/media:/usr/src/paperless/media
       - /home/<user>/homelab/data/paperless/export:/usr/src/paperless/export
       - /home/<user>/homelab/data/paperless/consume:/usr/src/paperless/consume
+    expose:
+      - "8000"
+    networks:
+      - default
+      - proxy
     labels:
       - wud.watch=false
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK}
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/paperless-ngx/.env`
@@ -98,7 +118,8 @@ Archivo recomendado: `/home/<user>/homelab/compose/paperless-ngx/.env`
 TZ=Europe/Madrid
 PUID=1000
 PGID=1000
-PAPERLESS_BIND_IP=0.0.0.0
+PROXY_NETWORK=homelab_proxy
+PAPERLESS_BIND_IP=127.0.0.1
 PAPERLESS_PORT=16002
 PAPERLESS_DB_NAME=paperless
 PAPERLESS_DB_USER=paperless
@@ -114,6 +135,8 @@ Notas sobre este Compose:
 
 - `Paperless-ngx` queda como un stack único porque `webserver`, `PostgreSQL` y `Redis` forman una sola aplicación lógica.
 - la persistencia completa queda en bind mounts sobre el **SSD NVMe**
+- `PROXY_NETWORK=homelab_proxy` permite que **Caddy** alcance el upstream por nombre interno `webserver:8000`
+- `PAPERLESS_BIND_IP=127.0.0.1` evita exponer Paperless directamente en todas las interfaces del host
 - `PAPERLESS_TASK_WORKERS=1` es una base prudente para una Raspberry Pi 5 de 8 GB; puedes subirlo después si importas lotes grandes
 - `PAPERLESS_CONSUMER_RECURSIVE=true` y `PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS=true` permiten usar subcarpetas dentro de `consume/` como **etiquetas automáticas**
 - se excluye de WUD para evitar actualizaciones automáticas ciegas en una aplicación con migraciones de base de datos
@@ -173,33 +196,47 @@ docker compose logs --tail=100 webserver
 Validaciones rápidas:
 
 ```bash
+docker network ls | grep homelab_proxy
 curl -I http://127.0.0.1:16002/
 ls -lah /home/<user>/homelab/data/paperless
 docker compose logs --tail=50 db
 docker compose logs --tail=50 broker
 ```
 
-Si todo ha arrancado bien, la UI quedará accesible en una de estas URLs:
+Si vas a publicarlo con Caddy, añade un bloque equivalente a este en `/home/<user>/homelab/config/caddy/Caddyfile`:
 
-- `http://<ip-lan-de-la-pi>:16002`
-- `http://pi-homelab.<tailnet>.ts.net:16002`
+```caddyfile
+http://paperless.lan {
+	import common_proxy
+	reverse_proxy webserver:8000
+}
+```
+
+<!-- TODO: verificar si Paperless-ngx quedará publicado remotamente bajo una subruta del bloque `https://{$TAILSCALE_DOMAIN}` de Caddy o si conviene un hostname dedicado antes de fijar una URL HTTPS canónica en este repositorio. -->
+
+Si todo ha arrancado bien, la UI quedará accesible en:
+
+- `http://127.0.0.1:16002` desde la propia Raspberry Pi o mediante túnel SSH
+- `http://paperless.lan` si ya has integrado el bloque anterior en Caddy y Pi-hole resuelve ese nombre hacia la IP LAN del host
+
+Hasta que se valide la publicación HTTPS remota en el `Caddyfile`, no trates ninguna URL de Tailscale para Paperless-ngx como referencia operativa cerrada en este repositorio.
 
 ### 4. Crear el primer usuario administrador
 
-En una instalación nueva, al abrir la interfaz web se te pedirá crear el primer **superuser**.
+En este despliegue el primer **superuser** no se crea desde un asistente web. Hay que crearlo desde consola una vez que el stack esté levantado.
 
 Flujo recomendado:
 
-1. Abre `http://<ip-lan-de-la-pi>:16002` o la URL Tailscale equivalente.
-2. Crea la cuenta administrativa inicial.
+1. Ejecuta el comando de creación del superusuario.
+2. Abre `http://127.0.0.1:16002`, `http://paperless.lan` o la URL final que hayas definido en Caddy.
 3. Inicia sesión y verifica que la biblioteca está vacía pero operativa.
 4. Crea después un usuario normal si no quieres usar la cuenta admin para el día a día.
 
-Si alguna vez necesitas crearlo manualmente desde consola:
+Comando recomendado:
 
 ```bash
 cd /home/<user>/homelab/compose/paperless-ngx
-docker compose exec webserver createsuperuser
+docker compose exec webserver python manage.py createsuperuser
 ```
 
 ### 5. Ajustes iniciales en la UI
@@ -297,6 +334,7 @@ Qué respaldar como mínimo:
 
 - `/home/<user>/homelab/compose/paperless-ngx/docker-compose.yml`
 - `/home/<user>/homelab/compose/paperless-ngx/.env`
+- `/home/<user>/homelab/config/caddy/Caddyfile` si publicas Paperless-ngx detrás de Caddy
 - `/home/<user>/homelab/data/paperless/data/`
 - `/home/<user>/homelab/data/paperless/media/`
 - `/home/<user>/homelab/data/paperless/export/`
@@ -314,7 +352,7 @@ Exportación lógica de documentos y metadatos:
 ```bash
 cd /home/<user>/homelab/compose/paperless-ngx
 docker compose exec -T webserver \
-  document_exporter ../export --no-progress-bar
+  document_exporter /usr/src/paperless/export --no-progress-bar
 ls -lah /home/<user>/homelab/data/paperless/export
 ```
 
@@ -323,7 +361,8 @@ Dump lógico de PostgreSQL hacia la zona de backups:
 ```bash
 mkdir -p /media/hd2t/backups/exports/postgres
 cd /home/<user>/homelab/compose/paperless-ngx
-docker compose exec -T db pg_dump -U paperless -d paperless | gzip \
+docker compose exec -T db \
+  sh -lc 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' | gzip \
   > /media/hd2t/backups/exports/postgres/paperless-$(date +%F).sql.gz
 ls -lh /media/hd2t/backups/exports/postgres/paperless-$(date +%F).sql.gz
 ```

@@ -15,6 +15,7 @@ Esta modalidad encaja bien con el resto del homelab porque mantiene el mismo pat
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto del servicio.
 - Puerto principal: `8123/tcp`.
 - Recomendado usar `network_mode: host` para que Home Assistant detecte correctamente dispositivos y protocolos de descubrimiento en la red local.
+- Si se publica con Caddy, el upstream debe apuntar a `host.docker.internal:8123`, porque con `network_mode: host` Home Assistant no queda accesible por nombre de contenedor en `homelab_proxy`.
 
 ## Docker Compose
 
@@ -33,16 +34,18 @@ services:
     environment:
       TZ: Europe/Madrid
     volumes:
-      - /home/<user>/homelab/config/homeassistant:/config
+      - /home/<user>/homelab/data/homeassistant/config:/config
       - /etc/localtime:/etc/localtime:ro
       - /run/dbus:/run/dbus:ro
+    labels:
+      - wud.watch=false
 ```
 
 ### Despliegue
 
 ```bash
 mkdir -p /home/<user>/homelab/compose/automation-homeassistant
-mkdir -p /home/<user>/homelab/config/homeassistant
+mkdir -p /home/<user>/homelab/data/homeassistant/config
 cd /home/<user>/homelab/compose/automation-homeassistant
 docker compose config
 docker compose up -d
@@ -110,7 +113,16 @@ Esto permite crear automatizaciones complejas fuera del editor nativo de Home As
 
 ### Publicación detrás de Caddy
 
-Si vas a acceder a Home Assistant mediante [05-caddy.md](../03-red/05-caddy.md), añade en `/home/<user>/homelab/config/homeassistant/configuration.yaml` una sección `http` con los proxies de confianza reales de tu despliegue.
+Si vas a acceder a Home Assistant mediante [05-caddy.md](../03-red/05-caddy.md), añade en `/home/<user>/homelab/data/homeassistant/config/configuration.yaml` una sección `http` con los proxies de confianza reales de tu despliegue.
+
+En este caso, como Home Assistant usa `network_mode: host`, el bloque de Caddy debe usar `host.docker.internal:8123` como upstream, siguiendo la opción de transición documentada en [05-caddy.md](../03-red/05-caddy.md). Ejemplo mínimo dentro del `Caddyfile`:
+
+```caddyfile
+http://homeassistant.lan {
+	import common_proxy
+	reverse_proxy host.docker.internal:8123
+}
+```
 
 Ejemplo:
 
@@ -121,7 +133,15 @@ http:
     - 172.18.0.0/16
 ```
 
-Ajusta la subred al rango Docker desde el que llegue Caddy. Si no se configura correctamente, Home Assistant rechazará la cabecera `X-Forwarded-For`.
+Ajusta la subred al rango real de la red Docker desde la que llegue Caddy. Usa `172.18.0.0/16` como ejemplo inicial si aún no has verificado tu red, porque es un rango habitual en redes bridge de Docker, pero no lo trates como un valor fijo del proyecto.
+
+Antes de darlo por bueno, comprueba la subred real de la red compartida del proxy:
+
+```bash
+docker network inspect homelab_proxy | grep Subnet
+```
+
+Si la salida muestra otro rango, sustituye `172.18.0.0/16` por el valor real. La recomendación práctica es mantener la subred completa de esa red en formato `/16` o con la máscara que Docker haya asignado, en lugar de intentar listar IPs sueltas, para evitar roturas si cambian las direcciones internas de los contenedores al recrear la red. Si no se configura correctamente, Home Assistant rechazará la cabecera `X-Forwarded-For`.
 
 ### Reinicio tras cambios de configuración
 
@@ -135,8 +155,9 @@ docker compose restart
 ## Almacenamiento
 
 - `docker-compose.yml` en `/home/<user>/homelab/compose/automation-homeassistant/docker-compose.yml`.
-- Datos persistentes en `/home/<user>/homelab/config/homeassistant` sobre el **SSD NVMe**.
+- Datos persistentes en `/home/<user>/homelab/data/homeassistant/config` sobre el **SSD NVMe**.
 - No guardar datos de Home Assistant en `hd2t` ni `hd5t`; esos discos quedan reservados para multimedia y backups.
+- Aunque la ruta dentro del contenedor se llame `/config`, en el host se guarda bajo `data/` porque Home Assistant mezcla configuración editable, base de datos SQLite, cachés y estado interno en el mismo árbol.
 - Dentro de `config/` quedarán, entre otros:
   - `configuration.yaml`
   - `automations.yaml`
@@ -160,7 +181,7 @@ En Home Assistant Container no existe el sistema de snapshots gestionado por Sup
 Respaldar:
 
 - `/home/<user>/homelab/compose/automation-homeassistant/docker-compose.yml`
-- `/home/<user>/homelab/config/homeassistant`
+- `/home/<user>/homelab/data/homeassistant/config`
 - especialmente `configuration.yaml`, `automations.yaml`, `secrets.yaml`, `.storage/` y `home-assistant_v2.db`
 
 Recomendaciones:
@@ -174,7 +195,7 @@ docker compose stop homeassistant
 docker compose start homeassistant
 ```
 
-- Integrar esta ruta más adelante en `docs/07-backups/02-borgmatic.md`.
+- Integrar esta ruta más adelante en [02-borgmatic.md](../07-backups/02-borgmatic.md).
 - Probar restauraciones periódicas en una copia del directorio antes de depender del backup en producción.
 
 ## Referencias

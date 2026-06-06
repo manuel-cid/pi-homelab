@@ -14,6 +14,7 @@ En este proyecto, Portainer se usa como **capa de gestión**, no como sustituto 
 - Disponer del directorio operativo del homelab en `/home/<user>/homelab/`.
 - Poder crear directorios persistentes bajo `/home/<user>/homelab/data/`.
 - Tener claro que Portainer necesitará acceso al socket Docker del host (`/var/run/docker.sock`).
+- Si se publica `9443/tcp` en el host, reflejarlo también en el documento vivo de puertos y firewall (→ ver [../03-red/06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)).
 - Puertos necesarios en esta fase:
   - **9443/tcp** publicado en el host para la interfaz web HTTPS de Portainer
   - **8000/tcp** no se publica en este proyecto porque no se usará Edge Agent
@@ -88,8 +89,99 @@ PORTAINER_HTTPS_PORT=9443
 Notas de esta configuración:
 
 - `PORTAINER_BIND_IP=0.0.0.0` permite acceso desde la **LAN** y desde la IP de **Tailscale** del host.
-- Si prefieres que Portainer solo sea accesible detrás del reverse proxy interno documentado en [05-caddy.md](../03-red/05-caddy.md), cambia a `127.0.0.1`.
+- Si prefieres que Portainer solo sea accesible desde el propio host o prepararlo para una publicación posterior más controlada, cambia a `127.0.0.1`.
 - El fichero `.env` no contiene credenciales iniciales, así que no requiere nada especial aparte de la disciplina habitual del proyecto.
+
+### 2.1 Publicación opcional detrás de Caddy
+
+En esta guía, la opción base sigue siendo el acceso directo a `https://<ip-del-host>:9443`. Si más adelante quieres poner Portainer detrás de **Caddy**, el patrón recomendado es este:
+
+- **recomendado**: dejar que **Caddy termine TLS** hacia el cliente y que Portainer quede como upstream **HTTP interno en `:9000`**
+- **no recomendado como primera opción**: encadenar **Caddy -> HTTPS `:9443`** contra el certificado autofirmado que genera Portainer por defecto
+
+Motivo:
+
+- Portainer publica la UI por `9443` con un certificado propio generado por el contenedor.
+- En su documentación de reverse proxy, Portainer ejemplifica la publicación detrás de proxy usando el puerto interno `9000`.
+- Caddy soporta upstreams HTTPS, pero si Portainer sigue usando su certificado autofirmado, la validación TLS del upstream fallará salvo que Caddy confíe explícitamente en ese certificado o se desactive la verificación.
+
+Por tanto, para un homelab como este la recomendación práctica es:
+
+- si **Caddy corre en Docker**, une Portainer y Caddy a la red compartida `homelab_proxy` y apunta Caddy a `http://portainer:9000`
+- si **Caddy corre en el host**, publica `9000` solo en loopback, por ejemplo `127.0.0.1:9000:9000`, y apunta Caddy a `http://127.0.0.1:9000`
+- reserva `9443` para acceso directo administrativo o para un escenario donde realmente quieras mantener TLS extremo a extremo
+
+Ejemplo mínimo si Caddy vive en Docker y quieres hostname dedicado para Portainer:
+
+```yaml
+services:
+  portainer:
+    image: portainer/portainer-ce:lts
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${PORTAINER_BIND_IP}:${PORTAINER_HTTPS_PORT}:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DATA_ROOT}/portainer:/data
+    networks:
+      - default
+      - proxy
+
+networks:
+  proxy:
+    external: true
+    name: homelab_proxy
+```
+
+```caddyfile
+portainer.example.lan {
+    reverse_proxy portainer:9000
+}
+```
+
+Sobre `transport http { tls_insecure_skip_verify }`:
+
+- **solo hace falta** si decides que Caddy hable con Portainer por **HTTPS `:9443`** y no instalas en Portainer un certificado que Caddy pueda validar
+- **funciona**, pero Caddy lo documenta como **no recomendado**, porque desactiva las comprobaciones de seguridad del TLS del upstream
+- si quieres mantener `9443` detrás de Caddy sin saltarte la validación, la alternativa correcta es cargar en Portainer un certificado propio y hacer que Caddy confíe en esa CA o en ese certificado
+
+Ejemplo de la variante menos aconsejable, pero funcional en una red interna controlada:
+
+```caddyfile
+portainer.example.lan {
+    reverse_proxy https://portainer:9443 {
+        transport http {
+            tls_insecure_skip_verify
+        }
+    }
+}
+```
+
+Si quieres publicar Portainer en **subruta** en vez de hostname dedicado:
+
+- Portainer lo soporta con `--base-url /portainer`
+- el reverse proxy debe **eliminar ese prefijo** antes de reenviar la petición
+- en la práctica, sigue siendo más simple y robusto usar **hostname dedicado** para evitar problemas de redirecciones, cookies y rutas
+
+Ejemplo mínimo para subruta con Caddy:
+
+```yaml
+services:
+  portainer:
+    command:
+      - --base-url
+      - /portainer
+```
+
+```caddyfile
+example.lan {
+    handle_path /portainer/* {
+        reverse_proxy portainer:9000
+    }
+}
+```
 
 ### 3. Desplegar el stack
 
@@ -122,7 +214,7 @@ Como el certificado inicial de Portainer es propio del contenedor, el navegador 
 
 - no hay exposición pública a internet
 - el acceso queda restringido a **LAN + Tailscale**
-- más adelante, si interesa, Portainer puede publicarse detrás del reverse proxy interno del homelab según [05-caddy.md](../03-red/05-caddy.md)
+- si más adelante se quiere integrar detrás del reverse proxy interno del homelab, conviene validarlo específicamente contra [05-caddy.md](../03-red/05-caddy.md) antes de sustituir el acceso directo por `:9443`
 
 En el primer acceso:
 
@@ -184,7 +276,7 @@ Portainer es útil, pero no sustituye la necesidad de:
 - conservar los `docker-compose.yml`
 - mantener `.env` ordenados
 - respaldar datos persistentes
-- documentar puertos y dependencias entre servicios
+- documentar puertos y dependencias entre servicios, incluyendo `9443/tcp` en [../03-red/06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
 
 ## Almacenamiento
 
@@ -200,7 +292,7 @@ Notas importantes:
 - los datos persistentes de Portainer deben permanecer en el **SSD NVMe**
 - no conviene mover `/data` a `hd2t` ni a `hd5t`
 - el montaje del socket Docker otorga a Portainer control administrativo real sobre Docker en el host
-- el directorio `/home/<user>/homelab/data/portainer` debe pertenecer al usuario del host que opera Docker o, como mínimo, ser escribible por Docker
+- el directorio `/home/<user>/homelab/data/portainer` debe tener permisos de escritura efectivos para el proceso del contenedor; si Docker crea ficheros como `root`, no cambies propietario o permisos sin comprobar antes que Portainer sigue pudiendo leer y escribir su base de datos
 
 ## Backup
 
@@ -224,4 +316,10 @@ Aunque Portainer pueda reconstruirse desde cero, respaldar su directorio de dato
 - Portainer Docs: [Portainer CE installation with Docker](https://docs.portainer.io/start/install-ce/server/docker)
 - Portainer Docs: [Add and manage environments](https://docs.portainer.io/admin/environments/add/docker)
 - Portainer Docs: [Manage stacks](https://docs.portainer.io/user/docker/stacks)
+- Portainer Docs: [Using Portainer with reverse proxies](https://docs.portainer.io/advanced/reverse-proxy)
+- Portainer Docs: [Deploying Portainer behind Traefik Proxy](https://docs.portainer.io/advanced/reverse-proxy/traefik)
+- Portainer Docs: [Deploying Portainer behind nginx reverse proxy](https://docs.portainer.io/advanced/reverse-proxy/nginx)
+- Portainer Docs: [CLI configuration options](https://docs.portainer.io/advanced/cli)
+- Portainer Docs: [Using your own SSL certificate with Portainer](https://docs.portainer.io/advanced/ssl)
+- Caddy Docs: [reverse_proxy (Caddyfile directive)](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy)
 - Docker Hub: [portainer/portainer-ce](https://hub.docker.com/r/portainer/portainer-ce)

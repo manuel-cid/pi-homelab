@@ -15,26 +15,37 @@ Los documentos de referencia que definen la verdad del proyecto son:
 2. Si **no hay ninguna tarea pendiente**, crea el fichero `stop.md` en la raíz del repositorio y termina inmediatamente sin hacer nada más.
 3. Extrae la ruta del documento referenciado (por ejemplo `docs/00-hardware/01-material-necesario.md`).
 4. Si el documento **no existe**, indica que falta y marca la tarea como completada (`- [x]`) en `plan/plan.md` añadiendo el sufijo ` — ⚠️ documento no encontrado`. Termina.
-5. Si el documento **existe**, léelo completo y revísalo buscando incoherencias. Compara contra:
+5. Si el documento **existe**, léelo completo y revísalo buscando **incoherencias, inconsistencias y ambigüedades**. Compara contra:
    - La descripción de contenido esperado en la tabla de su fase en `plan/plan.md`.
    - Los datos de `SERVICES.md` (hardware, discos, servicios, estructura de directorios, arquitectura de red).
    - Las convenciones de documentación definidas en `plan/plan.md` (sección "Convenciones para la Documentación").
    - Las referencias cruzadas (`→ ver docs/...`): comprueba que son correctas y coherentes.
    - Coherencia interna del propio documento (datos, comandos, rutas, nombres de disco, capacidades, puertos, etc.).
 
-## Tipos de incoherencia a detectar
+## Tipos de problemas a detectar
 
+### Incoherencias
 - Datos contradictorios con `SERVICES.md` o `plan/plan.md` (tamaños de disco, nombres, IPs, puertos, rutas).
-- Secciones que faltan según las convenciones (Descripción, Requisitos Previos, Docker Compose, Configuración, Almacenamiento, Backup, Referencias — según aplique al tipo de documento).
-- Referencias cruzadas rotas o que apuntan a documentos incorrectos.
 - Comandos o rutas incorrectas para el entorno (Raspberry Pi OS Lite 64-bit, ARM64, Debian-based).
 - Información que contradice el alcance de red (solo LAN + Tailscale, sin exposición a internet).
-- Estructura de directorios que no coincide con la definida en `SERVICES.md` y `plan/plan.md`.
 - Errores en nombres de servicios, imágenes Docker o versiones.
+
+### Inconsistencias
+- Terminología o nombres usados de forma diferente dentro del mismo documento o entre documentos (p. ej. un disco llamado de dos formas distintas, un servicio referido con nombres alternos).
+- Estructura de directorios que no coincide con la definida en `SERVICES.md` y `plan/plan.md`.
+- Secciones que faltan según las convenciones (Descripción, Requisitos Previos, Docker Compose, Configuración, Almacenamiento, Backup, Referencias — según aplique al tipo de documento).
+- Referencias cruzadas rotas o que apuntan a documentos incorrectos.
+- Formato o estilo que no sigue las convenciones del proyecto (encabezados, bloques de código, etiquetas).
+
+### Ambigüedades
+- Instrucciones que pueden interpretarse de más de una forma y llevar a errores.
+- Valores de ejemplo sin indicar claramente que deben sustituirse (IPs, contraseñas, dominios, rutas).
+- Pasos que asumen contexto no explicado previamente en el documento ni referenciado con un enlace cruzado.
+- Pronombres o referencias vagas a "el disco", "el servicio", "la IP" cuando hay varios posibles.
 
 ## Cómo actuar
 
-- **Corrige directamente** en el documento cualquier incoherencia que encuentres. No te limites a listarlas.
+- **Corrige directamente** en el documento cualquier incoherencia, inconsistencia o ambigüedad que encuentres. No te limites a listarlas.
 - Si una corrección requiere información que no puedes determinar con certeza, añade un comentario `<!-- TODO: verificar ... -->` en el punto exacto.
 - Mantén el estilo y tono existente del documento. No añadas secciones vacías ni contenido de relleno.
 - No modifiques otros documentos que no sean el revisado y `plan/plan.md`.

@@ -165,12 +165,13 @@ Para MariaDB, el respaldo recomendado es un **dump lógico** ejecutado contra el
 Ejemplo para toda la instancia:
 
 ```bash
+DB_CONTAINER=<contenedor_mariadb>
 STAMP=$(date +%F_%H%M%S)
 DEST=/media/hd2t/backups/exports/mariadb
 
 mkdir -p "${DEST}"
 
-docker exec mariadb sh -c \
+docker exec "${DB_CONTAINER}" sh -c \
   'exec mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" \
     --all-databases \
     --single-transaction \
@@ -185,6 +186,7 @@ Si solo quieres una base de datos concreta, usa `--databases <nombre_bd>` en lug
 
 Buenas prácticas:
 
+- sustituye `DB_CONTAINER` por el nombre real del contenedor que devuelve `docker ps --format '{{.Names}}'`
 - guarda un dump por ejecución con timestamp
 - no confíes solo en copiar `/var/lib/mysql`
 - si el servicio es muy sensible a cambios de esquema, detén temporalmente la aplicación cliente antes del dump
@@ -203,9 +205,10 @@ Flujo recomendado:
 Ejemplo de restore:
 
 ```bash
+DB_CONTAINER=<contenedor_mariadb>
 SQL=/media/hd2t/backups/exports/mariadb/mariadb_2026-05-07_023000.sql
 
-docker exec -i mariadb sh -c \
+docker exec -i "${DB_CONTAINER}" sh -c \
   'exec mariadb -uroot -p"$MARIADB_ROOT_PASSWORD"' \
   < "${SQL}"
 ```
@@ -228,16 +231,17 @@ Esta separación facilita restores selectivos y mantiene fuera del dump principa
 Ejemplo para una base de datos concreta en formato `custom`:
 
 ```bash
+DB_CONTAINER=<contenedor_postgres>
 STAMP=$(date +%F_%H%M%S)
 DEST=/media/hd2t/backups/exports/postgres
 
 mkdir -p "${DEST}"
 
-docker exec postgres sh -c \
+docker exec "${DB_CONTAINER}" sh -c \
   'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_dump -U postgres -d appdb -Fc' \
   > "${DEST}/appdb_${STAMP}.dump"
 
-docker exec postgres sh -c \
+docker exec "${DB_CONTAINER}" sh -c \
   'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_dumpall -U postgres --globals-only' \
   > "${DEST}/globals_${STAMP}.sql"
 ```
@@ -257,9 +261,10 @@ Flujo recomendado:
 Ejemplo de restore de objetos globales:
 
 ```bash
+DB_CONTAINER=<contenedor_postgres>
 GLOBALS=/media/hd2t/backups/exports/postgres/globals_2026-05-07_023000.sql
 
-docker exec -i postgres sh -c \
+docker exec -i "${DB_CONTAINER}" sh -c \
   'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql -U postgres -d postgres' \
   < "${GLOBALS}"
 ```
@@ -267,16 +272,18 @@ docker exec -i postgres sh -c \
 Ejemplo de restore de una base de datos en formato `custom`:
 
 ```bash
+DB_CONTAINER=<contenedor_postgres>
 DUMP=/media/hd2t/backups/exports/postgres/appdb_2026-05-07_023000.dump
 
-docker exec postgres sh -c \
+docker exec "${DB_CONTAINER}" sh -c \
   'export PGPASSWORD="$POSTGRES_PASSWORD"; exec dropdb -U postgres --if-exists appdb'
 
-docker exec postgres sh -c \
+docker exec "${DB_CONTAINER}" sh -c \
   'export PGPASSWORD="$POSTGRES_PASSWORD"; exec createdb -U postgres appdb'
 
-cat "${DUMP}" | docker exec -i postgres sh -c \
-  'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_restore -U postgres -d appdb --clean --if-exists'
+docker exec -i "${DB_CONTAINER}" sh -c \
+  'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_restore -U postgres -d appdb --clean --if-exists' \
+  < "${DUMP}"
 ```
 
 Si restauras en un entorno distinto:
@@ -294,18 +301,21 @@ SQLite no necesita dump separado si el fichero vive dentro de un bind mount y el
 4. corregir permisos si hace falta
 5. arrancar de nuevo el contenedor
 
-Ejemplo típico:
-
-<!-- TODO: verificar la ruta exacta del stack que contiene Vaultwarden -->
+Ejemplo típico para un servicio con SQLite:
 
 ```bash
-cd /home/<user>/homelab/compose/<stack>
-docker compose stop vaultwarden
+STACK_DIR=/home/<user>/homelab/compose/<stack>
+SERVICE=<servicio>
+
+cd "${STACK_DIR}"
+docker compose stop "${SERVICE}"
 sudo rsync -aHAX --delete \
-  /media/hd2t/backups/restore-test/vaultwarden/ \
-  /home/<user>/homelab/data/vaultwarden/
-docker compose start vaultwarden
+  /media/hd2t/backups/restore-test/${SERVICE}/ \
+  /home/<user>/homelab/data/${SERVICE}/
+docker compose start "${SERVICE}"
 ```
+
+<!-- TODO: verificar el nombre exacto del stack y del servicio cuando exista la documentación específica de cada aplicación con SQLite. -->
 
 ### 11. Integrar los dumps en `pre-backup.sh`
 
@@ -322,12 +332,14 @@ Ejemplo mínimo:
 #!/bin/sh
 set -eu
 
+DB_CONTAINER=<contenedor_mariadb>
+PG_CONTAINER=<contenedor_postgres>
 STAMP=$(date +%F_%H%M%S)
 
 mkdir -p /mnt/borg-exports/mariadb
 mkdir -p /mnt/borg-exports/postgres
 
-docker exec mariadb sh -c \
+docker exec "${DB_CONTAINER}" sh -c \
   'exec mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" \
     --all-databases \
     --single-transaction \
@@ -337,10 +349,15 @@ docker exec mariadb sh -c \
     --triggers' \
   > "/mnt/borg-exports/mariadb/mariadb_${STAMP}.sql"
 
-docker exec postgres sh -c \
+docker exec "${PG_CONTAINER}" sh -c \
   'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_dumpall -U postgres --globals-only' \
   > "/mnt/borg-exports/postgres/globals_${STAMP}.sql"
 ```
+
+Antes de automatizar este script:
+
+- sustituye `DB_CONTAINER` y `PG_CONTAINER` por los nombres reales que devuelve `docker ps --format '{{.Names}}'`
+- si no existe MariaDB o PostgreSQL en el homelab todavía, elimina el bloque correspondiente en lugar de dejar un `docker exec` ficticio
 
 Si una aplicación necesita además su propio `pg_dump`, añádelo aquí o usa los bloques nativos `postgresql_databases` y `mariadb_databases` de Borgmatic cuando el caso encaje bien.
 
@@ -359,12 +376,10 @@ El restore correcto no consiste en extraer directamente encima del directorio ac
 
 Ejemplo de sincronización final:
 
-<!-- TODO: verificar la ruta exacta del stack que contiene este servicio -->
-
 ```bash
 SERVICE=vaultwarden
 
-cd /home/<user>/homelab/compose/<stack>
+cd /home/<user>/homelab/compose/productivity-vaultwarden
 docker compose stop "${SERVICE}"
 
 sudo rsync -aHAX --delete \

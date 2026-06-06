@@ -4,12 +4,12 @@
 
 Procedimiento para migrar una **Raspberry Pi 5** desde un arranque inicial en **microSD** a un arranque definitivo desde **SSD NVMe**. El objetivo es que el sistema operativo, Docker, configuraciones y datos persistentes queden alojados en el NVMe, dejando la microSD solo como soporte temporal o de emergencia.
 
-Este documento cubre la actualización del firmware EEPROM, el cambio del orden de arranque, varias estrategias de migración al NVMe y la verificación final sin microSD insertada. La conexión física previa se describe en [02-esquema-conexiones.md](02-esquema-conexiones.md), la preparación de discos en [03-preparacion-discos.md](03-preparacion-discos.md) y la incorporación de discos USB con datos en [04-discos-con-datos.md](04-discos-con-datos.md).
+Este documento cubre la actualización del firmware EEPROM, el cambio del orden de arranque, varias estrategias de migración al NVMe y la verificación final sin microSD insertada. La conexión física previa se describe en → ver [02-esquema-conexiones.md](02-esquema-conexiones.md), la preparación de discos en → ver [03-preparacion-discos.md](03-preparacion-discos.md) y la incorporación de discos USB con datos en → ver [04-discos-con-datos.md](04-discos-con-datos.md).
 
 ## Requisitos Previos
 
-- Haber validado el hardware descrito en [01-material-necesario.md](01-material-necesario.md).
-- Tener montado físicamente el **SSD NVMe** en una carcasa compatible con Raspberry Pi 5 según [02-esquema-conexiones.md](02-esquema-conexiones.md).
+- Haber validado el hardware descrito en → ver [01-material-necesario.md](01-material-necesario.md).
+- Tener montado físicamente el **SSD NVMe** en una carcasa compatible con Raspberry Pi 5 según → ver [02-esquema-conexiones.md](02-esquema-conexiones.md).
 - Disponer de una instalación funcional de Raspberry Pi OS ya arrancando desde **microSD**.
 - Acceso por terminal con un usuario con permisos de `sudo`.
 - Alimentación estable con la **fuente oficial USB-C de 27 W**.
@@ -98,7 +98,7 @@ Ruta habitual:
 
 1. `Advanced Options`
 2. `Boot Order`
-3. Seleccionar la opción que prioriza **NVMe/USB boot** frente a microSD
+3. Seleccionar la opción que prioriza el **arranque por almacenamiento externo**, validando después que el NVMe queda por delante de la microSD en tu firmware
 4. Salir guardando cambios
 5. Reiniciar
 
@@ -152,7 +152,7 @@ Este método no es una clonación bit a bit. En la práctica es una **reinstalac
 
 - Requiere rehacer en el NVMe cualquier ajuste que solo exista en la microSD.
 - No conserva automáticamente toda la instalación previa.
-- Si la carcasa es una **Argon ONE V3** y ya se instalaron los scripts de control del ventilador y botón de power, habrá que **reinstalarlos** tras el primer arranque desde NVMe (ver [02-esquema-conexiones.md](02-esquema-conexiones.md#scripts-de-la-carcasa-si-aplica)).
+- Si la carcasa es una **Argon ONE V3** y ya se instalaron los scripts de control del ventilador y botón de power, habrá que **reinstalarlos** tras el primer arranque desde NVMe (→ ver [02-esquema-conexiones.md#scripts-de-la-carcasa](02-esquema-conexiones.md#scripts-de-la-carcasa)).
 
 ## Método 2: Clonación con `dd`
 
@@ -197,7 +197,9 @@ lsblk /dev/nvme0n1
 
 ### 4. Ampliar el sistema de archivos si hace falta
 
-Si el clonado deja una partición raíz más pequeña que el NVMe, usa:
+Si el clonado deja una partición raíz más pequeña que el NVMe, **no intentes ampliar el sistema mientras sigues arrancando desde la microSD con `raspi-config`**, porque actuarías sobre el sistema en uso de la microSD y no sobre la raíz clonada en el NVMe.
+
+Haz primero la prueba de arranque real desde el NVMe y, ya arrancado desde ahí, usa:
 
 ```bash
 sudo raspi-config
@@ -208,6 +210,88 @@ Ruta habitual:
 1. `Advanced Options`
 2. `Expand Filesystem`
 3. Reiniciar
+
+### Estado actual de `raspi-config` en Raspberry Pi 5
+
+La documentación oficial vigente de Raspberry Pi OS sigue documentando **`Expand Filesystem`** dentro de `raspi-config`, y el código actual del propio script mantiene la acción `do_expand_rootfs`. Para este homelab, ese sigue siendo el **flujo principal recomendado** una vez que la Raspberry Pi 5 ya ha arrancado realmente desde el NVMe.
+
+En un sistema Lite o completamente headless, el equivalente por terminal es:
+
+```bash
+sudo raspi-config nonint do_expand_rootfs
+sudo reboot
+```
+
+### Cuándo usar el flujo manual
+
+Usa el flujo alternativo con `parted` + `resize2fs` si se cumple cualquiera de estas condiciones:
+
+- Tu imagen concreta no muestra `Expand Filesystem` en `raspi-config`.
+- Prefieres dejar el procedimiento totalmente explícito por terminal.
+- `raspi-config` ha ampliado la partición, pero quieres verificar o completar manualmente el crecimiento del sistema de archivos.
+
+### Límite importante de ambos métodos
+
+El flujo con `raspi-config` **solo funciona cuando la partición raíz es la última partición del disco**, que es el caso habitual tras clonar una microSD estándar a un NVMe. Si el sistema raíz no es la última partición, el método manual con `parted resizepart` tampoco podrá crecerla sin rehacer antes el esquema de particiones.
+
+Si detectas ese caso, la solución práctica es:
+
+- rehacer la migración con el método de `rsync`, o
+- reorganizar particiones fuera de línea con una estrategia más avanzada
+
+Para este homelab, la recomendación es **rehacer la migración con `rsync`** si el clonado dejó un esquema no ampliable.
+
+### Flujo alternativo con `parted` + `resize2fs`
+
+Hazlo **arrancado ya desde el NVMe** y con la microSD retirada o, como mínimo, fuera del flujo de arranque real.
+
+#### 1. Confirmar que `/` está en el NVMe y que la raíz es la última partición
+
+```bash
+findmnt /
+lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT /dev/nvme0n1
+sudo parted /dev/nvme0n1 unit MiB print
+```
+
+Debes verificar dos cosas:
+
+- `/` cuelga de algo como `/dev/nvme0n1p2`
+- no existe ninguna partición después de esa partición raíz
+
+#### 2. Ampliar la partición raíz hasta el final del disco
+
+```bash
+sudo parted -s /dev/nvme0n1 resizepart 2 100%
+```
+
+Si `parted` avisa de que el kernel no puede releer la tabla de particiones porque la raíz está montada, es esperable. En ese caso, **reinicia inmediatamente**:
+
+```bash
+sudo reboot
+```
+
+#### 3. Ampliar el sistema de archivos `ext4`
+
+Tras volver a arrancar desde el NVMe:
+
+```bash
+sudo resize2fs /dev/nvme0n1p2
+```
+
+`resize2fs` puede ampliar `ext4` en línea, así que este paso puede ejecutarse con `/` montado.
+
+#### 4. Verificar el resultado
+
+```bash
+findmnt /
+df -h /
+lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT /dev/nvme0n1
+```
+
+Lo esperado es que:
+
+- `/` siga montado desde `nvme0n1p2`
+- el tamaño útil de `/` ya refleje la capacidad ampliada del NVMe
 
 ## Método 3: Migración con `rsync`
 
@@ -228,15 +312,15 @@ sudo apt install -y rsync parted
 
 ### 1. Particionar el NVMe
 
-Este ejemplo crea un esquema simple con:
+Este ejemplo crea un esquema simple y conservador, alineado con el layout habitual de Raspberry Pi OS, con:
 
 - una partición FAT32 de arranque
 - una partición `ext4` para raíz
 
 ```bash
-sudo parted -s /dev/nvme0n1 mklabel gpt
+sudo parted -s /dev/nvme0n1 mklabel msdos
 sudo parted -s /dev/nvme0n1 mkpart primary fat32 1MiB 513MiB
-sudo parted -s /dev/nvme0n1 set 1 esp on
+sudo parted -s /dev/nvme0n1 set 1 boot on
 sudo parted -s /dev/nvme0n1 mkpart primary ext4 513MiB 100%
 ```
 
@@ -291,6 +375,8 @@ Contenido orientativo:
 UUID=<UUID-ROOT-NVME>  /              ext4  defaults,noatime  0  1
 UUID=<UUID-BOOT-NVME>  /boot/firmware vfat  defaults          0  2
 ```
+
+Si el sistema original en microSD ya tenía entradas válidas para `hd2t` y `hd5t`, **no las elimines** al ajustar este fichero en el sistema nuevo. Sustituye solo la raíz y el arranque por los UUID del NVMe y conserva o adapta los montajes permanentes de `/media/hd2t` y `/media/hd5t` según → ver [03-preparacion-discos.md](03-preparacion-discos.md) o → ver [04-discos-con-datos.md](04-discos-con-datos.md).
 
 ### 7. Ajustar la línea de arranque
 
@@ -377,7 +463,7 @@ Antes de seguir con la fase de sistema base, comprueba:
 - El SSD NVMe permanece visible y estable en `lsblk`.
 - Si la carcasa es una **Argon ONE V3** y se usó Raspberry Pi Imager, los scripts de control del ventilador y botón de power están reinstalados y funcionando.
 
-Si además ya conectaste `hd2t` y `hd5t`, verifica que siguen montando correctamente según [03-preparacion-discos.md](03-preparacion-discos.md) o [04-discos-con-datos.md](04-discos-con-datos.md).
+Si además ya conectaste `hd2t` y `hd5t`, verifica que siguen montando correctamente según → ver [03-preparacion-discos.md](03-preparacion-discos.md) o → ver [04-discos-con-datos.md](04-discos-con-datos.md).
 
 ## Problemas Habituales
 
@@ -418,9 +504,10 @@ Da esta tarea por terminada solo si se cumplen estas condiciones:
 
 ## Siguiente Paso
 
-Con el arranque desde NVMe verificado, el siguiente documento a completar o seguir es [docs/01-sistema/02-configuracion-inicial.md](../01-sistema/02-configuracion-inicial.md), que asume un sistema operativo ya funcional sobre el SSD NVMe.
+Con el arranque desde NVMe verificado:
 
-Si durante la migración decidiste rehacer la instalación base desde cero con Raspberry Pi Imager, usa [docs/01-sistema/01-instalacion-os.md](../01-sistema/01-instalacion-os.md) solo como referencia para recuperar los criterios de instalación inicial y la configuración headless.
+- si todavía estás documentando o ejecutando la instalación base del sistema, continúa con → ver [01-instalacion-os.md](../01-sistema/01-instalacion-os.md)
+- si Raspberry Pi OS ya está operativo sobre el SSD NVMe, pasa a → ver [02-configuracion-inicial.md](../01-sistema/02-configuracion-inicial.md)
 
 ## Referencias
 
@@ -433,5 +520,7 @@ Si durante la migración decidiste rehacer la instalación base desde cero con R
 - `lsblk`
 - `blkid`
 - `findmnt`
+- `parted`
+- `resize2fs`
 - `/boot/firmware/cmdline.txt`
 - `/etc/fstab`

@@ -127,10 +127,18 @@ docker compose exec borgmatic borgmatic check --only repository --only archives
 Y una vez por trimestre, restaura una muestra en la ruta de prueba:
 
 ```bash
-mkdir -p /media/hd2t/backups/restore-test
+SERVICE=<servicio-a-validar>
+mkdir -p "/media/hd2t/backups/restore-test/${SERVICE}"
 ```
 
-La restauración detallada de datos y volúmenes se documenta en [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md).
+La validación trimestral debe incluir una restauración real de al menos un servicio hacia `restore-test/`, no solo la creación del directorio. Para hacerlo sin tocar producción:
+
+1. elige un servicio con datos persistentes reales
+2. restaura su copia hacia `/media/hd2t/backups/restore-test/<servicio>/` siguiendo [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md)
+3. comprueba que el contenido restaurado tiene el tamaño, la fecha y la estructura esperados
+4. documenta qué servicio has validado y qué archivo o dump has usado
+
+<!-- TODO: verificar y enlazar aquí un ejemplo cerrado de restore trimestral cuando exista un procedimiento de extracción Borg documentado para un servicio concreto del repositorio. -->
 
 ### 4. Revisar logs semanalmente
 
@@ -141,13 +149,16 @@ Comandos útiles del host:
 ```bash
 journalctl -p err -b --no-pager
 journalctl -u docker --since "7 days ago" --no-pager
-dmesg -T | grep -Ei 'error|fail|warn|nvme|usb|sd[a-z]|ext4'
+sudo dmesg -T | grep -Ei 'error|fail|warn|nvme|usb|sd[a-z]|ext4'
 ```
 
 Comprobaciones de servicios y contenedores:
 
 ```bash
-docker ps --format '{{.Names}}' | xargs -r -I{} docker logs --tail=50 {} 2>&1 | grep -Ei 'error|exception|fatal|panic'
+for c in $(docker ps --format '{{.Names}}'); do
+  echo "### ${c}"
+  docker logs --tail=50 "${c}" 2>&1 | grep -Ei 'error|exception|fatal|panic' || true
+done
 ```
 
 Si prefieres revisar solo contenedores críticos, empieza por:
@@ -330,7 +341,7 @@ Puntos a vigilar:
 
 Este documento no genera un backup propio, pero sí fija qué debes conservar para poder repetir la operación habitual:
 
-- la propia documentación bajo `docs/`
+- la propia documentación bajo [`docs/`](../)
 - cualquier checklist o procedimiento local que guardes bajo `/home/<user>/homelab/scripts/`
 - logs o notas de incidencias si los guardas dentro del árbol del homelab
 

@@ -6,11 +6,13 @@
 
 En este servicio conviene fijar dos decisiones de diseño desde el principio:
 
+- en todo el documento, sustituye los marcadores `<user>` y `<tailnet>` por tus valores reales antes de ejecutar comandos, definir rutas o registrar clientes
 - la URL canónica del vault debe ser **HTTPS**, porque el web vault y varios flujos de cliente funcionan mejor en un contexto seguro
 - en este proyecto la forma más limpia de conseguirlo sin exponer nada a internet es usar **Caddy + certificado de Tailscale** sobre `https://pi-homelab.<tailnet>.ts.net/vaultwarden/`
+- la wiki oficial de Vaultwarden mantiene documentado el despliegue en **subruta** o *alternate base dir*; para este homelab esa sigue siendo la opción recomendada porque reutiliza el hostname MagicDNS ya certificado sin introducir otro problema de DNS o TLS
 - el acceso LAN `http://vaultwarden.lan` puede seguir existiendo en Caddy como vía auxiliar o de diagnóstico, pero **no** debe usarse como URL principal en clientes Bitwarden
-- **Vaultwarden no debe ponerse detrás de Authelia**; los clientes Bitwarden, las extensiones de navegador y algunas apps móviles esperan hablar directamente con el servidor del vault
-- los datos persistentes, la base SQLite, adjuntos, `send` y logs viven en `/home/<user>/homelab/data/vaultwarden/` sobre el **SSD NVMe**
+- **Vaultwarden no debe ponerse detrás de Authelia**; los clientes Bitwarden, las extensiones de navegador y algunas apps móviles esperan hablar directamente con el servidor del vault. En este repositorio esa exclusión ya queda alineada con [01-authelia.md](../04-seguridad/01-authelia.md), aunque el diagrama resumido de `SERVICES.md` simplifique el paso por Caddy y Authelia
+- los datos persistentes, la base SQLite, adjuntos, `sends/` y logs viven en `/home/<user>/homelab/data/vaultwarden/` sobre el **SSD NVMe**
 - el servicio no necesita publicar puertos en la IP del host; **Caddy** lo alcanza por red Docker interna
 
 Esta guía asume precisamente esa topología: **LAN + Tailscale**, sin puertos abiertos en el router, sin exposición pública a internet y sin depender de Let's Encrypt.
@@ -71,7 +73,7 @@ Archivo recomendado: `/home/<user>/homelab/compose/productivity-vaultwarden/.env
 
 ```dotenv
 TZ=Europe/Madrid
-VAULTWARDEN_DOMAIN=https://pi-homelab.<tailnet>.ts.net/vaultwarden/
+VAULTWARDEN_DOMAIN=https://pi-homelab.<tailnet>.ts.net/vaultwarden
 VAULTWARDEN_SIGNUPS_ALLOWED=false
 VAULTWARDEN_INVITATIONS_ALLOWED=false
 VAULTWARDEN_ADMIN_TOKEN=REEMPLAZAR_CON_HASH_ARGON2_O_DEJAR_VACIO
@@ -81,7 +83,7 @@ Notas sobre este Compose:
 
 - **Vaultwarden** no publica puertos en el host
 - **Caddy** resuelve el acceso web y TLS mediante la red `homelab_proxy`
-- `DOMAIN` debe coincidir con la URL real que usarán los clientes
+- `DOMAIN` debe coincidir con la URL base real que usarán los clientes, incluyendo la subruta si publicas Vaultwarden bajo `/vaultwarden`
 - el `ADMIN_TOKEN` puede guardarse en texto plano, pero es preferible almacenarlo como **hash Argon2**
 - el log persistente en `/data/vaultwarden.log` deja preparado el servicio para [02-fail2ban.md](../04-seguridad/02-fail2ban.md)
 - se recomienda **no** configurar triggers de actualización automática de WUD para un gestor de contraseñas
@@ -112,6 +114,7 @@ Puntos prácticos:
 - guarda el valor generado completo en `VAULTWARDEN_ADMIN_TOKEN`
 - si el hash contiene caracteres `$`, duplícalos en `.env` para que Docker Compose no intente expandir variables; por ejemplo `$$argon2id$$...`
 - si no quieres usar el panel administrativo, deja `VAULTWARDEN_ADMIN_TOKEN` vacío y elimina la variable del Compose
+- <!-- TODO: verificar si el subcomando `/vaultwarden hash` sigue siendo el mecanismo recomendado en la imagen exacta que vayas a desplegar -->
 
 ### 3. Bootstrap inicial del primer usuario
 
@@ -163,10 +166,10 @@ https://{$TAILSCALE_DOMAIN} {
 
 	redir /vaultwarden /vaultwarden/ 308
 
-	@vaultwarden_path path /vaultwarden/*
-	handle @vaultwarden_path {
+	handle /vaultwarden/* {
 		reverse_proxy vaultwarden:80 {
 			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-Proto {scheme}
 		}
 	}
 
@@ -176,14 +179,17 @@ https://{$TAILSCALE_DOMAIN} {
 }
 ```
 
-<!-- TODO: verificar si la versión concreta de Vaultwarden que se despliegue en este homelab funciona de forma totalmente estable detrás de la subruta `/vaultwarden/` con este patrón de Caddy. Si aparecen problemas de rutas, adjuntos o websockets, mantener `vaultwarden.lan` para LAN y evaluar un hostname HTTPS dedicado en Tailscale en lugar de una subruta. -->
+La documentación oficial de Vaultwarden mantiene una guía específica para usar un **directorio base alternativo** y la describe como una configuración plenamente funcional. La misma guía exige dos detalles importantes: el proxy debe **preservar la subruta** completa al reenviar la petición y la UI debe abrirse con barra final en `/vaultwarden/`. Además, la wiki oficial de proxies recuerda que el servidor usa **websockets** para notificaciones y que el proxy debe aceptar el `Upgrade`; en Caddy eso queda cubierto con `reverse_proxy` y no necesita un bloque websocket aparte.
 
 Notas importantes para este servicio:
 
 - integra este bloque dentro del `https://{$TAILSCALE_DOMAIN}` ya existente; no crees un segundo bloque HTTPS duplicado para el mismo hostname
-- usa una **subruta HTTPS** y deja esa URL como **canónica**
+- para este homelab la opción recomendada es mantener la **subruta HTTPS** como URL canónica; está soportada oficialmente y evita introducir un hostname adicional con requisitos propios de DNS y TLS
 - no uses `http://vaultwarden.lan` como URL principal del vault; para Vaultwarden interesa priorizar el contexto seguro
 - `header_up X-Real-IP {remote_host}` ayuda a que [02-fail2ban.md](../04-seguridad/02-fail2ban.md) vea la IP real del cliente en el log
+- **no** uses `handle_path` para Vaultwarden: ese matcher recorta `/vaultwarden` antes de llegar al upstream y contradice justo lo que exige la guía oficial de *alternate base dir*
+- la alternativa razonable es un **hostname dedicado** si en el futuro das a Vaultwarden su propio DNS y su propio certificado; operativamente es algo más simple, pero en este proyecto no compensa frente a la subruta ya soportada
+- si detectas problemas descargando adjuntos en Firefox, revisa si tu bloque común de Caddy añade `encode zstd gzip`; la wiki oficial de ejemplos de proxy avisa de incompatibilidades puntuales con esa compresión
 - si ya tienes otros `handle` en el bloque HTTPS, integra el matcher de Vaultwarden sin romper el orden existente
 
 Aplica cambios:
@@ -196,6 +202,7 @@ docker compose up -d
 
 La URL canónica para clientes Bitwarden quedará así:
 
+- URL base del servidor: `https://pi-homelab.<tailnet>.ts.net/vaultwarden`
 - web vault y API: `https://pi-homelab.<tailnet>.ts.net/vaultwarden/`
 - panel admin: `https://pi-homelab.<tailnet>.ts.net/vaultwarden/admin`
 
@@ -221,7 +228,7 @@ Ajustes recomendados en el panel admin:
 
 Usa siempre la **misma URL base** en todos los clientes:
 
-`https://pi-homelab.<tailnet>.ts.net/vaultwarden/`
+`https://pi-homelab.<tailnet>.ts.net/vaultwarden`
 
 Recomendación operativa:
 
@@ -304,6 +311,7 @@ Buenas prácticas de restore:
 
 - [Vaultwarden - Repositorio oficial](https://github.com/dani-garcia/vaultwarden)
 - [Vaultwarden Wiki - Using Docker Compose](https://github.com/dani-garcia/vaultwarden/wiki/Using-Docker-Compose)
+- [Vaultwarden Wiki - Using an alternate base dir](https://github.com/dani-garcia/vaultwarden/wiki/Using-an-alternate-base-dir)
 - [Vaultwarden Wiki - Proxy examples](https://github.com/dani-garcia/vaultwarden/wiki/Proxy-examples)
 - [Vaultwarden Wiki - Enabling admin page](https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page)
 - [Vaultwarden Wiki - Backing up your vault](https://github.com/dani-garcia/vaultwarden/wiki/Backing-up-your-vault)

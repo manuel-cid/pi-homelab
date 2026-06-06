@@ -73,8 +73,8 @@ HOMEPAGE_BIND_IP=0.0.0.0
 HOMEPAGE_PORT=17000
 HOMEPAGE_ALLOWED_HOSTS=localhost,127.0.0.1,<ip-lan-de-la-pi>:17000,homepage.lan,pi-homelab.<tailnet>.ts.net,pi-homelab.<tailnet>.ts.net:17000
 
-HOMEPAGE_VAR_PORTAINER_URL=http://portainer.lan
-HOMEPAGE_VAR_PIHOLE_URL=http://192.168.1.194/admin
+HOMEPAGE_VAR_PORTAINER_URL=https://<ip-lan-de-la-pi>:9443
+HOMEPAGE_VAR_PIHOLE_URL=http://<ip-pihole-macvlan>/admin/
 HOMEPAGE_VAR_JELLYFIN_URL=http://jellyfin.lan
 HOMEPAGE_VAR_NAVIDROME_URL=http://navidrome.lan
 HOMEPAGE_VAR_AUDIOBOOKSHELF_URL=http://audiobookshelf.lan
@@ -82,9 +82,15 @@ HOMEPAGE_VAR_CALIBRE_URL=http://calibre-web.lan
 HOMEPAGE_VAR_TRANSMISSION_URL=http://<ip-lan-de-la-pi>:15000
 HOMEPAGE_VAR_PROWLARR_URL=http://<ip-lan-de-la-pi>:15001
 HOMEPAGE_VAR_VAULTWARDEN_URL=https://pi-homelab.<tailnet>.ts.net/vaultwarden/
-HOMEPAGE_VAR_LINKDING_URL=http://<ip-lan-de-la-pi>:9090
-HOMEPAGE_VAR_PAPERLESS_URL=http://<ip-lan-de-la-pi>:16002
+HOMEPAGE_VAR_LINKDING_URL=http://linkding.lan
+HOMEPAGE_VAR_PAPERLESS_URL=http://paperless.lan
 HOMEPAGE_VAR_HOMEASSISTANT_URL=http://<ip-lan-de-la-pi>:8123
+
+# Portainer se documenta con acceso directo por :9443, no por hostname `.lan`.
+# Si más adelante defines una URL canónica distinta, actualízala aquí.
+
+# Sustituye `<ip-pihole-macvlan>` por la IP real de Pi-hole en `dns_lan`.
+# En la documentación actual se usa `192.168.1.194` como ejemplo.
 
 # TODO: verificar la URL canónica final de Grafana, Uptime Kuma y FreshRSS si decides
 # mostrarlos en Homepage; sus documentos base los dejan detrás de 127.0.0.1 o de Caddy,
@@ -99,7 +105,7 @@ Notas sobre este Compose:
 - `HOMEPAGE_ALLOWED_HOSTS` debe incluir tanto el acceso directo por puerto como los hostnames que usarás detrás de Caddy
 - el bind mount de `/app/config` deja toda la configuración versionable en el **SSD NVMe**
 - el subdirectorio `images/` permite usar fondos o logos locales sin montar todo `/app/public`
-- los mounts de `/mnt/nvme`, `/media/hd2t` y `/media/hd5t` están pensados para que el widget `resources` pueda enseñar uso de disco real del host
+- los mounts de `/mnt/nvme`, `/media/hd2t` y `/media/hd5t` están pensados para que el widget `resources` muestre el arbol operativo del homelab en el SSD y los dos HDD externos
 - si no quieres mostrar almacenamiento en Homepage, puedes quitar esos tres montajes de solo lectura
 
 ## Configuración
@@ -109,11 +115,9 @@ Notas sobre este Compose:
 ```bash
 mkdir -p /home/<user>/homelab/compose/dashboards-homepage
 mkdir -p /home/<user>/homelab/config/homepage/images
-mkdir -p /home/<user>/homelab/config/homepage/logs
 touch /home/<user>/homelab/config/homepage/{settings.yaml,widgets.yaml,services.yaml,bookmarks.yaml,custom.css,custom.js}
 chmod 750 /home/<user>/homelab/config/homepage
 chmod 750 /home/<user>/homelab/config/homepage/images
-chmod 750 /home/<user>/homelab/config/homepage/logs
 ```
 
 Guarda en `/home/<user>/homelab/compose/dashboards-homepage/` el `docker-compose.yml` y el `.env` del apartado anterior.
@@ -145,6 +149,8 @@ Si el arranque ha ido bien, Homepage quedará accesible al menos por una de esta
 
 - `http://<ip-lan-de-la-pi>:17000`
 - `http://pi-homelab.<tailnet>.ts.net:17000`
+
+Antes de dar por buenas las tarjetas de Homepage, sustituye en `.env` todos los placeholders de ejemplo (`<ip-lan-de-la-pi>`, `<ip-pihole-macvlan>`, `<tailnet>`) por los valores reales de tu entorno.
 
 ### 3. Crear una configuración mínima y mantenible
 
@@ -182,7 +188,7 @@ layout:
 quicklaunch:
   searchDescriptions: true
 
-# Si lo publicas detrás de Caddy en subruta, descomenta esta linea:
+# Si lo publicas detras de Caddy en subruta, descomenta esta linea:
 # base: https://pi-homelab.<tailnet>.ts.net/homepage
 ```
 
@@ -287,9 +293,9 @@ Archivo: `/home/<user>/homelab/config/homepage/bookmarks.yaml`
 []
 ```
 
-Con esa base ya tienes un panel funcional y fácil de mantener. La idea no es rellenar todos los servicios el primer día, sino arrancar con los imprescindibles y refinar la portada según el uso real.
+Con esa base ya tienes un panel funcional y facil de mantener. La idea no es rellenar todos los servicios el primer dia, sino arrancar con los imprescindibles y refinar la portada segun el uso real.
 
-Si más adelante quieres añadir tarjetas para servicios como **Grafana**, **Uptime Kuma** o **FreshRSS**, define primero su URL canónica real en **Caddy** o el método de acceso operativo que vayas a mantener. Evita poner en Homepage enlaces de ejemplo a hostnames o rutas que todavía no existan en el resto de la documentación.
+Si mas adelante quieres anadir tarjetas para servicios como **Grafana**, **Uptime Kuma** o **FreshRSS**, define primero su URL canonica real en **Caddy** o el metodo de acceso operativo que vayas a mantener. Evita poner en Homepage enlaces de ejemplo a hostnames o rutas que todavia no existan en el resto de la documentacion.
 
 ### 4. Personalizar sin complicar el mantenimiento
 
@@ -366,6 +372,8 @@ Con esta topología puedes usar estas rutas:
 - `https://pi-homelab.<tailnet>.ts.net/homepage/` desde Tailscale si lo publicas por Caddy
 - `http://<ip-lan-de-la-pi>:17000` como acceso directo o de emergencia
 
+No cambies las tarjetas de `services.yaml` para que apunten automaticamente a la subruta remota `/homepage/`: las tarjetas deben seguir apuntando a la URL canonica de cada servicio documentada en su propio fichero.
+
 Si decides usar solo Caddy, puedes endurecer el servicio cambiando `HOMEPAGE_BIND_IP=127.0.0.1` y recreando el stack.
 
 ### 6. Operación básica y mantenimiento
@@ -400,7 +408,6 @@ Rutas persistentes principales de Homepage:
 
 - `/home/<user>/homelab/config/homepage/` en el **SSD NVMe**
 - `/home/<user>/homelab/config/homepage/images/` en el **SSD NVMe** para fondos, logos o iconos locales
-- `/home/<user>/homelab/config/homepage/logs/` en el **SSD NVMe** si decides conservar logs del servicio dentro de la configuración
 
 Qué vive realmente en esa ruta:
 

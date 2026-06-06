@@ -23,6 +23,7 @@ En este homelab conviene mantener un criterio simple:
 - Poder crear directorios persistentes en `/home/<user>/homelab/data/`.
 - Si se van a usar alertas por Telegram, disponer de un bot y su `chat_id`.
 - Si se van a usar alertas por email, disponer de un relay o servidor SMTP accesible desde la Raspberry Pi.
+- Sustituir antes de ejecutar comandos o guardar rutas los placeholders de ejemplo, especialmente `<user>` y `<IP-LAN-RASPBERRY>`.
 - Puertos necesarios en esta fase:
   - **`11002/tcp`** publicado solo en `127.0.0.1` para la UI de Uptime Kuma
   - **`3001/tcp`** interno del contenedor
@@ -36,7 +37,7 @@ name: monitoring-uptime-kuma
 
 services:
   uptime-kuma:
-    image: louislam/uptime-kuma:2
+    image: louislam/uptime-kuma:2.4.0
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -72,6 +73,8 @@ UPTIME_KUMA_PORT=11002
 PROXY_NETWORK=homelab_proxy
 ```
 
+La etiqueta `2.4.0` es la opción recomendada para este homelab: el proyecto documenta `:2` como alias de la rama estable v2, pero esa etiqueta es flotante. Fijar `2.4.0` evita cambios inesperados al recrear el contenedor y mantiene manifiesto multi-arquitectura con variante `linux/arm64`. Si más adelante quieres máxima inmutabilidad, la alternativa razonable es fijar además el digest exacto del manifiesto tras validar la actualización manualmente.
+
 Puntos importantes de este Compose:
 
 - Uptime Kuma se publica solo en `127.0.0.1:11002`, no en toda la LAN
@@ -79,6 +82,7 @@ Puntos importantes de este Compose:
 - `extra_hosts` permite resolver `host.docker.internal`, útil para comprobar endpoints del host como métricas nativas de Docker Engine
 - el stack se une a `homelab_proxy` para poder monitorizar otros servicios Docker por nombre interno
 - no se monta `/var/run/docker.sock`, porque en este escenario no es necesario y añade privilegios innecesarios
+- la imagen queda fijada a `louislam/uptime-kuma:2.4.0` para evitar cambios inesperados al recrear el contenedor
 - se recomienda **no** configurar triggers de actualización automática de WUD para Uptime Kuma
 
 ## Configuración
@@ -139,7 +143,7 @@ Pasos recomendados nada más entrar:
 1. Crear el usuario administrador inicial.
 2. Asignar una contraseña robusta y guardarla fuera del contenedor.
 3. Revisar la zona horaria efectiva y confirmar que coincide con `Europe/Madrid`.
-4. Activar **2FA** para la cuenta administrativa si vas a exponer esta UI a través de Caddy en LAN o Tailscale más adelante.
+4. Activar **2FA** para la cuenta administrativa si más adelante vas a publicar esta UI detrás de Caddy o hacerla accesible también por Tailscale.
 5. Crear al menos dos grupos lógicos de alertas:
    - un canal principal para incidencias críticas
    - un canal secundario para avisos menos urgentes o pruebas
@@ -149,6 +153,7 @@ Pasos recomendados nada más entrar:
 En este homelab conviene seguir estas reglas:
 
 - si el servicio está en Docker y comparte `homelab_proxy`, monitorízalo por nombre interno, por ejemplo `http://grafana:3000`
+- si el servicio está en Docker pero **no** comparte `homelab_proxy`, no asumas que `uptime-kuma` podrá resolverlo por nombre: usa su ruta real de acceso, por ejemplo la IP LAN del host, la IP macvlan o la URL publicada por Caddy/Tailscale
 - no uses como objetivo el puerto publicado en `127.0.0.1` desde dentro del contenedor, porque ese loopback pertenece al host, no a Uptime Kuma
 - usa **HTTP(s)** para UIs y APIs web, **TCP Port** para servicios sin endpoint HTTP y **Ping** solo como señal de reachability básica
 - en una Raspberry Pi 5 tiene más sentido empezar con intervalos de **30s** o **60s** que con chequeos masivos cada 20 segundos
@@ -182,6 +187,8 @@ Evita duplicar sin criterio tres monitores para la misma cosa. Lo útil es disti
 
 Para Telegram, el flujo recomendado es este:
 
+Esto no contradice el alcance del proyecto: el homelab sigue sin exposición entrante a internet, pero Uptime Kuma sí puede necesitar salida a servicios externos para enviar notificaciones.
+
 1. Crear un bot con **BotFather**.
 2. Guardar el token del bot.
 3. Enviar al bot al menos un mensaje desde la cuenta o grupo que recibirá las alertas.
@@ -209,6 +216,8 @@ Recomendación práctica:
 ### 7. Notificaciones por email SMTP
 
 Para email, crea otra notificación independiente y úsala como canal secundario o de respaldo.
+
+Igual que con Telegram, esto implica tráfico saliente hacia tu relay o proveedor SMTP, no publicación de puertos entrantes en el router.
 
 Campos típicos a completar en Uptime Kuma:
 

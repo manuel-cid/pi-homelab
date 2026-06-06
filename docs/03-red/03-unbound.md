@@ -28,6 +28,7 @@ Esto mantiene la IP LAN del host libre para **Caddy** y otros servicios, evita p
 - Tener creada la red Docker externa `dns_lan`.
 - Tener reservada la IP `192.168.1.194` para Pi-hole, la IP `192.168.1.195` para Unbound y la IP `192.168.1.222` para `macvlan-shim`.
 - Mantener la Raspberry Pi conectada por `eth0` y con el `macvlan-shim` operativo para validar desde el host.
+- Tener disponibles `dig` y `curl` para las validaciones (`sudo apt install -y dnsutils curl` si todavía no están instalados).
 - Puertos necesarios para Unbound en su IP macvlan:
   - `5335/tcp`
   - `5335/udp`
@@ -110,6 +111,7 @@ Notas sobre este Compose:
 mkdir -p /home/<user>/homelab/compose/infra-pihole-unbound
 mkdir -p /home/<user>/homelab/data/pihole
 mkdir -p /home/<user>/homelab/data/unbound
+sudo apt install -y dnsutils curl
 curl -fsSL https://www.internic.net/domain/named.root \
   -o /home/<user>/homelab/data/unbound/root.hints
 docker run --rm --entrypoint unbound-anchor \
@@ -157,9 +159,8 @@ server:
   rrset-cache-size: 128m
 
   access-control: 127.0.0.0/8 allow
-  access-control: 172.16.0.0/12 allow
-  access-control: 192.168.1.0/24 allow
-  access-control: 10.0.0.0/8 allow
+  access-control: 192.168.1.194/32 allow
+  access-control: 192.168.1.222/32 allow
 
   private-address: 10.0.0.0/8
   private-address: 172.16.0.0/12
@@ -175,7 +176,7 @@ Puntos importantes de esta configuración:
 - se desactiva IPv6 para simplificar el escenario inicial del homelab y evitar rutas inesperadas
 - `root.hints` permite recursión completa sin depender de DNS públicos
 - `root.key` activa la validación DNSSEC del resolvedor
-- `access-control` limita las consultas a redes privadas y a la propia LAN
+- `access-control` limita las consultas al propio contenedor, a **Pi-hole** (`192.168.1.194`) y al `macvlan-shim` del host (`192.168.1.222`) para validaciones
 - el cache se guarda en memoria del contenedor; el único fichero persistente aquí es la configuración
 
 ### 3. Levantar o recrear el stack

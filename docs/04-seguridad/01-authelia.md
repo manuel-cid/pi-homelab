@@ -89,6 +89,7 @@ Notas sobre este Compose:
 - la configuración editable queda fuera del contenedor en `/config`
 - el estado persistente queda en `/data`
 - se recomienda **no** configurar triggers de actualización automática de WUD para Authelia
+- el valor de `TAILSCALE_DOMAIN` debe coincidir exactamente con el que uses en el stack de Caddy; aquí solo se usa como referencia documental, no como interpolación automática dentro de `configuration.yml`
 
 ## Configuración
 
@@ -167,6 +168,9 @@ server:
 
 log:
   level: info
+  format: text
+  file_path: /data/authelia.log
+  keep_stdout: true
 
 totp:
   issuer: homelab-rpi5
@@ -187,11 +191,6 @@ access_control:
         - '^/$'
         - '^/homepage(/.*)?$'
       policy: one_factor
-    - domain: 'pi-homelab.<tailnet>.ts.net'
-      resources:
-        - '^/grafana(/.*)?$'
-        - '^/uptime(/.*)?$'
-      policy: two_factor
 
 session:
   name: authelia_session
@@ -224,14 +223,18 @@ identity_validation:
     jwt_secret: 'REEMPLAZAR_CON_IDENTITY_VALIDATION_JWT_SECRET'
 ```
 
+<!-- TODO: verificar en la documentación de cada servicio qué rutas HTTPS remotas están realmente adaptadas a subruta antes de añadir reglas `two_factor` adicionales como `/grafana` o `/uptime`. -->
+<!-- TODO: verificar el hostname final del tailnet y sustituir de forma idéntica las tres apariciones de `pi-homelab.<tailnet>.ts.net` en `access_control` y `session.cookies`; si no coinciden exactamente con Caddy, el flujo de login fallará. -->
+
 Qué fija esta configuración:
 
 - el portal de Authelia se sirve bajo la subruta `/authelia`
 - el backend de usuarios es local por fichero
 - la política por defecto es `deny`
 - `Homepage` queda con ejemplo de `one_factor`
-- `Grafana` y `Uptime Kuma` quedan como ejemplo de `two_factor`
+- las rutas `two_factor` adicionales deben añadirse solo cuando su documento confirme compatibilidad real con subruta y con `forward_auth`
 - las notificaciones se guardan en fichero local, útil para bootstrap y pruebas sin depender todavía de SMTP
+- se genera además un log persistente en `/home/<user>/homelab/data/authelia/authelia.log`, necesario para la integración posterior con [02-fail2ban.md](02-fail2ban.md)
 - la base de datos SQLite y el fichero de notificaciones viven en el **SSD NVMe**
 
 Ajusta las `rules` a los servicios reales que publiques detrás del bloque HTTPS de Caddy. Si un servicio no está en una regla válida y llega a pasar por `forward_auth`, el resultado será denegación.
@@ -241,6 +244,7 @@ Ajusta las `rules` a los servicios reales que publiques detrás del bloque HTTPS
 ```bash
 cd /home/<user>/homelab/compose/auth-authelia
 docker compose config
+docker compose run --rm authelia authelia config validate --config /config/configuration.yml
 docker compose up -d
 docker compose ps
 ```
@@ -249,7 +253,7 @@ Validaciones iniciales:
 
 ```bash
 docker compose logs --tail 100 authelia
-docker inspect auth-authelia-authelia-1 --format '{{json .NetworkSettings.Networks}}'
+docker inspect "$(docker compose ps -q authelia)" --format '{{json .NetworkSettings.Networks}}'
 ls -lh /home/<user>/homelab/data/authelia
 ```
 
@@ -258,6 +262,7 @@ El resultado esperado es este:
 - el contenedor queda en estado `Up`
 - aparece unido a la red `homelab_proxy`
 - se crea `db.sqlite3` en `/home/<user>/homelab/data/authelia/`
+- se crea o rota `authelia.log` en `/home/<user>/homelab/data/authelia/`
 - no aparecen errores de parseo en `configuration.yml`
 
 ### 6. Integrar Authelia en Caddy con `forward_auth`
@@ -297,11 +302,6 @@ https://{$TAILSCALE_DOMAIN} {
 		reverse_proxy homepage:3000
 	}
 
-	handle_path /grafana/* {
-		import authelia_forward_auth
-		reverse_proxy grafana:3000
-	}
-
 	handle {
 		respond "Caddy activo." 200
 	}
@@ -313,6 +313,7 @@ Notas importantes sobre este patrón:
 - el portal de Authelia debe quedar accesible **antes** de aplicar `forward_auth` a otras rutas
 - esta guía protege la entrada **HTTPS de Tailscale**, no los bloques `http://servicio.lan`
 - los servicios protegidos deben funcionar correctamente en **subruta** o estar configurados para ello
+- el ejemplo se limita a `Homepage` porque su publicación remota por subruta ya queda alineada con la documentación del repositorio; añade otros servicios solo cuando su documento confirme ese patrón
 - `Portainer` no se incluye en este ejemplo porque su documento actual lo deja publicado en `:9443` y aquí no queda demostrada una adaptación correcta a `/portainer/`
 - si un servicio no soporta bien subrutas, no lo metas aquí sin revisar primero su configuración
 
@@ -321,7 +322,7 @@ Tras modificar el `Caddyfile`:
 ```bash
 cd /home/<user>/homelab/compose/infra-caddy
 docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile
-docker compose up -d
+docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
 docker compose logs --tail 100 caddy
 ```
 
@@ -388,6 +389,7 @@ Authelia usa solo almacenamiento en el **SSD NVMe**:
 - base de usuarios local: `/home/<user>/homelab/config/authelia/users.yml`
 - datos persistentes: `/home/<user>/homelab/data/authelia/`
 - base de datos SQLite: `/home/<user>/homelab/data/authelia/db.sqlite3`
+- log persistente: `/home/<user>/homelab/data/authelia/authelia.log`
 - notificaciones por fichero: `/home/<user>/homelab/data/authelia/notification.txt`
 
 Notas operativas:
@@ -404,6 +406,7 @@ Para poder reconstruir Authelia sin perder configuración ni estado, respalda co
 - `/home/<user>/homelab/compose/auth-authelia/.env`
 - `/home/<user>/homelab/config/authelia/configuration.yml`
 - `/home/<user>/homelab/config/authelia/users.yml`
+- `/home/<user>/homelab/data/authelia/authelia.log`
 - `/home/<user>/homelab/data/authelia/db.sqlite3`
 - `/home/<user>/homelab/data/authelia/notification.txt`
 
@@ -429,11 +432,11 @@ Orden de restauración recomendado:
 - [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
 - [02-fail2ban.md](02-fail2ban.md)
 - [01-vaultwarden.md](../11-productividad/01-vaultwarden.md)
-- Authelia Docs: Configuration
-- Authelia Docs: File Authentication Backend
-- Authelia Docs: Session
-- Authelia Docs: Regulation
-- Authelia Docs: Caddy Integration
-- Authelia Docs: Docker Image
-- Caddy Docs: `forward_auth`
-- Docker Hub: `authelia/authelia`
+- [Authelia Docs: Configuration](https://www.authelia.com/configuration/)
+- [Authelia Docs: File Authentication Backend](https://www.authelia.com/configuration/first-factor/file/)
+- [Authelia Docs: Session](https://www.authelia.com/configuration/session/introduction/)
+- [Authelia Docs: Regulation](https://www.authelia.com/configuration/security/regulation/)
+- [Authelia Docs: Caddy Integration](https://www.authelia.com/integration/proxies/caddy/)
+- [Authelia Docs: Docker Image](https://www.authelia.com/integration/deployment/docker/)
+- [Caddy Docs: `forward_auth`](https://caddyserver.com/docs/caddyfile/directives/forward_auth)
+- [Docker Hub: `authelia/authelia`](https://hub.docker.com/r/authelia/authelia)

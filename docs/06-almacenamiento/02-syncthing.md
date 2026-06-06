@@ -20,6 +20,7 @@ Syncthing **no sustituye a un backup** y tampoco es buena idea apuntarlo a bases
 - Tener montado `hd2t` en `/media/hd2t`.
 - Poder administrar el firewall del host según [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 - Tener identificados los dispositivos que se van a parear con la Raspberry Pi.
+- Sustituir antes de aplicar esta guía los placeholders de ejemplo, especialmente `<user>`, `<ip-lan-de-la-raspberry>`, `<ip-tailscale-de-la-raspberry>` y `192.168.1.0/24`, si en tu entorno real usas otros valores.
 - Puertos necesarios para Syncthing:
   - **12000/tcp** para la interfaz web del homelab
   - **22000/tcp** para sincronización
@@ -64,7 +65,7 @@ services:
       - ${DATA_ROOT}/syncthing/config:/config
       - ${SYNC_FOLDERS_ROOT}/documents:/data/documents
       - ${SYNC_FOLDERS_ROOT}/notes:/data/notes
-      - /media/hd2t/syncthing/media-drop:/data/media-drop
+      - /media/hd2t/downloads/syncthing-media-drop:/data/media-drop
     labels:
       - wud.watch=true
 ```
@@ -72,10 +73,15 @@ services:
 Este Compose sigue la política general del proyecto:
 
 - stack independiente para el servicio de sincronización
-- configuración persistente en el **SSD NVMe**
+- estado y configuración persistente del servicio en el **SSD NVMe**
 - carpetas de datos montadas directamente desde el host
 - separación explícita entre carpetas en SSD y carpetas en `hd2t`
 - publicación solo de los puertos necesarios del protocolo y de la UI
+
+Notas de diseño:
+
+- `8384/tcp` es el puerto interno por defecto de la GUI de Syncthing, pero en el host se publica como **`12000/tcp`** para respetar la convención de rangos del proyecto.
+- Solo **`/config`** es estado interno del servicio. Las rutas bajo `/data/...` son carpetas de usuario sincronizadas, no configuración de Syncthing.
 
 Si no quieres crear alguna de las carpetas de ejemplo, elimina su volumen del Compose y luego define en la UI solo las rutas que realmente vayas a usar.
 
@@ -87,7 +93,7 @@ Si no quieres crear alguna de las carpetas de ejemplo, elimina su volumen del Co
 mkdir -p /home/<user>/homelab/compose/files-syncthing
 mkdir -p /home/<user>/homelab/data/syncthing/config
 mkdir -p /home/<user>/homelab/data/syncthing/folders/{documents,notes}
-sudo mkdir -p /media/hd2t/syncthing/media-drop
+sudo mkdir -p /media/hd2t/downloads/syncthing-media-drop
 ```
 
 ### 2. Alinear propiedad y permisos del host
@@ -97,10 +103,10 @@ Usa el mismo usuario operativo del host que ya gestiona Docker y el resto del ho
 ```bash
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/syncthing
-sudo chown -R <user>:<user> /media/hd2t/syncthing
+sudo chown -R <user>:<user> /media/hd2t/downloads/syncthing-media-drop
 
 sudo find /home/<user>/homelab/data/syncthing/folders -type d -exec chmod 2775 {} \;
-sudo find /media/hd2t/syncthing -type d -exec chmod 2775 {} \;
+sudo find /media/hd2t/downloads/syncthing-media-drop -type d -exec chmod 2775 {} \;
 ```
 
 Qué se busca con esto:
@@ -128,7 +134,7 @@ SYNCTHING_DISCOVERY_PORT=21027
 Notas importantes:
 
 - `DATA_ROOT` mantiene la configuración del servicio en el **SSD NVMe**.
-- `SYNC_FOLDERS_ROOT` define la raíz de carpetas sincronizadas que quieres mantener también en SSD, sin salir de `data/syncthing/`.
+- `SYNC_FOLDERS_ROOT` define la raíz de carpetas sincronizadas que quieres mantener también en SSD.
 - `SYNCTHING_BIND_IP=0.0.0.0` permite acceso desde la **LAN** y desde la IP de **Tailscale** del host si el firewall lo autoriza.
 - Si prefieres que la interfaz web no sea accesible desde la LAN, puedes cambiar `SYNCTHING_BIND_IP` a una IP concreta del host o a `127.0.0.1` y gestionar el acceso por otro camino.
 
@@ -170,6 +176,25 @@ En el primer acceso:
 - define un **usuario y contraseña** para la interfaz web
 - revisa el nombre del dispositivo de la Raspberry Pi para identificarlo fácilmente
 - confirma que la zona horaria y la hora mostradas son correctas
+- desactiva `Use HTTPS for GUI` si aparece activa, porque en este proyecto la UI se expone solo por **HTTP interno** en **LAN + Tailscale**
+
+Después entra en `Actions` → `Settings` → `Connections` y ajusta el alcance de red al diseño del homelab:
+
+- desactiva `Global Discovery`
+- desactiva `Enable Relaying`
+- desactiva `NAT traversal`
+- mantén `Local Discovery` solo para la LAN
+- si vas a sincronizar también por Tailscale, usa los dispositivos ya pareados por su conectividad VPN sin depender de relays públicos
+
+Con esta configuración Syncthing sigue funcionando dentro de **LAN + Tailscale** y evita apoyarse en mecanismos de descubrimiento o relay por internet que no encajan con el alcance de este proyecto.
+
+Si desactivas `Global Discovery`, `Relaying` y `NAT traversal`, los dispositivos que solo se vean por **Tailscale** deben tener direcciones explícitas configuradas en Syncthing. Para esos peers, usa su IP o nombre de Tailscale en `Edit Device` → `Addresses`, por ejemplo:
+
+```text
+tcp://100.x.y.z:22000, quic://100.x.y.z:22000
+```
+
+Si no quieres depender de IPs numéricas, también puedes usar el nombre DNS que resuelva MagicDNS dentro de tu tailnet.
 
 Syncthing no necesita exponer la UI a internet para funcionar; en este proyecto la UI solo debe quedar accesible por **LAN + Tailscale**.
 
@@ -262,7 +287,7 @@ Rutas implicadas en este despliegue:
 - `.env`: `/home/<user>/homelab/compose/files-syncthing/.env`
 - configuración persistente: `/home/<user>/homelab/data/syncthing/config`
 - carpetas sincronizadas en SSD: `/home/<user>/homelab/data/syncthing/folders/`
-- carpeta sincronizada en `hd2t`: `/media/hd2t/syncthing/media-drop`
+- carpeta sincronizada en `hd2t`: `/media/hd2t/downloads/syncthing-media-drop`
 
 Reglas operativas recomendadas:
 
@@ -270,6 +295,7 @@ Reglas operativas recomendadas:
 - usa **`hd2t`** para ficheros voluminosos o como zona de entrada multimedia
 - evita usar **`hd5t`** con Syncthing por defecto para no mezclar esta sincronización con la biblioteca multimedia dedicada de ese disco
 - no conviertas Syncthing en acceso indirecto a los datos internos de otros contenedores
+- distingue entre el estado del servicio (`/home/<user>/homelab/data/syncthing/config`) y las carpetas sincronizadas; no hagas limpieza, migraciones o restores tratándolas como si fueran lo mismo
 
 ## Backup
 
@@ -280,13 +306,15 @@ Syncthing no reemplaza una estrategia de copias de seguridad. Lo que debes respa
 - `/home/<user>/homelab/data/syncthing/config/`
 - las carpetas cuyo contenido sea autoritativo en la Raspberry Pi:
   - `/home/<user>/homelab/data/syncthing/folders/`
-  - `/media/hd2t/syncthing/`
+  - `/media/hd2t/downloads/syncthing-media-drop/`
 
 Motivos:
 
 - el directorio `config` conserva identidad del nodo, dispositivos conocidos y definición de carpetas
 - los dispositivos pareados no garantizan histórico, protección frente a borrados o recuperación limpia
 - un error o borrado sincronizado también se propaga si no existe backup independiente
+
+La estrategia general de copias y la automatización del repositorio se documentan en [01-estrategia-backup.md](../07-backups/01-estrategia-backup.md) y [02-borgmatic.md](../07-backups/02-borgmatic.md).
 
 ## Referencias
 

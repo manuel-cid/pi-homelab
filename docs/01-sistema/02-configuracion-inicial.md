@@ -152,7 +152,7 @@ swapon --show
 free -h
 ```
 
-En versiones recientes de Raspberry Pi OS (Bookworm y posteriores) ya no se incluye `dphys-swapfile`. Si tu sistema lo tiene, aparecerá como servicio activo:
+En Raspberry Pi OS reciente es habitual que `dphys-swapfile` ya no venga habilitado por defecto. Si tu sistema lo tiene, aparecerá como servicio activo:
 
 ```bash
 systemctl list-units --type=swap --no-pager
@@ -282,7 +282,7 @@ Después del reinicio, comprueba:
 swapon --show
 cat /proc/sys/vm/swappiness
 findmnt -no SOURCE /
-findmnt -no SOURCE /swapfile
+findmnt -T /swapfile -no SOURCE
 ```
 
 El resultado esperado es equivalente a este:
@@ -315,7 +315,7 @@ Revisa especialmente:
 
 ### 13. Qué hacer justo después
 
-El siguiente paso recomendado es endurecer el sistema con [03-seguridad-base.md](03-seguridad-base.md). Más adelante, la organización definitiva de carpetas y montajes persistentes se documenta en [04-estructura-directorios.md](04-estructura-directorios.md).
+El siguiente paso recomendado es endurecer el sistema con [03-seguridad-base.md](03-seguridad-base.md). La organización de carpetas y la política de almacenamiento del homelab se detalla en [04-estructura-directorios.md](04-estructura-directorios.md), aunque este documento ya asume que los discos quedaron preparados según [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md).
 
 ## Almacenamiento
 

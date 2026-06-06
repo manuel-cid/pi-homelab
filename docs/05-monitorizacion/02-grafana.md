@@ -25,7 +25,7 @@ En este homelab conviene mantener un criterio simple:
 - Tener creada la red Docker externa `homelab_proxy` para que Grafana alcance Prometheus por nombre interno.
 - Poder crear directorios persistentes en `/home/<user>/homelab/config/` y `/home/<user>/homelab/data/`.
 - Puertos necesarios en esta fase:
-  - **`13000/tcp`** publicado solo en `127.0.0.1` para la UI de Grafana
+  - **`11100/tcp`** publicado solo en `127.0.0.1` para la UI de Grafana
   - **`3000/tcp`** interno del contenedor
 
 ## Docker Compose
@@ -37,7 +37,7 @@ name: monitoring-grafana
 
 services:
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.6.15
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -74,20 +74,21 @@ TZ=Europe/Madrid
 CONFIG_ROOT=/home/<user>/homelab/config
 DATA_ROOT=/home/<user>/homelab/data
 GRAFANA_BIND_IP=127.0.0.1
-GRAFANA_PORT=13000
+GRAFANA_PORT=11100
 GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=<cambia-esta-password>
 PROXY_NETWORK=homelab_proxy
 ```
 
-<!-- TODO: verificar una versión fija probada de `grafana/grafana` para ARM64 y sustituir la etiqueta `latest` en este Compose -->
+La etiqueta `11.6.15` es una opción conservadora para este homelab: fija una release anual madura de Grafana 11 y evita la deriva de `latest`, manteniendo además manifiesto multi-arquitectura con variante `linux/arm64`.
 
 Puntos importantes de este Compose:
 
-- Grafana se publica solo en `127.0.0.1:13000`, no en toda la LAN por defecto
+- Grafana se publica solo en `127.0.0.1:11100`, no en toda la LAN por defecto
 - el stack se une a `homelab_proxy` para alcanzar `http://prometheus:9090` sin publicar Prometheus en la red local
 - los datos persistentes viven en `/home/<user>/homelab/data/grafana/` sobre el **SSD NVMe**
 - el aprovisionamiento de datasource y dashboards vive fuera del contenedor, bajo `/home/<user>/homelab/config/grafana/`
+- la imagen queda fijada a `grafana/grafana:11.6.15` para evitar cambios inesperados al recrear el contenedor
 - se recomienda **no** configurar triggers de actualización automática de WUD para Grafana
 
 ## Configuración
@@ -176,7 +177,7 @@ Validaciones mínimas tras el arranque:
 
 ```bash
 docker compose logs --tail=100 grafana
-curl http://127.0.0.1:13000/api/health
+curl http://127.0.0.1:11100/api/health
 ```
 
 El resultado esperado es este:
@@ -189,7 +190,7 @@ El resultado esperado es este:
 
 Abre la UI desde el host o mediante un túnel SSH local:
 
-- `http://127.0.0.1:13000`
+- `http://127.0.0.1:11100`
 
 Pasos recomendados nada más entrar:
 
@@ -344,15 +345,17 @@ Comandos útiles para operación diaria:
 cd /home/<user>/homelab/compose/monitoring-grafana
 docker compose logs -f grafana
 docker compose restart grafana
-curl -s http://127.0.0.1:13000/api/health
+curl -s http://127.0.0.1:11100/api/health
 ```
 
-Si quieres verificar desde dentro del contenedor que Grafana resuelve Prometheus correctamente:
+Si quieres verificar la conectividad hacia Prometheus desde la misma red Docker compartida, usa un contenedor efímero conectado a `homelab_proxy`:
 
 ```bash
-cd /home/<user>/homelab/compose/monitoring-grafana
-docker compose exec grafana wget -qO- http://prometheus:9090/-/ready
+docker run --rm --network homelab_proxy curlimages/curl:8.12.1 \
+  -fsS http://prometheus:9090/-/ready
 ```
+
+Esto evita asumir que la imagen de Grafana incluya herramientas como `wget` o `curl` en su interior.
 
 ## Almacenamiento
 

@@ -8,8 +8,9 @@ La política de almacenamiento de este proyecto se mantiene igual que en el rest
 
 - la configuración, la base de datos, los blobs, la metadata descargada, la caché y el contenido generado viven en `/home/<user>/homelab/data/stash/` sobre el **SSD NVMe**
 - la biblioteca multimedia vive en `/media/hd5t/media/`
-- el acceso principal se hace desde la **LAN**
-- el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
+- el acceso principal en la **LAN** se hace preferentemente a través de **Caddy**
+- el acceso remoto se hace por **Tailscale**, preferentemente a través de **Caddy**, sin abrir puertos en el router
+- el puerto directo en host queda como opción operativa para bootstrap, diagnóstico o uso puntual sin proxy
 - **Caddy** puede publicarlo por **HTTP en la LAN** y **HTTPS solo por Tailscale** según [05-caddy.md](../03-red/05-caddy.md)
 - no hay exposición directa a internet ni port forwarding para este servicio
 
@@ -80,7 +81,7 @@ Notas sobre este Compose:
 
 - el stack queda aislado bajo `media-stash`
 - la biblioteca vive en `hd5t`
-- la base de datos, blobs, caché, scrapers, plugins y contenido generado viven en el **SSD NVMe**
+- la configuración, la base de datos, blobs, caché, scrapers, plugins y contenido generado viven en el **SSD NVMe**
 - la biblioteca se monta en modo lectura para un despliegue base más seguro
 - el servicio se conecta también a `homelab_proxy` para que **Caddy** pueda alcanzarlo por nombre interno Docker
 - el Compose sigue el esquema oficial de Stash para `config`, `metadata`, `cache`, `blobs` y `generated`
@@ -143,7 +144,7 @@ PROXY_NETWORK=homelab_proxy
 Notas prácticas:
 
 - `STASH_BIND_IP=0.0.0.0` deja el servicio accesible por acceso directo desde la LAN y también desde la IP Tailscale del host
-- si prefieres seguir el patrón recomendado del homelab y entrar siempre por Caddy, puedes publicar `127.0.0.1:14004`
+- si prefieres seguir el patrón recomendado del homelab y entrar siempre por Caddy, elimina el bloque `ports:` del Compose en lugar de publicarlo en `127.0.0.1`
 - `STASH_PORT` debe coincidir con el puerto interno del contenedor y con el mapeo del Compose
 
 ### 4. Desplegar el stack
@@ -163,6 +164,13 @@ ss -ltnp | grep 14004
 curl -I http://127.0.0.1:14004
 ```
 
+Si eliminas `ports:` y dejas solo el acceso por **Caddy**, sustituye esas comprobaciones por:
+
+```bash
+docker inspect media-stash-stash-1 --format '{{json .NetworkSettings.Networks}}'
+curl -I -H 'Host: stash.lan' http://127.0.0.1
+```
+
 Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en:
 
 - `http://IP_DE_LA_PI:14004`
@@ -172,6 +180,42 @@ Si prefieres el patrón recomendado del homelab, con Caddy por delante:
 
 - `http://stash.lan`
 - acceso remoto por el hostname MagicDNS del nodo y la publicación que definas en [05-caddy.md](../03-red/05-caddy.md)
+
+Recomendación de publicación detrás de **Caddy**:
+
+- **opción recomendada: hostname dedicado**. La documentación oficial de Stash incluye un ejemplo específico para **Caddy v2** con un hostname propio y el ajuste `external_host`. Para este homelab, esa es la opción más simple y la menos frágil: evita depender de reescrituras de ruta, reduce problemas con reproducción, websockets y URLs absolutas, y deja un patrón más fácil de revisar tras cada actualización.
+- **alternativa válida: subruta** como `/stash/`. Stash sí soporta publicación bajo prefijo de URL, pero la propia documentación oficial exige dos condiciones: que el proxy elimine el prefijo antes de reenviar la petición al backend y que añada la cabecera `X-Forwarded-Prefix` con ese mismo valor.
+- en **Caddy**, esa alternativa encaja mejor con `handle_path /stash/*` para que el prefijo se elimine automáticamente antes del `reverse_proxy`; además, el bloque de proxy debe reenviar `X-Forwarded-Prefix: /stash`.
+- si usas la alternativa en subruta, valida siempre después del despliegue el login, la navegación, la reproducción y la carga de recursos estáticos antes de darla por buena como punto de acceso remoto estable.
+
+Ejemplo recomendado con hostname dedicado:
+
+```caddyfile
+stash.lan {
+    reverse_proxy stash:9999 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Port {server_port}
+    }
+}
+```
+
+Ejemplo alternativo con subruta compartida:
+
+```caddyfile
+pi-homelab.<tailnet>.ts.net {
+    handle_path /stash/* {
+        reverse_proxy stash:9999 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Port {server_port}
+            header_up X-Forwarded-Prefix /stash
+        }
+    }
+}
+```
+
+Si optas por hostname dedicado, define también `external_host` en la configuración de Stash con la URL pública real del servicio. Si optas por subruta, mantén igualmente `X-Forwarded-Prefix` y comprueba el comportamiento real tras cada cambio de versión.
 
 El acceso directo por puerto es válido para administración o pruebas, pero no sustituye la política general del proyecto: **sin exposición WAN y sin abrir puertos en el router**.
 
@@ -189,10 +233,19 @@ Rutas relevantes dentro del contenedor:
 
 - biblioteca multimedia: `/data`
 - configuración, scrapers y plugins: `/root/.stash`
-- metadata y base de datos: `/metadata`
+- metadata persistente y directorio razonable para backups: `/metadata`
 - caché operativa: `/cache`
 - blobs binarios: `/blobs`
 - contenido generado: `/generated`
+
+Ruta recomendada para este homelab:
+
+- trata `config/` y `metadata/` como estado persistente crítico del servicio y mantenlos siempre en el **SSD NVMe**
+- usa `/metadata/backups` como directorio de backup desde la UI
+- antes de dar por cerrada una instalación nueva o una migración, comprueba siempre en **Settings -> System -> Database path** la ruta efectiva de la base SQLite y verifica que apunta a un volumen persistente del SSD
+- si en una instalación ya existente la base está en una ruta distinta de la esperada, no la muevas por homogeneidad sin validar antes el procedimiento de restauración
+
+<!-- TODO: verificar en una instancia real del stack qué ruta concreta muestra Stash en `Settings -> System -> Database path` con este Compose antes de documentarla como valor por defecto fijo. -->
 
 Como la base de datos y el estado del servicio viven en el SSD NVMe, no conviene mezclar `metadata`, `cache`, `blobs` o `generated` con el disco USB.
 
@@ -272,7 +325,7 @@ Rutas persistentes del servicio:
 - Compose: `/home/<user>/homelab/compose/media-stash/docker-compose.yml`
 - Variables del stack: `/home/<user>/homelab/compose/media-stash/.env`
 - Configuración, plugins y scrapers: `/home/<user>/homelab/data/stash/config`
-- Metadata y base de datos: `/home/<user>/homelab/data/stash/metadata`
+- Metadata persistente, export/import y backups: `/home/<user>/homelab/data/stash/metadata`
 - Caché: `/home/<user>/homelab/data/stash/cache`
 - Blobs binarios: `/home/<user>/homelab/data/stash/blobs`
 - Contenido generado: `/home/<user>/homelab/data/stash/generated`
@@ -283,7 +336,9 @@ Criterio de almacenamiento:
 - todo lo operativo de Stash vive en el **SSD NVMe**
 - `hd5t` almacena exclusivamente la biblioteca multimedia de Stash
 - no se guarda la base de datos ni el contenido generado en el disco USB
+- la ruta efectiva de la base SQLite debe verificarse en **Settings -> System -> Database path** antes de cerrar una migración o una restauración
 - los scrapers manuales y plugins quedan bajo `config/`, por lo que también forman parte del estado persistente del servicio
+- `metadata/` debe conservarse como volumen persistente porque Stash lo usa para metadata de la aplicación, exportaciones y backups
 
 ## Backup
 
@@ -303,6 +358,7 @@ Opcional según tu política de restauración:
 Puntos importantes:
 
 - **no copies manualmente** la base de datos SQLite de Stash mientras el servicio está funcionando
+- verifica en **Settings -> System -> Database path** dónde está realmente la base SQLite antes de dar por buena una política de restore
 - Stash usa SQLite en modo `WAL`, así que la copia consistente de la base debe hacerse desde la **tarea de Backup de la propia UI**
 - una ruta razonable para guardar ese backup es `/metadata/backups`
 - si quieres un único fichero de recuperación, puedes incluir `blobs` en el backup desde la UI, sabiendo que pesará más
@@ -313,7 +369,7 @@ Secuencia práctica recomendada:
 
 1. configurar en Stash el directorio de backup como `/metadata/backups`
 2. ejecutar el backup desde **Settings -> Tasks**
-3. respaldar además `config/` y, si no los incluyes en el backup UI, también `blobs/`
+3. respaldar además `config/`, `metadata/` y, si no los incluyes en el backup UI, también `blobs/`
 
 ## Referencias
 
@@ -323,5 +379,7 @@ Secuencia práctica recomendada:
 - Guía oficial de scraping: https://docs.stashapp.cc/beginner-guides/guide-to-scraping/
 - Fuentes `stash-box` oficiales: https://docs.stashapp.cc/metadata-sources/stash-box-instances/
 - Documentación oficial de scrapers: https://docs.stashapp.cc/metadata-sources/scrapers/
+- Guía oficial de reverse proxy: https://docs.stashapp.cc/guides/reverse-proxy/
+- Opciones avanzadas de configuración (`external_host`): https://docs.stashapp.cc/guides/advanced-configuration-options/
 - Guía oficial de backup y restore: https://docs.stashapp.cc/guides/backup-and-restore-database/
 - Imagen oficial Docker: https://hub.docker.com/r/stashapp/stash

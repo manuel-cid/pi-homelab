@@ -46,6 +46,10 @@ services:
     environment:
       TZ: ${TZ}
       DOCKERCLI: "true"
+    secrets:
+      - postgres_backup_password
+      - mariadb_backup_password
+      - telegram_apprise_url
     volumes:
       - ${CONFIG_ROOT}/borgmatic:/etc/borgmatic.d
       - ${ROOT_DIR}/compose:/source/homelab/compose:ro
@@ -62,6 +66,14 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
       - wud.watch=true
+
+secrets:
+  postgres_backup_password:
+    file: ${CONFIG_ROOT}/borgmatic/keys/postgres-backup-password
+  mariadb_backup_password:
+    file: ${CONFIG_ROOT}/borgmatic/keys/mariadb-backup-password
+  telegram_apprise_url:
+    file: ${CONFIG_ROOT}/borgmatic/keys/telegram-apprise-url
 ```
 
 Variables mínimas recomendadas para `/home/<user>/homelab/compose/infra-borgmatic/.env`:
@@ -80,6 +92,7 @@ Puntos importantes del stack:
 - el repositorio local Borg vive en **`/media/hd2t/backups/borg/`**
 - el directorio `exports/` sirve como área de trabajo para dumps y exportaciones auxiliares que luego también quedan incorporados al backup lógico
 - se monta el **socket Docker** para que los hooks o los data sources puedan ejecutar dumps en contenedores de PostgreSQL/MariaDB
+- este Compose base no publica puertos ni incorpora un programador propio; la ejecución periódica se dispara desde el host
 
 ## Configuración
 
@@ -96,7 +109,6 @@ La estructura recomendada para este servicio es:
 ├── config/
 │   └── borgmatic/
 │       ├── config.yaml
-│       ├── crontab.txt
 │       ├── keys/
 │       │   └── repository-passphrase
 │       ├── hooks/
@@ -195,18 +207,17 @@ commands:
 
 postgresql_databases:
   - name: all
-    container: postgres
+    container: paperless-ngx-db-1
     username: postgres
-    password: "<postgres-password>"
+    password: "{credential container postgres_backup_password}"
     format: directory
     compression: none
 
 mariadb_databases:
   - name: all
-    container: mariadb
+    container: productivity-app-mariadb-1
     username: root
-    password: "<mariadb-root-password>"
-    password_transport: environment
+    password: "{credential container mariadb_backup_password}"
     format: sql
 
 sqlite_databases:
@@ -217,10 +228,10 @@ sqlite_databases:
 
 apprise:
   services:
-    - url: gotify://gotify.local/<token>
-      label: gotify
+    - url: "{credential container telegram_apprise_url}"
+      label: telegram
   send_logs: true
-  logs_size_limit: 50000
+  logs_size_limit: 3500
   start:
     title: borgmatic
     body: Backup iniciado
@@ -230,28 +241,276 @@ apprise:
   fail:
     title: borgmatic
     body: Backup fallido
+  states:
+    - start
+    - finish
+    - fail
 ```
 
 Notas operativas sobre este ejemplo:
 
 - el repositorio local se crea bajo **`/media/hd2t/backups/borg/<hostname>/`**
-- los dumps previos que se escriben en **`/media/hd2t/backups/exports/`** entran en el backup porque esa ruta se incluye como `source_directory`
+- dentro del contenedor, los dumps previos se escriben en **`/mnt/borg-exports/`**, que corresponde a **`/media/hd2t/backups/exports/`** en el host
 - el bloque `postgresql_databases`, `mariadb_databases` y `sqlite_databases` es una plantilla base; elimina lo que no uses
-- los nombres de `container:` deben coincidir con los nombres reales que ve Docker en tu despliegue
+- los nombres de `container:` deben coincidir con los nombres reales que ve Docker en tu despliegue; en este proyecto eso significa normalmente el nombre generado por Compose, no un alias genérico como `postgres` o `mariadb`
+- el ejemplo base ya presupone secretos Docker para PostgreSQL, MariaDB y Telegram; si no vas a usar alguno de esos bloques, elimina también el secreto correspondiente del Compose
 - los dumps detallados por servicio y el criterio exacto de restore se desarrollan en [03-backup-docker-volumes.md](03-backup-docker-volumes.md)
+- la sección `apprise` de este ejemplo queda fijada para **Telegram**; si en algún momento desactivas notificaciones, elimina el bloque completo hasta definir otro backend
 
-### 3. Añadir programación con `crontab.txt`
+#### Convención de nombres para contenedores PostgreSQL y MariaDB
 
-Archivo: `/home/<user>/homelab/config/borgmatic/crontab.txt`
+La convención general del repositorio viene de [02-estructura-compose.md](../02-docker/02-estructura-compose.md):
+
+- cada stack fija `name:` con un identificador estable
+- los servicios internos suelen tener nombres cortos como `db`, `postgres` o `mariadb`
+- `container_name` se evita salvo que haga falta un nombre fijo por una razón operativa concreta
+
+Traducción práctica para Borgmatic:
+
+- el campo `container:` de `postgresql_databases` o `mariadb_databases` debe apuntar al **nombre real del contenedor** que devuelve Docker
+- si el stack **no** define `container_name`, Docker Compose genera normalmente `<stack>-<servicio>-1`
+- si el stack **sí** define `container_name`, usa ese valor exacto y no el nombre del servicio
+
+Ejemplos coherentes con los Compose documentados en este proyecto:
+
+- `paperless-ngx` usa `name: paperless-ngx` y un servicio PostgreSQL llamado `db`, así que el contenedor esperable es **`paperless-ngx-db-1`**
+- si en otro stack defines `name: productivity-app` y un servicio `mariadb`, el contenedor esperable será **`productivity-app-mariadb-1`**
+- si fijas `container_name: mealie`, Borgmatic debe usar **`mealie`**
+
+Por tanto, el ejemplo base de este documento debe ajustarse así cuando el servicio real sea el de Paperless:
+
+```yaml
+postgresql_databases:
+  - name: all
+    container: paperless-ngx-db-1
+    username: postgres
+    password: "{credential container postgres_backup_password}"
+    format: directory
+    compression: none
+```
+
+Y para un stack con MariaDB sin `container_name`:
+
+```yaml
+mariadb_databases:
+  - name: all
+    container: productivity-app-mariadb-1
+    username: root
+    password: "{credential container mariadb_backup_password}"
+    format: sql
+```
+
+Antes de activar un data source, valida el nombre efectivo con:
+
+```bash
+docker ps --format '{{.Names}}' | grep -E 'postgres|mariadb|db'
+```
+
+No des por hecho que el nombre será `postgres` o `mariadb`: en este homelab lo normal es que dependa del `name:` del stack y del nombre del servicio.
+
+#### Inyección de credenciales para dumps
+
+La opción recomendada en este proyecto es **Docker secrets en el stack de Borgmatic** y lectura desde `config.yaml` con las credenciales externas de Borgmatic. Es la vía más limpia para no dejar contraseñas en claro en el YAML y encaja bien con Docker Compose porque los secretos se montan como ficheros bajo `/run/secrets/` solo en los servicios que los declaran.
+
+Ejemplo recomendado en `/home/<user>/homelab/compose/infra-borgmatic/docker-compose.yml`:
+
+```yaml
+name: infra-borgmatic
+
+services:
+  borgmatic:
+    image: modem7/borgmatic-docker:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TZ: ${TZ}
+      DOCKERCLI: "true"
+    secrets:
+      - postgres_backup_password
+      - mariadb_backup_password
+    volumes:
+      - ${CONFIG_ROOT}/borgmatic:/etc/borgmatic.d
+      - ${ROOT_DIR}/compose:/source/homelab/compose:ro
+      - ${ROOT_DIR}/config:/source/homelab/config:ro
+      - ${ROOT_DIR}/scripts:/source/homelab/scripts:ro
+      - ${ROOT_DIR}/data:/source/homelab/data:ro
+      - ${ROOT_DIR}/.env:/source/homelab/.env:ro
+      - /media/hd2t/backups/borg:/mnt/borg-repository
+      - /media/hd2t/backups/exports:/mnt/borg-exports
+      - ${DATA_ROOT}/borgmatic/cache:/root/.cache/borg
+      - ${DATA_ROOT}/borgmatic/state:/var/lib/borgmatic
+      - ${DATA_ROOT}/borgmatic/runtime:/run/borgmatic
+      - ${CONFIG_ROOT}/borgmatic/ssh:/root/.ssh:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+secrets:
+  postgres_backup_password:
+    file: ${CONFIG_ROOT}/borgmatic/keys/postgres-backup-password
+  mariadb_backup_password:
+    file: ${CONFIG_ROOT}/borgmatic/keys/mariadb-backup-password
+```
+
+Ejemplo correspondiente en `config.yaml`:
+
+```yaml
+postgresql_databases:
+  - name: all
+    container: paperless-ngx-db-1
+    username: postgres
+    password: "{credential container postgres_backup_password}"
+
+mariadb_databases:
+  - name: all
+    container: productivity-app-mariadb-1
+    username: root
+    password: "{credential container mariadb_backup_password}"
+```
+
+Buenas prácticas para esta opción:
+
+- guarda los ficheros de secretos en `config/borgmatic/keys/`
+- aplica `chmod 600` a cada fichero de secreto
+- si la imagen de base de datos lo soporta, puedes inicializar también PostgreSQL o MariaDB con `*_PASSWORD_FILE` para no duplicar la contraseña en su propio Compose
+
+La alternativa razonable es usar **variables de entorno restringidas** solo para el contenedor `borgmatic`. Funciona bien, es más simple de arrancar y Borgmatic permite interpolarlas directamente en `config.yaml`, pero expone más superficie que un secreto montado como fichero. Si eliges esta vía, separa esas variables en un fichero no versionado y con permisos estrictos.
+
+Ejemplo alternativo en `/home/<user>/homelab/compose/infra-borgmatic/docker-compose.yml`:
+
+```yaml
+services:
+  borgmatic:
+    image: modem7/borgmatic-docker:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+      - .env.secrets
+```
+
+Archivo recomendado: `/home/<user>/homelab/compose/infra-borgmatic/.env.secrets`
+
+```dotenv
+BORGMATIC_POSTGRES_PASSWORD=REEMPLAZAR_CON_PASSWORD_REAL
+BORGMATIC_MARIADB_PASSWORD=REEMPLAZAR_CON_PASSWORD_REAL
+```
+
+Y su uso en `config.yaml`:
+
+```yaml
+postgresql_databases:
+  - name: all
+    container: paperless-ngx-db-1
+    username: postgres
+    password: ${BORGMATIC_POSTGRES_PASSWORD}
+
+mariadb_databases:
+  - name: all
+    container: productivity-app-mariadb-1
+    username: root
+    password: ${BORGMATIC_MARIADB_PASSWORD}
+```
+
+Regla final para este homelab:
+
+- **recomendado**: `Docker secrets` + `"{credential container ...}"`
+- **aceptable**: `.env.secrets` con `chmod 600` y variables solo cargadas por el stack `infra-borgmatic`
+- **evitar**: contraseñas literales dentro de `config.yaml`
+
+#### Notificaciones por Telegram con Apprise
+
+Para este homelab se fija **Telegram** como backend de notificaciones de Borgmatic. Es la opción más simple de las evaluadas porque no añade un servicio adicional al stack de backups, evita depender de un servidor SMTP externo y encaja con el soporte nativo de **Apprise** dentro de Borgmatic.
+
+Preparación mínima fuera de Borgmatic:
+
+1. crear un bot con **BotFather** y guardar el `bot token`
+2. abrir un chat con ese bot y enviar al menos un mensaje
+3. obtener el `chat_id` del destino con la API de Telegram
+
+Ejemplo para localizar el `chat_id` después de haber enviado el primer mensaje:
+
+```bash
+curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates"
+```
+
+En la respuesta busca el bloque `chat` y anota el valor de `id` del chat, grupo o canal que deba recibir las alertas.
+
+La recomendación práctica en este proyecto es guardar la **URL completa de Apprise** como secreto Docker. Así el token y el `chat_id` no quedan repartidos entre varios ficheros y se reutiliza el mismo mecanismo ya adoptado para las contraseñas de dumps.
+
+Archivo recomendado: `/home/<user>/homelab/config/borgmatic/keys/telegram-apprise-url`
+
+```text
+tgram://123456789:ABCDEFghIJKlmNoPQRsTUVwxyz/123456789/?format=text&silent=no
+```
+
+Añade ese secreto al stack `infra-borgmatic`:
+
+```yaml
+services:
+  borgmatic:
+    secrets:
+      - postgres_backup_password
+      - mariadb_backup_password
+      - telegram_apprise_url
+
+secrets:
+  postgres_backup_password:
+    file: ${CONFIG_ROOT}/borgmatic/keys/postgres-backup-password
+  mariadb_backup_password:
+    file: ${CONFIG_ROOT}/borgmatic/keys/mariadb-backup-password
+  telegram_apprise_url:
+    file: ${CONFIG_ROOT}/borgmatic/keys/telegram-apprise-url
+```
+
+Y deja el bloque `apprise` de `config.yaml` así:
+
+```yaml
+apprise:
+  services:
+    - url: "{credential container telegram_apprise_url}"
+      label: telegram
+  send_logs: true
+  logs_size_limit: 3500
+  start:
+    title: borgmatic
+    body: Backup iniciado
+  finish:
+    title: borgmatic
+    body: Backup completado
+  fail:
+    title: borgmatic
+    body: Backup fallido
+  states:
+    - start
+    - finish
+    - fail
+```
+
+Detalles operativos de esta elección:
+
+- `states:` se fija explícitamente para que Borgmatic notifique inicio, fin y error; si lo omites, el comportamiento por defecto no cubre necesariamente los tres eventos
+- `logs_size_limit` se reduce respecto a un backend genérico para no mandar mensajes excesivamente grandes a Telegram
+- si más adelante quieres publicar en un grupo o en un tema concreto de foro, cambia solo la URL secreta de Apprise y deja intacta la configuración de Borgmatic
+
+Alternativas razonables si en el futuro cambia el criterio del homelab:
+
+- **Gotify**: buena opción si quieres que todas las alertas del homelab queden autocontenidas, a costa de desplegar y mantener otro servicio
+- **email/SMTP**: útil si ya tienes una cuenta o relay fiable, pero añade dependencia externa y gestión de credenciales adicional
+- **sin notificaciones por ahora**: elimina el bloque `apprise` y conserva la validación operativa mediante `docker compose logs`, `cron` y revisiones manuales
+
+### 3. Añadir programación desde el host
+
+En este despliegue, **Borgmatic** corre como contenedor sin exponer puertos y sin programador embebido documentado en el stack. La forma más simple y coherente con el resto del homelab es planificar la ejecución desde el **host** mediante `cron` o un temporizador `systemd`, invocando el contenedor `borgmatic`.
+
+Ejemplo con `cron` en el host (`sudo crontab -e` o `/etc/cron.d/homelab-borgmatic`):
 
 ```cron
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-30 2 * * * borgmatic --stats --list --verbosity 1 create
-30 4 * * 0 borgmatic --stats --list --verbosity 1 prune
-45 4 * * 0 borgmatic --verbosity 1 compact
-0 5 1 * * borgmatic --verbosity 1 check --only repository --only archives
+30 2 * * * cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --stats --list --verbosity 1 create
+30 4 * * 0 cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --stats --list --verbosity 1 prune
+45 4 * * 0 cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --verbosity 1 compact
+0 5 1 * * cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --verbosity 1 check --only repository --only archives
 ```
 
 Esta programación sigue la política de la fase:
@@ -261,7 +520,7 @@ Esta programación sigue la política de la fase:
 - `compact` después del `prune`
 - `check` mensual de repositorio y archivos
 
-Si necesitas separar retención o ventana de ejecución entre **local** y **offsite**, usa un segundo fichero de configuración de Borgmatic en vez de mezclar políticas incompatibles en la misma rutina.
+Si prefieres versionar esa programación, guarda el contenido anterior como **`/home/<user>/homelab/config/borgmatic/host-cron.example`** y aplícalo luego en el host. Si necesitas separar retención o ventana de ejecución entre **local** y **offsite**, usa un segundo fichero de configuración de Borgmatic en vez de mezclar políticas incompatibles en la misma rutina.
 
 ### 4. Preparar los hooks
 
@@ -301,7 +560,7 @@ Qué debe hacer el `pre-backup.sh` en un despliegue real:
 
 - generar dumps coherentes de PostgreSQL o MariaDB si no usas los data sources nativos
 - congelar temporalmente aplicaciones si un servicio concreto lo requiere
-- dejar esos artefactos en `/media/hd2t/backups/exports/` antes de que empiece `borgmatic create`
+- dejar esos artefactos en `/mnt/borg-exports/` antes de que empiece `borgmatic create`
 
 Qué no debe hacer:
 
@@ -355,11 +614,11 @@ keep_monthly: 6
 Comprobaciones mínimas después del despliegue:
 
 - `docker compose logs -f borgmatic` no muestra errores de sintaxis ni de permisos
-- `borgmatic config validate` termina correctamente
+- `docker compose exec -T borgmatic borgmatic config validate` termina correctamente
 - el backup manual crea un archivo nuevo en el repo local
 - las notificaciones llegan al canal configurado
-- `crontab.txt` queda montado dentro del contenedor junto a `config.yaml`
 - las rutas del NVMe aparecen como montajes `:ro`
+- la tarea `cron` del host queda instalada y ejecuta el contenedor sin pedir TTY
 
 ## Almacenamiento
 
@@ -367,10 +626,10 @@ Distribución recomendada de este servicio:
 
 - **Configuración**
   - `/home/<user>/homelab/config/borgmatic/config.yaml`
-  - `/home/<user>/homelab/config/borgmatic/crontab.txt`
   - `/home/<user>/homelab/config/borgmatic/hooks/`
   - `/home/<user>/homelab/config/borgmatic/keys/`
   - `/home/<user>/homelab/config/borgmatic/ssh/`
+  - `/home/<user>/homelab/config/borgmatic/host-cron.example` si decides versionar la planificación del host
 - **Estado del contenedor**
   - `/home/<user>/homelab/data/borgmatic/cache/`
   - `/home/<user>/homelab/data/borgmatic/runtime/`
@@ -416,5 +675,9 @@ Regla práctica:
 - [02-estructura-compose.md](../02-docker/02-estructura-compose.md)
 - Documentación oficial de Borgmatic: https://torsion.org/borgmatic/
 - Referencia de configuración de Borgmatic: https://torsion.org/borgmatic/reference/configuration/
+- Credenciales desde contenedor en Borgmatic: https://torsion.org/borgmatic/reference/configuration/credentials/container/
 - Instalación de Borgmatic: https://torsion.org/borgmatic/how-to/install-borgmatic/
+- Notificaciones y monitorización en Borgmatic: https://torsion.org/borgmatic/how-to/monitor-your-backups/
+- Servicio Telegram en Apprise: https://github.com/caronc/apprise/wiki/Notify_telegram
+- Telegram Bot API `getUpdates`: https://core.telegram.org/bots/api#getupdates
 - Imagen Docker multi-arquitectura con soporte Docker CLI: https://github.com/modem7/docker-borgmatic

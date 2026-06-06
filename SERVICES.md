@@ -1,6 +1,6 @@
 # Servicios de un Homelab — Raspberry Pi 5
 
-Catálogo de servicios recomendados para un homelab doméstico corriendo sobre **Raspberry Pi 5** (8 GB RAM, ARM64) montada en una **carcasa con soporte NVMe** y un **SSD NVMe de 500 GB como almacenamiento principal** (SO, Docker, datos de servicios), junto con **dos discos duros externos conectados por USB**: **hd2t** (2 TB — contenidos multimedia y backups) y **hd5t** (5 TB — biblioteca multimedia dedicada). El acceso es exclusivamente **LAN + Tailscale (VPN mesh)** — sin exposición a internet ni puertos abiertos en el router. Todos los servicios se despliegan como contenedores Docker gestionados con **Docker Compose**.
+Catálogo de servicios recomendados para un homelab doméstico corriendo sobre **Raspberry Pi 5** (8 GB RAM, ARM64) montada en una **carcasa Argon ONE V3 M.2 NVME PCIe** y un **SSD NVMe de 500 GB como almacenamiento principal** (SO, Docker, datos de servicios), junto con **dos discos duros externos conectados por USB**: **hd2t** (2 TB — contenidos multimedia y backups) y **hd5t** (5 TB — biblioteca multimedia dedicada). El acceso es exclusivamente **LAN + Tailscale (VPN mesh)** — sin exposición a internet ni puertos abiertos en el router. Todos los servicios se despliegan como contenedores Docker gestionados con **Docker Compose**.
 
 ---
 
@@ -21,7 +21,7 @@ Catálogo de servicios recomendados para un homelab doméstico corriendo sobre *
 | **Pi-hole** | Servidor DNS con bloqueo de publicidad y telemetría a nivel de red |
 | **Unbound** | Resolver DNS recursivo local (complementa a Pi-hole para no depender de DNS externos) |
 | **Tailscale** | VPN mesh basada en WireGuard para acceso remoto seguro sin abrir puertos |
-| **Caddy** | Reverse proxy con HTTPS automático (CA interna para LAN), configuración declarativa vía Caddyfile |
+| **Caddy** | Reverse proxy interno: HTTP en LAN (red confiable) y HTTPS para acceso remoto vía Tailscale, configuración declarativa vía Caddyfile |
 
 ---
 
@@ -147,12 +147,7 @@ LAN / Tailscale (VPN mesh)
 
 ### Recomendaciones de Hardware
 
-- **Carcasa cerrada con NVMe** (presupuesto máx. 100 €):
-  - **Argon NEO 5 M.2 NVME** (~35–45 €) — carcasa cerrada de aluminio para Pi 5, slot M.2 2280 (key M) vía PCIe, disipación pasiva por contacto con la carcasa metálica, diseño compacto y discreto
-  - **Argon ONE V3 M.2 NVME** (~55–65 €) — carcasa cerrada premium de aluminio con ventilador controlado por software, slot M.2 2280, puertos GPIO accesibles mediante tapa magnética, botón de encendido integrado
-  - **Geekworm X1001 (NASPi Lite)** (~40–50 €) — carcasa cerrada metálica con bahía M.2 NVMe, ventilador de 30 mm, indicador LED de actividad del disco
-  - **Pineberry Pi HatDrive! Bottom + carcasa Flirc Pi 5** (~30 + 25 = ~55 €) — adaptador M.2 NVMe compacto bajo la Pi + carcasa cerrada de aluminio Flirc con excelente disipación pasiva
-  - Precio orientativo de la carcasa cerrada: **~35–65 €**
+- **Carcasa seleccionada**: **Argon ONE V3 M.2 NVME PCIe** (~55–65 €) — carcasa cerrada premium de aluminio con ventilador controlado por software, slot M.2 2280 (key M) vía PCIe, puertos GPIO accesibles mediante tapa magnética, botón de encendido integrado
 - **SSD NVMe M.2 2230/2242/2280**:
   - **Kingston NV2 500 GB** (NVMe PCIe Gen4, M.2 2280) — ~35–40 € — punto dulce para SO + Docker + datos de servicios con margen amplio — **verificado en la lista oficial de compatibilidad de Argon ONE V3**
   - Alternativas compatibles verificadas (ordenadas por recomendación):
@@ -184,13 +179,11 @@ LAN / Tailscale (VPN mesh)
 
 | Componente | Modelo recomendado | Precio aprox. |
 |---|---|---|
-| Carcasa cerrada con M.2 NVMe | Argon NEO 5 M.2 NVME (económica) | ~35–45 € |
-| | Argon ONE V3 M.2 NVME (premium) | ~55–65 € |
+| Carcasa con M.2 NVMe | Argon ONE V3 M.2 NVME PCIe | ~55–65 € |
 | SSD NVMe 500 GB | Kingston NV2 500 GB (M.2 2280) | ~35–40 € |
-| **Total upgrade (económico)** | Argon NEO 5 + Kingston NV2 500 GB | **~70–85 €** |
-| **Total upgrade (premium)** | Argon ONE V3 + Kingston NV2 500 GB | **~90–105 €** |
+| **Total upgrade** | Argon ONE V3 + Kingston NV2 500 GB | **~90–105 €** |
 
-> **Recomendación**: la **Argon NEO 5 M.2 NVME** ofrece la mejor relación calidad-precio para un homelab: carcasa cerrada, aluminio, NVMe integrado y por debajo de 50 €. Si prefieres ventilador activo y botón de encendido, la **Argon ONE V3** merece el extra.
+> **Carcasa seleccionada**: **Argon ONE V3 M.2 NVME PCIe** — carcasa cerrada premium de aluminio con ventilador activo controlado por software, botón de encendido integrado, GPIO accesible y slot M.2 NVMe PCIe. La mejor opción para un homelab que necesita refrigeración fiable y acceso completo al hardware.
 
 ### Configuración del arranque desde NVMe
 
@@ -219,10 +212,12 @@ SSD NVMe (/home/<user>/homelab/)          ← Configs, composes, envs, datos de 
 
 /media/hd2t/                              ← Contenidos multimedia + backups
 ├── media/
-│   ├── video/                            ← Películas, series y vídeos
+│   ├── movies/                           ← Películas
+│   ├── tv/                               ← Series
 │   ├── music/                            ← Biblioteca musical
-│   ├── audiobooks/                       ← Audiolibros y podcasts
-│   └── books/                            ← Ebooks y documentos
+│   ├── books/                            ← Ebooks y documentos
+│   ├── audiobooks/                       ← Audiolibros
+│   └── podcasts/                         ← Podcasts
 ├── downloads/                            ← Descargas temporales o finales
 ├── backups/                              ← Backups del homelab
 └── ...

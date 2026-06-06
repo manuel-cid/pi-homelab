@@ -1,4 +1,4 @@
-# Disaster Recovery
+# Recuperación ante Desastre
 
 ## Descripción
 
@@ -50,6 +50,13 @@ Puertos necesarios en esta fase:
 No aplica en este documento. Aquí se define un procedimiento de recuperación del host y de los stacks ya existentes.
 
 ## Configuración
+
+Antes de ejecutar los comandos de este documento:
+
+- sustituye **`<user>`** por el usuario administrativo real del host que posee `/home/<user>/homelab/`
+- sustituye **`<stack>`** por el nombre real del stack dentro de `compose/`
+- sustituye **`<hostname-original>`** y **`<repo-candidato>`** por el nombre real del repositorio Borg que exista bajo `/media/hd2t/backups/borg/`
+- sustituye **`<fecha>`** por el nombre exacto del archivo de backup que vayas a extraer
 
 ### 1. Cuándo activar este procedimiento
 
@@ -184,6 +191,7 @@ mkdir -p /home/<user>/homelab
 mkdir -p /home/<user>/homelab/compose
 mkdir -p /home/<user>/homelab/config
 mkdir -p /home/<user>/homelab/data
+mkdir -p /home/<user>/homelab/logs
 mkdir -p /home/<user>/homelab/scripts
 ```
 
@@ -200,18 +208,38 @@ La recuperación base del proyecto se hace restaurando desde el repositorio defi
 Primero, identifica los archivos disponibles:
 
 ```bash
-cd /home/<user>/homelab
 find /media/hd2t/backups/borg -mindepth 1 -maxdepth 1 -type d | sort
 docker run --rm \
   -v /media/hd2t/backups/borg:/mnt/borg-repository \
-  -v /media/hd2t/backups/restore-test:/mnt/restore \
   -it modem7/borgmatic-docker:latest \
   borg list /mnt/borg-repository/<hostname-original>
 ```
 
-<!-- TODO: verificar el `hostname` original del repositorio Borg si el host reconstruido arranca temporalmente con un nombre distinto. -->
+Referencia práctica para `<hostname-original>`:
 
-Si prefieres restaurar con Borg/Borgmatic instalado temporalmente en el host, puedes hacerlo, pero mantén la restauración inicial fuera de producción.
+- antes de un desastre, anota la salida de `hostname`; en este proyecto ese valor sirve como referencia más probable para el directorio del repositorio Borg
+- si tras reinstalar el host arranca con un nombre distinto, no des por hecho que el repositorio local usa el hostname nuevo
+- lista primero los directorios disponibles bajo `/media/hd2t/backups/borg/` y usa después `borg list` sobre cada candidato hasta localizar los archivos correctos
+
+Comprobación recomendada:
+
+```bash
+hostname
+find /media/hd2t/backups/borg -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort
+
+docker run --rm \
+  -v /media/hd2t/backups/borg:/mnt/borg-repository \
+  -it modem7/borgmatic-docker:latest \
+  borg list /mnt/borg-repository/<repo-candidato>
+```
+
+Qué debes buscar:
+
+- un directorio cuyo nombre coincida con el hostname antiguo anotado previamente, si lo conservas
+- o, si no lo recuerdas, un repositorio que contenga archivos con el patrón `<hostname-original>-homelab-<fecha>`
+- si varios repositorios existen, usa el que contenga los archivos más recientes y coherentes con tu árbol `source/homelab/`
+
+El criterio correcto es identificar primero el repositorio real bajo `/media/hd2t/backups/borg/<hostname-original>/` y listar después sus archivos. Si prefieres restaurar con Borg/Borgmatic instalado temporalmente en el host, puedes hacerlo, pero mantén la restauración inicial fuera de producción.
 
 Ruta de trabajo recomendada:
 
@@ -226,12 +254,12 @@ docker run --rm \
   -v /media/hd2t/backups/borg:/mnt/borg-repository \
   -v /media/hd2t/backups/restore-test/full-host:/mnt/restore \
   -it modem7/borgmatic-docker:latest \
-  borg extract /mnt/borg-repository/<hostname-original>::<hostname-original>-homelab-<fecha> \
+  sh -c 'cd /mnt/restore && borg extract /mnt/borg-repository/<hostname-original>::<hostname-original>-homelab-<fecha> \
     source/homelab/compose \
     source/homelab/config \
     source/homelab/scripts \
     source/homelab/data \
-    source/homelab/.env
+    source/homelab/.env'
 ```
 
 Después, copia de vuelta al árbol operativo:
@@ -247,9 +275,11 @@ cp /media/hd2t/backups/restore-test/full-host/source/homelab/.env /home/<user>/h
 Validaciones obligatorias antes de arrancar contenedores:
 
 - existen los directorios `compose/`, `config/`, `data/` y `scripts/`
+- si tu despliegue usa logs del proyecto fuera de los contenedores, existe también `logs/`
 - los `.env` restaurados corresponden al host correcto
 - los permisos y propietarios son coherentes con cada servicio
 - las claves y secretos críticos están presentes
+- el stack `infra-borgmatic` queda restaurado dentro de `compose/` y `config/` antes de ejecutar un backup nuevo
 
 ### 8. Restaurar exports, dumps y named volumes si aplica
 
@@ -274,21 +304,23 @@ No mezcles a ciegas una copia antigua de `data/` con un dump reciente de base de
 No conviene arrancar todo el homelab de golpe. El orden más seguro es:
 
 1. infraestructura base
-2. bases de datos
-3. reverse proxy y acceso
-4. aplicaciones con estado
-5. servicios multimedia pesados
+2. red y acceso remoto
+3. bases de datos
+4. reverse proxy y acceso
+5. aplicaciones con estado
+6. servicios multimedia pesados
 
 Orden práctico orientativo:
 
-1. `tailscale`
-2. `borgmatic`
-3. `mariadb` y/o `postgres`
-4. `caddy`
-5. `authelia`, `vaultwarden` u otros servicios de acceso
-6. aplicaciones web con base de datos
-7. servicios multimedia sobre `hd2t`
-8. **Stash** y cargas grandes sobre `hd5t`
+1. `tailscale` en el host si todavía no está operativo
+2. `pihole` y `unbound` si dependen de una IP propia en macvlan y vas a devolverles su función DNS en la LAN
+3. `borgmatic`
+4. `mariadb` y/o `postgres`
+5. `caddy`
+6. `authelia`, `vaultwarden` u otros servicios de acceso
+7. aplicaciones web con base de datos
+8. servicios multimedia sobre `hd2t`
+9. **Stash** y cargas grandes sobre `hd5t`
 
 Ejemplo por stack:
 
@@ -305,6 +337,7 @@ Reglas de esta fase:
 - valida cada stack antes de seguir con el siguiente
 - si una base de datos no arranca limpia, no levantes todavía sus aplicaciones dependientes
 - si falta un mount externo, detén el arranque del servicio afectado
+- no cambies el DNS del router a Pi-hole hasta validar que `pihole` y `unbound` responden correctamente
 
 ### 10. Verificación final de recuperación
 
@@ -331,7 +364,7 @@ Checklist mínimo de datos:
 Checklist mínimo de acceso:
 
 - acceso por **LAN** a los servicios principales
-- acceso remoto por **Tailscale** si aplica
+- acceso remoto por **Tailscale** sin abrir puertos en el router
 - login correcto en servicios críticos
 - reverse proxy respondiendo en los endpoints previstos
 
@@ -362,6 +395,7 @@ Durante la recuperación, cada dato debe volver a su sitio original:
 - **árbol del proyecto**: `/home/<user>/homelab/`
 - **datos persistentes de servicios**: `/home/<user>/homelab/data/`
 - **`compose` y configuración**: `/home/<user>/homelab/compose/` y `/home/<user>/homelab/config/`
+- **logs del proyecto en host**: `/home/<user>/homelab/logs/` si tu despliegue los usa
 - **backups locales y exports**: `/media/hd2t/backups/`
 - **multimedia general**: `hd2t`
 - **biblioteca grande de Stash**: `hd5t`

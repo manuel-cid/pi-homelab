@@ -13,6 +13,8 @@ Encaja especialmente bien para:
 
 El servicio se publica solo en la **LAN** y a través de **Tailscale**. No hay exposición directa a Internet.
 
+Cuando en este documento aparezcan `IP_DE_LA_PI`, `NOMBRE_DEL_HOST.<tailnet>.ts.net` o `/home/<user>/...`, sustitúyelos por los valores reales de tu entorno.
+
 ## Requisitos Previos
 
 - Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
@@ -35,26 +37,47 @@ name: iot-node-red
 
 services:
   node-red:
-    image: nodered/node-red:latest
-    container_name: node-red
+    image: nodered/node-red:4
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    env_file:
+      - .env
     environment:
-      TZ: Europe/Madrid
+      TZ: ${TZ}
     ports:
-      - "13002:1880"
+      - "${NODE_RED_BIND_IP}:${NODE_RED_PORT}:1880"
     volumes:
-      - /home/<user>/homelab/data/node-red:/data
+      - ${DATA_ROOT}/node-red:/data
+    networks:
+      - default
+      - proxy
     labels:
       - wud.watch=false
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK}
+```
+
+Archivo recomendado: `/home/<user>/homelab/compose/iot-node-red/.env`
+
+```dotenv
+TZ=Europe/Madrid
+DATA_ROOT=/home/<user>/homelab/data
+NODE_RED_BIND_IP=0.0.0.0
+NODE_RED_PORT=13002
+PROXY_NETWORK=homelab_proxy
 ```
 
 Este stack sigue el mismo patrón que el resto de la fase:
 
 - `docker-compose.yml` dentro de `compose/`
+- `.env` junto al Compose para no fijar rutas y puertos en duro
 - persistencia en `data/`
-- puerto publicado en el host para clientes dentro y fuera de Docker
+- puerto publicado en el host para clientes en LAN y Tailscale
+- union adicional a `homelab_proxy` para poder poner Node-RED detras de Caddy sin rehacer el stack
 - sin secretos en el Compose
 - actualizaciones manuales para evitar romper flujos o nodos contrib en un momento inoportuno
 
@@ -65,10 +88,23 @@ Este stack sigue el mismo patrón que el resto de la fase:
 ```bash
 mkdir -p /home/<user>/homelab/compose/iot-node-red
 mkdir -p /home/<user>/homelab/data/node-red
+chmod 700 /home/<user>/homelab/data/node-red
 sudo chown -R 1000:1000 /home/<user>/homelab/data/node-red
 ```
 
 La imagen oficial de Node-RED usa por defecto el UID/GID `1000` dentro del contenedor. Si la ruta bind-mounted no pertenece a ese usuario, suelen aparecer errores al guardar flujos, instalar nodos o escribir contexto persistente.
+
+Si la red compartida del proxy aun no existe, creala una sola vez:
+
+```bash
+docker network inspect homelab_proxy >/dev/null 2>&1 || docker network create homelab_proxy
+```
+
+Guarda tambien el `.env` del apartado Compose y, como contiene parametros operativos del stack, restringe permisos:
+
+```bash
+chmod 600 /home/<user>/homelab/compose/iot-node-red/.env
+```
 
 ### 2. Desplegar el stack por primera vez
 
@@ -83,9 +119,11 @@ docker compose logs -f node-red
 Tras el primer arranque, la interfaz queda disponible en:
 
 - `http://IP_DE_LA_PI:13002`
-- `http://pi-homelab.<tailnet>.ts.net:13002` si accedes por Tailscale con MagicDNS
+- `http://NOMBRE_DEL_HOST.<tailnet>.ts.net:13002` si accedes por Tailscale con MagicDNS
 
 Este primer inicio crea en `/home/<user>/homelab/data/node-red/` los ficheros base del runtime, incluido `settings.js`.
+
+Si prefieres publicar Node-RED solo detras de [05-caddy.md](../03-red/05-caddy.md), cambia `NODE_RED_BIND_IP=127.0.0.1` en el `.env` antes de levantar el stack o elimina directamente el bloque `ports:` si vas a exponerlo solo por la red Docker compartida `homelab_proxy`.
 
 ### 3. Ajustar `settings.js`
 
@@ -142,8 +180,8 @@ Metodo recomendado:
 Alternativa por linea de comandos:
 
 ```bash
-docker exec -it node-red sh -lc 'cd /data && npm install --no-update-notifier --no-fund --only=production node-red-contrib-home-assistant-websocket'
 cd /home/<user>/homelab/compose/iot-node-red
+docker compose exec node-red sh -lc 'cd /data && npm install --no-update-notifier --no-fund --omit=dev node-red-contrib-home-assistant-websocket'
 docker compose restart node-red
 ```
 
@@ -417,6 +455,7 @@ No uses `hd2t` ni `hd5t` para este servicio. Node-RED forma parte del plano oper
 Respaldar:
 
 - `/home/<user>/homelab/compose/iot-node-red/docker-compose.yml`
+- `/home/<user>/homelab/compose/iot-node-red/.env`
 - `/home/<user>/homelab/data/node-red/`
 
 Especialmente importantes:

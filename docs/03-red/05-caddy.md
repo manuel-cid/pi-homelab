@@ -15,7 +15,6 @@ La decisión operativa es deliberada:
 - fuera de la LAN, el acceso sigue limitado a **Tailscale** y el cifrado HTTPS se apoya en `tailscale cert`
 - **Pi-hole** sigue resolviendo `*.lan` hacia la IP LAN del host
 - la IP del host queda libre porque **Pi-hole** y **Unbound** ya viven en `dns_lan` con IP propia, según [01-macvlan.md](01-macvlan.md), [02-pihole.md](02-pihole.md) y [03-unbound.md](03-unbound.md)
-<!-- TODO: verificar y alinear `SERVICES.md`, donde Caddy todavía aparece descrito con HTTPS/CA interna para LAN, mientras que el plan maestro y esta fase fijan HTTP en LAN + HTTPS solo por Tailscale -->
 
 ## Requisitos Previos
 
@@ -27,8 +26,8 @@ La decisión operativa es deliberada:
   - `navidrome.lan`
   - `audiobookshelf.lan`
   - `vaultwarden.lan`
-  - `portainer.lan`
 - Tener disponible el hostname MagicDNS del nodo Tailscale, por ejemplo `pi-homelab.<tailnet>.ts.net`.
+- Tener ya creada o prevista una estrategia de publicación remota por servicio. En este documento se deja preparada la base HTTPS común; las rutas o bloques concretos de cada servicio deben validarse en su documento específico.
 - Reservar en el host los puertos que usará Caddy:
   - `80/tcp` para HTTP en LAN
   - `443/tcp` para HTTPS sobre Tailscale
@@ -162,15 +161,6 @@ http://vaultwarden.lan {
 	reverse_proxy vaultwarden:80
 }
 
-http://portainer.lan {
-	import common_proxy
-	reverse_proxy host.docker.internal:9443 {
-		transport http {
-			tls_insecure_skip_verify
-		}
-	}
-}
-
 https://{$TAILSCALE_DOMAIN} {
 	import common_proxy
 	tls /certs/{$TAILSCALE_DOMAIN}.crt /certs/{$TAILSCALE_DOMAIN}.key
@@ -180,20 +170,19 @@ https://{$TAILSCALE_DOMAIN} {
 		respond "ok" 200
 	}
 
-	handle_path /jellyfin/* {
-		reverse_proxy jellyfin:8096
-	}
-
-	handle_path /navidrome/* {
-		reverse_proxy navidrome:4533
-	}
-
-	handle_path /audiobookshelf/* {
-		reverse_proxy audiobookshelf:80
-	}
+	# Las rutas o hostnames HTTPS de cada servicio se añaden de forma
+	# incremental desde sus documentos específicos.
+	#
+	# No uses aqui ejemplos genericos con `handle_path` para servicios que
+	# necesiten conservar el prefijo completo o una base URL explicita.
+	# Ejemplos ya documentados en este repositorio:
+	# - Vaultwarden: conservar `/vaultwarden` completo, sin `handle_path`
+	# - Audiobookshelf: conservar `/audiobookshelf` completo, sin recortar prefijo
+	# - Authelia: publicar antes `/authelia` y aplicar despues `forward_auth`
+	# TODO: verificar cada ruta HTTPS remota contra el documento del servicio antes de activarla en produccion.
 
 	handle {
-		respond "Caddy activo. Usa /jellyfin, /navidrome o /audiobookshelf." 200
+		respond "Caddy activo. Revisa los documentos de cada servicio antes de anadir rutas HTTPS remotas." 200
 	}
 }
 ```
@@ -201,14 +190,14 @@ https://{$TAILSCALE_DOMAIN} {
 Este patrón deja dos rutas de acceso diferenciadas:
 
 - **LAN**: un bloque `http://<servicio>.lan` por servicio
-- **Tailscale**: un único hostname HTTPS del nodo con rutas por prefijo
+- **Tailscale**: un único hostname HTTPS del nodo como entrada común, sobre el que luego se añaden rutas o bloques concretos por servicio
 
 Notas importantes sobre este diseño:
 
 - los nombres `*.lan` deben resolver a la **IP LAN del host**, no a IPs de contenedores normales
-- el ejemplo de `portainer.lan` usa `host.docker.internal:9443` porque el documento de Portainer lo publica en el host; si más adelante Portainer entra en `homelab_proxy`, conviene cambiar el upstream a `portainer:9000` o al puerto interno que corresponda
-- el acceso remoto por rutas como `/jellyfin` o `/navidrome` funciona mejor en servicios que soportan **base path** o configuración equivalente
-- si un servicio no tolera bien subrutas, mantenlo en `.lan` para la LAN y decide más adelante si quieres darle un tratamiento remoto específico
+- no todos los servicios toleran igual las **subrutas**; antes de activar una ruta HTTPS remota, valida en el documento del servicio si necesita conservar el prefijo, una `base URL` explícita o incluso un hostname dedicado
+- si un servicio no tolera bien subrutas, mantenlo en `.lan` para la LAN hasta documentar un patrón remoto correcto
+- `Portainer` queda fuera de este `Caddyfile` base porque su documento actual lo mantiene con acceso directo en `:9443` y no queda validado aquí su comportamiento correcto detrás del proxy
 
 ### 4. Generar el certificado HTTPS de Tailscale
 
@@ -301,7 +290,6 @@ Registros típicos:
 | `navidrome.lan` | `192.168.1.10` |
 | `audiobookshelf.lan` | `192.168.1.10` |
 | `vaultwarden.lan` | `192.168.1.10` |
-| `portainer.lan` | `192.168.1.10` |
 
 Esto encaja con lo definido en [02-pihole.md](02-pihole.md): Pi-hole resuelve los nombres internos y Caddy decide a qué upstream enviarlos.
 
@@ -319,13 +307,13 @@ Desde otro cliente de la LAN:
 
 - abrir `http://jellyfin.lan`
 - abrir `http://navidrome.lan`
-- comprobar que `vaultwarden.lan` y `portainer.lan` resuelven a la IP del host
+- comprobar que `vaultwarden.lan` resuelve a la IP del host
 
 Desde otro cliente unido a la tailnet:
 
 - abrir `https://pi-homelab.<tailnet>.ts.net/healthz`
-- abrir `https://pi-homelab.<tailnet>.ts.net/jellyfin/`
-- confirmar que el acceso remoto funciona sin abrir puertos en el router
+- confirmar que el acceso remoto base funciona sin abrir puertos en el router
+- validar después cada ruta o bloque HTTPS añadido siguiendo el documento específico del servicio correspondiente
 
 Errores frecuentes que conviene evitar:
 
@@ -381,6 +369,8 @@ Orden de restauración recomendado:
 - [04-tailscale.md](04-tailscale.md)
 - [06-puertos-y-firewall.md](06-puertos-y-firewall.md)
 - [01-authelia.md](../04-seguridad/01-authelia.md)
+- [03-audiobookshelf.md](../09-multimedia/03-audiobookshelf.md)
+- [01-vaultwarden.md](../11-productividad/01-vaultwarden.md)
 - Caddy Docs: [Getting Started](https://caddyserver.com/docs/getting-started)
 - Caddy Docs: [Caddyfile Concepts](https://caddyserver.com/docs/caddyfile/concepts)
 - Caddy Docs: [reverse_proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy)

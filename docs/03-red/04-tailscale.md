@@ -9,7 +9,7 @@ En este proyecto, **Tailscale** cumple una función muy concreta:
 - dar acceso remoto seguro a la **Raspberry Pi** y a los servicios publicados en ella
 - mantener el alcance del homelab en **LAN + Tailscale**, sin port forwarding ni DDNS
 - usar **MagicDNS** para acceder al nodo por nombre dentro de la tailnet
-- dejar la IP LAN del host y la red `dns_lan` funcionando como red local, sin mezclarlas con exposición pública
+- dejar la IP LAN del host y la red Docker macvlan `dns_lan` (definida en [01-macvlan.md](01-macvlan.md)) funcionando como red local, sin mezclarlas con exposición pública
 
 Para este homelab, la opción recomendada es **instalar Tailscale en el host**. Así, el nodo Tailscale coincide con la Raspberry Pi real y el acceso remoto a servicios publicados en el host, especialmente detrás de **Caddy**, resulta más simple.
 
@@ -26,6 +26,7 @@ La opción en contenedor también es válida, pero se considera secundaria y sol
 - Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md) solo si vas a usar el modo contenedor.
 - Tener creada una cuenta de Tailscale y acceso a la consola de administración de la tailnet.
 - Tener definido un hostname razonable para la Raspberry Pi, por ejemplo `pi-homelab`.
+- Sustituir antes de desplegar todos los placeholders de esta guía: `<user>`, `<tailnet>`, `<puerto>` y cualquier clave o dominio de ejemplo.
 - Elegir **una sola modalidad**:
   - instalación en host, recomendada
   - instalación en contenedor, opcional
@@ -74,7 +75,7 @@ Notas sobre este Compose:
 - el estado persistente queda en `/home/<user>/homelab/data/tailscale/`
 - `TS_AUTHKEY` sirve para el alta inicial; después del primer enrolado puedes rotarla o eliminarla del `.env` si ya existe estado persistido
 - `--accept-dns=false` evita que el nodo reemplace el DNS operativo del host, algo importante en este homelab porque el DNS local se diseña alrededor de **Pi-hole** y **Unbound**
-- no instales también Tailscale en el host si eliges este modo; deben existir **un solo nodo Tailscale** por Raspberry Pi
+- no instales también Tailscale en el host si eliges este modo; debe existir **un solo nodo Tailscale** por Raspberry Pi
 
 ## Configuración
 
@@ -95,7 +96,7 @@ En la práctica:
 Instalación recomendada en la Raspberry Pi:
 
 ```bash
-curl -fsSL https://tailscale.com/install.sh | sh
+curl -fsSL https://tailscale.com/install.sh | sudo sh
 sudo systemctl enable --now tailscaled
 sudo systemctl status tailscaled
 ```
@@ -108,11 +109,22 @@ tailscale status
 tailscale ip -4
 ```
 
+Sustituye el nombre de ejemplo `pi-homelab` por el hostname real del host si ya elegiste otro distinto en la fase de sistema.
+
 Si ya tenías el nodo unido y quieres corregir la política DNS:
 
 ```bash
 sudo tailscale set --accept-dns=false
 ```
+
+Si tienes `ufw` activo en el host, deja alineado el firewall con esta fase:
+
+```bash
+sudo ufw allow in on eth0 to any port 41641 proto udp comment 'Tailscale direct UDP'
+sudo ufw allow in on tailscale0 to any port 22 proto tcp comment 'SSH desde Tailscale'
+```
+
+Esto amplía la política base de [03-seguridad-base.md](../01-sistema/03-seguridad-base.md), mantiene el acceso SSH por la tailnet y permite a Tailscale usar su puerto UDP habitual sin abrir nada en el router. La referencia central de puertos debe quedar reflejada después en [06-puertos-y-firewall.md](06-puertos-y-firewall.md).
 
 Qué hace este ajuste:
 
@@ -180,6 +192,8 @@ ping pi-homelab
 
 Si el nombre corto no resuelve en tu cliente, prueba con el nombre completo `pi-homelab.<tailnet>.ts.net`.
 
+En esta guía, `<tailnet>` es un placeholder: sustitúyelo por el nombre real que Tailscale asigna a tu red, por ejemplo `pi-homelab.midominio.ts.net`.
+
 ### 5. Cómo encaja Tailscale con el DNS local del homelab
 
 Este punto conviene dejarlo claro para evitar confusión:
@@ -210,6 +224,8 @@ Antes de desplegar **Caddy**, puedes acceder a servicios publicados en la Raspbe
 ```text
 http://pi-homelab.<tailnet>.ts.net:<puerto>
 ```
+
+Sustituye `<puerto>` por el puerto real publicado por cada servicio según el mapa central de [06-puertos-y-firewall.md](06-puertos-y-firewall.md).
 
 Cuando completes [05-caddy.md](05-caddy.md), el patrón recomendado cambiará a un único punto de entrada remoto sobre el hostname Tailscale del host, con HTTPS automático sobre `*.ts.net`.
 
@@ -286,6 +302,7 @@ En ambos casos, también conviene documentar:
 - el nombre final del nodo en la tailnet
 - si `MagicDNS` está activo
 - si el nodo acepta o no DNS anunciado por Tailscale
+- cualquier excepción de firewall añadida para `tailscale0` o `udp/41641`
 
 Orden de restauración recomendado:
 
