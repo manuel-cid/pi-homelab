@@ -6,7 +6,7 @@
 
 En esta arquitectura, Prowlarr sigue la misma política general del proyecto:
 
-- la configuración, la base de datos SQLite, los logs y el estado del servicio viven en `/home/<user>/homelab/data/prowlarr/` sobre el **SSD NVMe**
+- la configuración, la base de datos SQLite, los logs y el estado del servicio viven en `/home/<user>/homelab/data/prowlarr/config/` sobre el **SSD NVMe**
 - no necesita almacenar payloads ni bibliotecas en `hd2t` o `hd5t`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
@@ -25,8 +25,8 @@ La decisión importante aquí es que **Prowlarr no descarga contenido**. Solo ce
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de integración entre stacks.
 - Puertos necesarios:
-  - `15001/tcp` en el host para acceso web y API desde LAN o Tailscale
-  - `9696/tcp` como puerto interno del contenedor
+  - `15001/tcp` en el host solo si vas a publicar acceso directo desde LAN o Tailscale
+  - `9696/tcp` como puerto interno del contenedor y de integración entre contenedores
 
 ## Docker Compose
 
@@ -39,7 +39,6 @@ services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     restart: unless-stopped
-    user: "${PUID}:${PGID}"
     env_file:
       - .env
     environment:
@@ -67,6 +66,7 @@ Notas sobre este Compose:
 - el stack queda aislado bajo `downloads-prowlarr`
 - toda la persistencia del servicio vive en el **SSD NVMe**
 - no se monta ningún directorio de `hd2t` ni de `hd5t` porque Prowlarr no almacena multimedia
+- la imagen de LinuxServer gestiona el usuario efectivo con `PUID` y `PGID`, así que no hace falta forzar `user:` en el servicio
 - el servicio se conecta también a `homelab_proxy` para que otros stacks puedan alcanzarlo por nombre interno Docker
 - la API de Prowlarr queda disponible para Sonarr y Radarr a través del propio servicio `prowlarr`
 
@@ -116,7 +116,8 @@ Notas prácticas:
 
 - `PUID` y `PGID` deben coincidir con el usuario real del host
 - `PROWLARR_BIND_IP=0.0.0.0` deja la interfaz accesible desde la LAN y desde la IP Tailscale del host
-- si prefieres exponerla solo detrás de Caddy, puedes publicar `127.0.0.1:15001`
+- si prefieres dejar la UI detrás de Caddy o limitarla a administración local del host, publica `127.0.0.1:15001`
+- si el acceso va a ser exclusivamente a través de `homelab_proxy`, puedes eliminar el bloque `ports:` completo y dejar Prowlarr solo accesible por nombre interno Docker
 
 ### 4. Desplegar el stack
 
@@ -138,11 +139,22 @@ curl -I http://127.0.0.1:15001
 Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en:
 
 - `http://IP_DE_LA_PI:15001`
-- `http://pi-homelab.<tailnet>.ts.net:15001` desde dispositivos unidos a Tailscale
+- `http://<hostname-de-tu-pi>.<tailnet>.ts.net:15001` desde dispositivos unidos a Tailscale con MagicDNS
 
-Y, si ya tienes Caddy operativo:
+Si tienes `ufw` activo y mantienes este acceso directo publicado en `0.0.0.0`, añade al menos estas reglas:
+
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 15001 proto tcp comment 'Prowlarr desde LAN'
+sudo ufw allow in on tailscale0 to any port 15001 proto tcp comment 'Prowlarr desde Tailscale'
+```
+
+<!-- TODO: verificar la subred LAN real antes de aplicar la regla de `ufw`; si tu red no es `192.168.1.0/24`, sustituirla por la correcta. -->
+
+Y, si además amplías el `Caddyfile` de [05-caddy.md](../03-red/05-caddy.md) con publicación interna para este servicio:
 
 - `http://prowlarr.lan`
+
+<!-- TODO: verificar si el acceso remoto por Caddy se publicará como subruta (por ejemplo `/prowlarr`) o mediante un hostname dedicado; ajustar `URL Base` en Prowlarr y el `Caddyfile` de forma coherente antes de dar ese acceso por válido. -->
 
 ### 5. Primer arranque y endurecimiento básico
 
@@ -181,7 +193,7 @@ Buenas prácticas iniciales:
 
 ### 7. Conectar Sonarr y Radarr en `Settings` -> `Apps`
 
-Cuando tengas desplegados los stacks de `docs/10-descargas/03-sonarr.md` y `docs/10-descargas/04-radarr.md`, conecta ambas aplicaciones desde `Settings` -> `Apps`.
+Cuando tengas desplegados los stacks de [03-sonarr.md](03-sonarr.md) y [04-radarr.md](04-radarr.md), conecta ambas aplicaciones desde `Settings` -> `Apps`.
 
 Ejemplo recomendado si todos los stacks comparten `homelab_proxy`:
 

@@ -141,10 +141,9 @@ Para operar con comodidad desde el usuario administrador del homelab, añade ese
 ```bash
 getent group docker || sudo groupadd docker
 sudo usermod -aG docker $USER
-newgrp docker
 ```
 
-Después de esto, la membresía del grupo debe quedar activa en la sesión actual o, si prefieres, tras cerrar y abrir sesión otra vez por SSH.
+Después de esto, abre una nueva sesión SSH para que la membresía del grupo quede aplicada de forma limpia. Si prefieres activarla en la terminal actual, puedes ejecutar `newgrp docker`, teniendo en cuenta que abrirá una subshell nueva.
 
 Importante: pertenecer al grupo `docker` equivale en la práctica a tener privilegios de nivel `root` sobre el host. En este homelab se acepta ese modelo por simplicidad operativa, pero conviene tratarlo como un permiso administrativo real.
 
@@ -160,8 +159,8 @@ groups
 Si ejecutaste comandos `docker` con `sudo` antes de añadir tu usuario al grupo `docker`, puede quedar un problema de permisos en el directorio de configuración local. Si ves errores relacionados con `~/.docker/config.json`, corrígelo así:
 
 ```bash
-sudo chown "$USER":"$USER" /home/"$USER"/.docker -R
-sudo chmod g+rwx "$HOME/.docker" -R
+[ -d "$HOME/.docker" ] && sudo chown -R "$USER":"$USER" "$HOME/.docker"
+[ -d "$HOME/.docker" ] && sudo chmod -R g+rwx "$HOME/.docker"
 ```
 
 Si ese directorio no existe todavía, puedes ignorar este paso.

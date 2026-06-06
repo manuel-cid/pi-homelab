@@ -6,6 +6,8 @@ Procedimiento para instalar **Raspberry Pi OS Lite 64-bit** en una **microSD** u
 
 Esta instalación en microSD es **provisional**. El estado final del homelab debe migrarse al **SSD NVMe** siguiendo [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md). La distribución prevista del almacenamiento se define en [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md).
 
+Los valores escritos entre `<...>` en comandos y ejemplos son **placeholders** y deben sustituirse por los datos reales de tu entorno.
+
 ## Requisitos Previos
 
 - Haber validado el hardware base descrito en [01-material-necesario.md](../00-hardware/01-material-necesario.md).
@@ -171,13 +173,14 @@ El siguiente documento a ejecutar es [02-configuracion-inicial.md](02-configurac
 Durante este documento, el reparto de discos debe entenderse así:
 
 - **microSD**: solo medio temporal para el arranque inicial y la configuración base.
-- **SSD NVMe**: destino definitivo del sistema operativo, Docker, configuraciones y datos persistentes tras la migración.
-- **`hd2t`**: multimedia general, descargas y backups, según [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md).
-- **`hd5t`**: biblioteca multimedia de Stash, según [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md).
+- **SSD NVMe**: destino definitivo del sistema operativo, Docker, configuraciones y datos persistentes tras la migración. La estructura operativa final vivirá bajo `/home/<user>/homelab/`.
+- **`hd2t`**: multimedia general, descargas y backups, montado en `/media/hd2t`, según [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md).
+- **`hd5t`**: biblioteca multimedia dedicada, montada en `/media/hd5t`, según [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md).
 
 Consideraciones prácticas:
 
 - No guardes datos definitivos del homelab en la microSD.
+- No crees todavía la estructura final de trabajo en `/home/<user>/homelab/`; se documenta en [04-estructura-directorios.md](04-estructura-directorios.md).
 - No despliegues todavía volúmenes persistentes de servicios en discos USB.
 - No reformatees el NVMe en esta fase salvo que estés rehaciendo deliberadamente la instalación desde cero.
 

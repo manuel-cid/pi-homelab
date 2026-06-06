@@ -12,13 +12,15 @@ La política de este proyecto se mantiene:
 
 Esta fase documenta la **estrategia general**. El despliegue concreto de la herramienta se cubre en [02-borgmatic.md](02-borgmatic.md) y el procedimiento detallado para volúmenes y bases de datos en [03-backup-docker-volumes.md](03-backup-docker-volumes.md).
 
+Cuando este documento usa la ruta **`/home/<user>/homelab/`**, **`<user>`** representa el usuario real de Linux con el que se administra la Raspberry Pi.
+
 ## Requisitos Previos
 
 - Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 - Tener montado **`hd2t`** en **`/media/hd2t`** y operativo para escritura.
 - Tener al menos un servicio con datos persistentes desplegado o, como mínimo, definida la estructura de rutas bajo **`/home/<user>/homelab/data/`**.
 - Tener espacio libre suficiente en `hd2t` para almacenar varias versiones deduplicadas de los datos del NVMe.
-- Disponer de un destino remoto para la copia offsite con conectividad saliente desde la Raspberry Pi.
+- Disponer de un destino remoto para la copia offsite accesible mediante conexiones salientes desde la Raspberry Pi, sin abrir puertos entrantes en el router.
 
 ## Objetivo de esta Fase
 
@@ -42,7 +44,7 @@ La interpretación concreta de **3-2-1** en este proyecto es:
 
 - **3 copias**: datos en producción en el **SSD NVMe**, copia local en **`hd2t`**, copia remota cifrada fuera de casa
 - **2 soportes distintos**: NVMe interno y disco USB externo
-- **1 copia offsite**: repositorio cifrado en nube o servidor remoto
+- **1 copia offsite**: repositorio cifrado en la nube o en un servidor remoto accesible solo mediante conexiones salientes
 
 Este diseño reduce tres riesgos distintos:
 
@@ -105,7 +107,7 @@ Por tanto, la política recomendada es esta:
 
 ### 4. Fijar los destinos de backup
 
-La estructura recomendada queda así:
+La estructura recomendada queda así dentro del disco **`hd2t`**, usando el árbol definido en `SERVICES.md`:
 
 ```text
 /media/hd2t/backups/
@@ -122,7 +124,7 @@ Uso de cada ruta:
 - `exports/`: dumps temporales o persistidos de bases de datos si decides conservarlos aparte del repositorio
 - `restore-test/`: restauraciones de validación para comprobar que las copias realmente sirven
 
-Para la copia offsite, usa un repositorio remoto distinto del local y con credenciales separadas. El detalle técnico del proveedor no se fija aquí; la condición importante es que soporte una **copia cifrada y automatizable** desde la Raspberry Pi sin abrir puertos entrantes.
+Para la copia offsite, usa un repositorio remoto distinto del local y con credenciales separadas. El detalle técnico del proveedor no se fija aquí; la condición importante es que soporte una **copia cifrada y automatizable** desde la Raspberry Pi usando solo conexiones salientes, sin abrir puertos entrantes y sin exponer servicios del homelab a internet.
 
 ### 5. Fijar la programación recomendada
 
@@ -131,17 +133,19 @@ La frecuencia debe ser realista para una Raspberry Pi 5 y suficiente para servic
 Programación recomendada:
 
 - **cada noche**: backup completo lógico con deduplicación hacia el repositorio local
-- **después del backup local**: réplica al destino offsite
+- **después del backup local o en una segunda ventana nocturna**: réplica al destino offsite
 - **antes de cada backup**: generación de dumps consistentes de MariaDB/PostgreSQL y cualquier export crítico equivalente
 - **una vez por semana**: `prune` para aplicar retención
 - **una vez al mes**: `check` del repositorio y prueba simple de restauración
 
-Ventana sugerida:
+Ventana sugerida para la copia local y el mantenimiento:
 
 - `02:30`: hooks previos y backup local
-- `03:30`: backup offsite
-- `domingo 04:30`: prune y compactación
-- `primer domingo de mes 05:00`: verificación y restore test
+- `domingo 04:30`: `prune`
+- `domingo 04:45`: compactación
+- `día 1 de cada mes 05:00`: verificación y restore test
+
+La réplica offsite puede ejecutarse justo después del backup local o en una ventana separada mientras siga siendo nocturna y no compita con tareas interactivas. La implementación exacta queda para [02-borgmatic.md](02-borgmatic.md).
 
 No hace falta inventar una política más agresiva salvo que alojes datos con cambios horarios o requisitos más estrictos.
 

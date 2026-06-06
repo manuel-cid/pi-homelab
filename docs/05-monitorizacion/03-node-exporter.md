@@ -15,7 +15,7 @@ En este proyecto conviene mantener un criterio simple:
 - Node Exporter no necesita base de datos ni almacenamiento persistente
 - no hace falta publicar su puerto en la LAN
 - debe ser accesible solo desde la red Docker compartida con Prometheus
-- el nombre del servicio debe ser `node-exporter`, porque así está definido el target en [01-prometheus.md](01-prometheus.md)
+- el nombre del servicio debe ser `node-exporter`, porque así está preparado el target recomendado en [01-prometheus.md](01-prometheus.md)
 
 ## Requisitos Previos
 
@@ -39,7 +39,7 @@ name: monitoring-node-exporter
 
 services:
   node-exporter:
-    image: quay.io/prometheus/node-exporter:latest
+    image: quay.io/prometheus/node-exporter:v1.11.1
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -78,7 +78,7 @@ Archivo recomendado: `/home/<user>/homelab/compose/monitoring-node-exporter/.env
 PROXY_NETWORK=homelab_proxy
 ```
 
-<!-- TODO: verificar una versión fija probada de `quay.io/prometheus/node-exporter` para ARM64 y sustituir la etiqueta `latest` en este Compose -->
+La etiqueta `v1.11.1` es una opción conservadora para este homelab: fija una versión concreta de Node Exporter, evita la deriva de `latest` y mantiene manifiesto multi-arquitectura con variante `linux/arm64`. Si más adelante quieres máxima inmutabilidad, la alternativa razonable es fijar además el digest exacto del manifiesto tras validar la actualización manualmente.
 
 Puntos importantes de este Compose:
 
@@ -132,17 +132,49 @@ El resultado esperado es este:
 - no aparecen errores de lectura sobre `/host`, `/host/proc` o `/host/sys`
 - el servicio escucha en `9100/tcp` dentro de la red Docker compartida
 
-### 3. Verificar que Prometheus puede scrapear el exporter
+### 3. Activar el target en Prometheus
+
+Después de desplegar Node Exporter, añade su target en el fichero de Prometheus para que el scrape empiece realmente.
+
+Archivo: `/home/<user>/homelab/config/prometheus/prometheus.yml`
+
+```yaml
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  - job_name: node-exporter
+    static_configs:
+      - targets:
+          - node-exporter:9100
+```
+
+Si en [01-prometheus.md](01-prometheus.md) dejaste el bloque comentado, basta con descomentarlo. Después recarga la configuración:
+
+```bash
+cd /home/<user>/homelab/compose/monitoring-prometheus
+docker compose exec prometheus wget -qO- http://127.0.0.1:9090/-/reload
+```
+
+Validación mínima tras la recarga:
+
+- el job `node-exporter` aparece en `Status` → `Targets`
+- el target ya no figura como `UNKNOWN` o ausente por falta de configuración
+
+### 4. Verificar que Prometheus puede scrapear el exporter
 
 Como este servicio no publica puerto al host, la validación práctica debe hacerse a través de Prometheus.
 
 Si ya tienes desplegado [01-prometheus.md](01-prometheus.md), una comprobación útil es esta:
 
 ```bash
-curl -s http://127.0.0.1:11000/api/v1/targets | jq '.data.activeTargets[] | select(.labels.job=="node-exporter") | {scrapeUrl: .scrapeUrl, health: .health, lastError: .lastError}'
+curl -sG http://127.0.0.1:11000/api/v1/query \
+  --data-urlencode 'query=up{job="node-exporter"}'
 ```
 
-Si `health` aparece como `up`, la conectividad entre Prometheus y Node Exporter es correcta.
+Si la respuesta devuelve un valor `1`, la conectividad entre Prometheus y Node Exporter es correcta. Si devuelve `0`, Prometheus alcanza el target pero el scrape está fallando.
 
 Después revisa la UI de Prometheus:
 
@@ -159,7 +191,7 @@ Si aparece `DOWN`, las causas más habituales son estas:
 - Prometheus y Node Exporter no comparten la red `homelab_proxy`
 - el contenedor no arrancó bien por una ruta montada incorrecta
 
-### 4. Consultas rápidas recomendadas
+### 5. Consultas rápidas recomendadas
 
 Una vez el target esté `UP`, estas consultas son útiles en Prometheus o Grafana:
 
@@ -197,7 +229,7 @@ Lectura práctica:
 - la consulta de memoria devuelve porcentaje de memoria usada
 - para temperatura, en muchas instalaciones de Raspberry Pi la métrica útil será `node_thermal_zone_temp` y habrá que dividir entre `1000`
 
-### 5. Relación con Grafana
+### 6. Relación con Grafana
 
 En [02-grafana.md](02-grafana.md), este servicio se usa para alimentar dos vistas especialmente útiles:
 
@@ -210,7 +242,7 @@ Si el dashboard de sistema no muestra datos, revisa siempre en este orden:
 2. que la variable `job` del dashboard tenga el valor `node-exporter`
 3. que existan realmente las métricas esperadas en `Explore`
 
-### 6. Operación diaria
+### 7. Operación diaria
 
 Comandos útiles para operación diaria:
 

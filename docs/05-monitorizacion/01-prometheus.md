@@ -28,6 +28,8 @@ En esta Raspberry Pi 5 conviene fijar un criterio simple:
   - **`9100/tcp`** interno para el target de Node Exporter cuando ese servicio exista
   - **`9323/tcp`** en la IP del bridge Docker del host si se habilitan métricas nativas de Docker Engine
 
+Cuando este documento use placeholders como `<user>`, debes sustituirlos por el usuario real del sistema antes de ejecutar comandos o guardar rutas.
+
 ## Objetivo de esta Fase
 
 Al terminar este documento, el estado esperado es este:
@@ -36,7 +38,7 @@ Al terminar este documento, el estado esperado es este:
 - La configuración vive fuera del contenedor en `/home/<user>/homelab/config/prometheus/`.
 - La TSDB de Prometheus vive en `/home/<user>/homelab/data/prometheus/` sobre el **SSD NVMe**.
 - La retención queda limitada por tiempo y por tamaño para evitar crecimiento sin control.
-- Queda definido un `prometheus.yml` listo para scrapear Prometheus, Node Exporter y, opcionalmente, el endpoint nativo de Docker Engine.
+- Queda definido un `prometheus.yml` base listo para scrapear Prometheus y preparado para añadir Node Exporter y, opcionalmente, el endpoint nativo de Docker Engine.
 
 ## Docker Compose
 
@@ -141,24 +143,27 @@ scrape_configs:
       - targets:
           - prometheus:9090
 
-  - job_name: node-exporter
-    static_configs:
-      - targets:
-          - node-exporter:9100
+  # Descomenta este bloque cuando despliegues Node Exporter:
+  # - job_name: node-exporter
+  #   static_configs:
+  #     - targets:
+  #         - node-exporter:9100
 
-  - job_name: docker
-    static_configs:
-      - targets:
-          - host.docker.internal:9323
+  # Descomenta este bloque cuando habilites el endpoint nativo
+  # de métricas de Docker Engine en el host:
+  # - job_name: docker
+  #   static_configs:
+  #     - targets:
+  #         - host.docker.internal:9323
 ```
 
 Lectura práctica de estos targets:
 
 - `prometheus:9090` valida que el propio servidor está sano
-- `node-exporter:9100` quedará operativo cuando se despliegue [03-node-exporter.md](03-node-exporter.md)
-- `host.docker.internal:9323` requiere habilitar antes el endpoint nativo de Docker Engine
+- `node-exporter:9100` debe añadirse cuando se despliegue [03-node-exporter.md](03-node-exporter.md)
+- `host.docker.internal:9323` debe añadirse cuando habilites el endpoint nativo de Docker Engine
 
-Si Node Exporter o el endpoint de Docker todavía no existen, esos jobs aparecerán como `DOWN`. Eso no rompe Prometheus; simplemente indica que el target aún no está disponible.
+Con este enfoque, el primer arranque de Prometheus queda limpio: solo aparece `UP` el propio servicio y no introduces `DOWN` permanentes por targets todavía no desplegados.
 
 ### 3. Habilitar opcionalmente las métricas nativas de Docker Engine
 
@@ -197,6 +202,8 @@ curl http://172.17.0.1:9323/metrics | head
 
 Si tu gateway bridge no es `172.17.0.1`, sustituye esa IP en la prueba y mantén el mismo criterio.
 
+Después añade el bloque `job_name: docker` del apartado anterior a `prometheus.yml` y recarga la configuración.
+
 ### 4. Guardar el `.env` y desplegar el stack
 
 Guarda el `.env` del apartado Compose y despliega:
@@ -233,8 +240,9 @@ Dentro de la interfaz, revisa `Status` → `Targets`.
 Estado esperado justo después de desplegar solo Prometheus:
 
 - `prometheus` en estado `UP`
-- `node-exporter` probablemente `DOWN` hasta completar [03-node-exporter.md](03-node-exporter.md)
-- `docker` `UP` si ya habilitaste el endpoint nativo del daemon; en caso contrario, `DOWN`
+- no deberían aparecer todavía `node-exporter` ni `docker` si no has activado esos bloques en `prometheus.yml`
+
+Cuando completes [03-node-exporter.md](03-node-exporter.md), añade su bloque al fichero y recarga Prometheus. Si además habilitas las métricas nativas de Docker Engine, añade también el bloque `docker`.
 
 ### 6. Política recomendada de retención en el SSD NVMe
 
@@ -268,7 +276,11 @@ docker compose restart prometheus
 curl -s http://127.0.0.1:11000/api/v1/targets | jq '.data.activeTargets[] | {job: .labels.job, health: .health}'
 ```
 
-El último comando ayuda a verificar rápido qué targets están `up` o `down` sin abrir la UI.
+El último comando ayuda a verificar rápido qué targets están `up` o `down` sin abrir la UI. Si no tienes `jq` instalado, puedes revisar la salida JSON en bruto con:
+
+```bash
+curl -s http://127.0.0.1:11000/api/v1/targets
+```
 
 ## Almacenamiento
 

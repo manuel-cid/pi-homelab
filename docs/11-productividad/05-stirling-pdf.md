@@ -14,7 +14,7 @@ En esta Raspberry Pi 5 conviene tratarlo como un servicio **stateless** y de uso
 
 Para este proyecto esa topología es la más coherente: despliegue muy simple, sin estado que respaldar y sin riesgo de mezclar documentación temporal con el almacenamiento persistente del resto del homelab.
 
-Como norma general, los servicios web del homelab deberían entrar por Caddy; aquí se documenta `16004/tcp` como una **excepción operativa consciente** para usar Stirling PDF de forma directa y puntual desde **LAN** o **Tailscale**, sin exponerlo a internet.
+Como norma general, los servicios web del homelab deberían entrar por [05-caddy.md](../03-red/05-caddy.md); aquí se documenta `16004/tcp` como una **excepción operativa consciente** para usar Stirling PDF de forma directa y puntual desde **LAN** o **Tailscale**, sin exponerlo a internet.
 
 ## Requisitos Previos
 
@@ -22,6 +22,7 @@ Como norma general, los servicios web del homelab deberían entrar por Caddy; aq
 - Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres usar Stirling PDF también fuera de casa a través de la tailnet.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto del servicio.
 - Tener claro que este despliegue queda **sin login persistente** y solo tiene sentido porque el alcance de red del homelab es **LAN + Tailscale**, sin exposición pública a internet.
+- Sustituir antes de desplegar los placeholders de esta guía, especialmente `<user>`, `<ip-lan-de-la-pi>` y `<tailnet>`.
 - Puertos necesarios en esta fase:
   - **`16004/tcp` publicado en el host** para acceso web desde LAN y Tailscale
   - **`8080/tcp`** es el puerto interno del contenedor
@@ -35,7 +36,7 @@ name: productivity-stirling-pdf
 
 services:
   stirling-pdf:
-    image: stirlingtools/stirling-pdf:latest
+    image: stirlingtools/stirling-pdf:2.10.1
     restart: unless-stopped
     env_file:
       - .env
@@ -50,6 +51,7 @@ services:
       - /tmp
       - /configs
       - /logs
+      - /pipeline
     labels:
       - wud.watch=true
 ```
@@ -71,10 +73,14 @@ Notas sobre este Compose:
 - este acceso directo por `16004/tcp` debe entenderse como una excepción deliberada al patrón preferente con Caddy; si más adelante quieres homogeneizar la exposición web del homelab, publícalo solo en `127.0.0.1` o intégralo detrás del reverse proxy
 - `SECURITY_ENABLELOGIN=false` deja la interfaz sin autenticación local, algo aceptable aquí solo porque el servicio queda limitado a **LAN + Tailscale**
 - `DISABLE_ADDITIONAL_FEATURES=false` mantiene disponibles las funciones extra de la imagen estándar aunque el login esté desactivado
-- `tmpfs` en `/tmp`, `/configs` y `/logs` fuerza el carácter **stateless** del servicio: nada de lo que se genere ahí sobrevive a una recreación o reinicio del contenedor
+- `tmpfs` en `/tmp`, `/configs`, `/logs` y `/pipeline` fuerza el carácter **stateless** del servicio: nada de lo que se genere ahí sobrevive a una recreación o reinicio del contenedor
 - no se usan bind mounts sobre el **SSD NVMe** porque este servicio no necesita persistencia
 - WUD puede monitorizar este servicio sin riesgo porque es fácil de recrear y no arrastra estado propio
-- <!-- TODO: verificar una etiqueta concreta y estable de `stirlingtools/stirling-pdf` para ARM64 antes de pasar este stack a producción; `latest` simplifica el ejemplo, pero no fija una versión reproducible -->
+- se fija `stirlingtools/stirling-pdf:2.10.1` para evitar `latest` y mantener las actualizaciones bajo control
+- antes de desplegar o actualizar, verifica en las referencias oficiales que la etiqueta elegida sigue disponible para `linux/arm64` y decide conscientemente si quieres mantenerla o moverla
+- alternativa razonable si priorizas ahorro de espacio y solo necesitas operaciones PDF básicas: usar una variante `ultra-lite` de la misma versión fijada
+- alternativa razonable si necesitas conversiones más completas, tipografías extra y un paquete más autosuficiente: usar una variante `fat` de la misma versión fijada
+<!-- TODO: verificar periódicamente qué etiqueta concreta de Stirling PDF queda validada para ARM64 en este homelab antes de cambiar la versión fijada. -->
 
 ## Configuración
 
@@ -85,6 +91,12 @@ mkdir -p /home/<user>/homelab/compose/productivity-stirling-pdf
 ```
 
 Guarda en ese directorio el `docker-compose.yml` y el `.env` del apartado anterior.
+
+Como `.env` controla el modo de autenticación y la política de exposición, conviene limitar permisos:
+
+```bash
+chmod 600 /home/<user>/homelab/compose/productivity-stirling-pdf/.env
+```
 
 ### 2. Desplegar el stack
 
@@ -108,7 +120,21 @@ Si todo ha arrancado bien, la UI quedará accesible en una de estas URLs:
 - `http://<ip-lan-de-la-pi>:16004`
 - `http://pi-homelab.<tailnet>.ts.net:16004`
 
-### 3. Ajustes iniciales en la UI
+### 3. Alinear el firewall con esta excepción
+
+Si mantienes el puerto publicado en `0.0.0.0`, el servicio **no** quedará realmente accesible hasta permitirlo en el firewall del host como excepción documentada en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
+
+Con `ufw`, la apertura mínima coherente con este documento es:
+
+```bash
+sudo ufw allow in on eth0 proto tcp from 192.168.1.0/24 to any port 16004 comment 'Stirling PDF desde LAN'
+sudo ufw allow in on tailscale0 to any port 16004 proto tcp comment 'Stirling PDF desde Tailscale'
+sudo ufw status numbered
+```
+
+Si usas `nftables`, añade reglas equivalentes restringiendo `16004/tcp` a la LAN y a `tailscale0`.
+
+### 4. Ajustes iniciales en la UI
 
 Con este despliegue no hay bootstrap de usuarios ni base de datos que preparar. Lo razonable es revisar solo lo siguiente:
 
@@ -122,7 +148,7 @@ Pruebas rápidas recomendadas:
 2. extraer una página de un documento
 3. comprimir un PDF grande para medir tiempos en la Raspberry Pi 5
 
-### 4. Límites operativos del modo stateless
+### 5. Límites operativos del modo stateless
 
 Este documento describe un despliegue deliberadamente simple. Conviene asumir estas consecuencias desde el principio:
 
@@ -142,6 +168,7 @@ Rutas usadas por el contenedor:
 - `/tmp` como almacenamiento temporal de trabajo
 - `/configs` como configuración efímera en memoria
 - `/logs` como logs efímeros en memoria
+- `/pipeline` como configuración efímera en memoria para automatizaciones
 
 Política recomendada:
 
@@ -167,5 +194,7 @@ En la práctica, si pierdes el contenedor solo necesitas volver a levantar el st
 ## Referencias
 
 - Documentación oficial de Docker para Stirling PDF: https://docs.stirlingpdf.com/Installation/Docker%20Install/
+- Versiones oficiales de la imagen Docker: https://docs.stirlingpdf.com/Installation/Versions/
 - Documentación oficial de configuración y seguridad: https://docs.stirlingpdf.com/Configuration/System%20and%20Security/
 - Imagen Docker oficial: https://hub.docker.com/r/stirlingtools/stirling-pdf
+- Releases oficiales del proyecto: https://github.com/Stirling-Tools/Stirling-PDF/releases

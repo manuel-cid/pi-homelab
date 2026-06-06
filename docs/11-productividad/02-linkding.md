@@ -8,7 +8,7 @@ En esta Raspberry Pi 5 se despliega como stack Docker propio, con acceso **solo 
 
 - la aplicación vive en `/home/<user>/homelab/compose/productivity-linkding/`
 - los datos persistentes viven en `/home/<user>/homelab/data/linkding/` sobre el **SSD NVMe**
-- el servicio se publica en el puerto `9090/tcp` del host para poder usarlo desde navegador y desde la **extensión oficial**
+- el contenedor escucha en su puerto interno `9090/tcp`, pero el acceso recomendado se hace a través de **Caddy** para mantener una exposición coherente con el resto del homelab
 - se usa la imagen `sissbruecker/linkding:latest`, suficiente para un despliegue estándar sin archivado local de páginas HTML
 
 Para un homelab personal, esta topología suele ser la más práctica: despliegue sencillo, base SQLite local, backup fácil y configuración mínima en clientes.
@@ -16,13 +16,15 @@ Para un homelab personal, esta topología suele ser la más práctica: despliegu
 ## Requisitos Previos
 
 - Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
+- Haber completado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Linkding con el patrón recomendado del proyecto.
 - Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder también desde fuera de casa a través de la tailnet.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para documentar el puerto del servicio.
 - Revisar [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount de Linkding en el plan de copias.
 - Disponer de la raíz operativa del homelab en `/home/<user>/homelab/`.
 - Puertos necesarios en esta fase:
-  - **`9090/tcp` publicado en el host** para acceso web desde LAN y Tailscale
-  - se mantiene `9090/tcp` como **excepción documentada** a la convención general por rangos de [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md), ya que coincide con el puerto HTTP nativo de Linkding y simplifica la extensión del navegador
+  - **`9090/tcp` solo como puerto interno del contenedor** para el upstream de Caddy
+  - **`80/tcp` en el host** si Linkding se sirve por `http://linkding.lan` a través de Caddy dentro de la LAN
+  - **`443/tcp` en `tailscale0`** solo si más adelante validas y publicas un acceso remoto para Linkding dentro del bloque HTTPS común de Caddy
   - no hace falta exponer ningún puerto a internet ni abrir nada en el router
 
 ## Docker Compose
@@ -42,12 +44,20 @@ services:
       TZ: ${TZ}
       LD_SUPERUSER_NAME: ${LINKDING_SUPERUSER_NAME}
       LD_SUPERUSER_PASSWORD: ${LINKDING_SUPERUSER_PASSWORD}
-    ports:
-      - "${LINKDING_BIND_IP}:${LINKDING_PORT}:9090"
+    expose:
+      - "9090"
     volumes:
       - ${DATA_ROOT}/linkding:/etc/linkding/data
+    networks:
+      - default
+      - proxy
     labels:
       - wud.watch=true
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK}
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/productivity-linkding/.env`
@@ -55,8 +65,7 @@ Archivo recomendado: `/home/<user>/homelab/compose/productivity-linkding/.env`
 ```dotenv
 TZ=Europe/Madrid
 DATA_ROOT=/home/<user>/homelab/data
-LINKDING_BIND_IP=0.0.0.0
-LINKDING_PORT=9090
+PROXY_NETWORK=homelab_proxy
 LINKDING_SUPERUSER_NAME=admin
 LINKDING_SUPERUSER_PASSWORD=cambiar-esta-clave
 ```
@@ -65,8 +74,8 @@ Notas sobre este Compose:
 
 - Linkding usa **SQLite por defecto**, así que no necesita una base de datos externa para este caso
 - el bind mount a `/etc/linkding/data` deja toda la persistencia en el **SSD NVMe**
-- `LINKDING_BIND_IP=0.0.0.0` permite acceder al servicio desde la LAN y desde Tailscale
-- si prefieres publicarlo solo detrás de un reverse proxy local, cambia `LINKDING_BIND_IP=127.0.0.1`
+- `expose: "9090"` basta para que **Caddy** alcance el upstream dentro de la red Docker compartida
+- `PROXY_NETWORK=homelab_proxy` mantiene este stack alineado con la convención definida en [02-estructura-compose.md](../02-docker/02-estructura-compose.md)
 - `LD_SUPERUSER_NAME` y `LD_SUPERUSER_PASSWORD` permiten crear el primer usuario automáticamente al arrancar
 - WUD puede monitorizar este servicio sin riesgo porque es pequeño y fácil de recuperar
 
@@ -98,17 +107,30 @@ docker compose ps
 docker compose logs --tail=50 linkding
 ```
 
-Validaciones rápidas:
+Si vas a publicarlo con Caddy, añade un bloque equivalente a este en `/home/<user>/homelab/config/caddy/Caddyfile`:
 
-```bash
-curl -I http://127.0.0.1:9090/
-ls -lah /home/<user>/homelab/data/linkding
+```caddyfile
+http://linkding.lan {
+	import common_proxy
+	reverse_proxy linkding:9090
+}
 ```
 
-Si el arranque ha ido bien, podrás abrir Linkding en una de estas URLs:
+<!-- TODO: verificar si Linkding tolera una publicación remota estable detrás del bloque `https://{$TAILSCALE_DOMAIN}` de Caddy mediante subruta o si conviene documentar un hostname dedicado antes de dar por válida una URL HTTPS canónica. -->
 
-- `http://<ip-lan-de-la-pi>:9090`
-- `http://pi-homelab.<tailnet>.ts.net:9090`
+Validaciones rápidas con el patrón recomendado:
+
+```bash
+docker network ls | grep homelab_proxy
+ls -lah /home/<user>/homelab/data/linkding
+curl -I -H 'Host: linkding.lan' http://127.0.0.1
+```
+
+Si el arranque ha ido bien y Caddy ya está actualizado, podrás abrir Linkding en:
+
+- `http://linkding.lan`
+
+Hasta que se valide la publicación remota en el `Caddyfile`, no trates ninguna URL HTTPS de Tailscale para Linkding como referencia operativa cerrada en este repositorio.
 
 ### 3. Verificar el usuario inicial
 
@@ -164,8 +186,9 @@ Recomendación operativa:
 
 Ejemplos de URL razonables:
 
-- `http://pi-homelab.<tailnet>.ts.net:9090` si el equipo cliente usa Tailscale
-- `http://<ip-lan-de-la-pi>:9090` si el equipo solo accede por red local
+- `http://linkding.lan` si el equipo está dentro de la LAN y usa la resolución local de Pi-hole
+
+<!-- TODO: verificar qué patrón remoto queda finalmente soportado para la extensión del navegador: subruta bajo `https://{$TAILSCALE_DOMAIN}` o hostname dedicado publicado por Caddy. -->
 
 Conviene no mezclar muchas URLs distintas para la misma instancia. Elige una como referencia y úsala también en la extensión.
 
@@ -182,7 +205,7 @@ docker compose exec linkding python manage.py shell -c "from django.contrib.auth
 
 Señales de que el servicio está sano:
 
-- la UI carga sin errores al abrir `:9090`
+- la UI carga sin errores al abrir `http://linkding.lan`
 - puedes iniciar sesión y crear un marcador
 - la extensión del navegador añade enlaces correctamente
 - aparecen ficheros como `db.sqlite3` en el directorio persistente
@@ -249,7 +272,7 @@ docker compose start linkding
 Buenas prácticas de restore:
 
 - restaura siempre el directorio completo si quieres recuperar también iconos, previews y snapshots
-- si usas el ZIP generado por `full_backup`, extráelo en una carpeta de la nueva instalación, renómbrala a `data` y móntala como `/etc/linkding/data` al arrancar el contenedor
+- si usas el ZIP generado por `full_backup`, sigue el procedimiento oficial de restauración de Linkding y valídalo primero en una copia temporal antes de depender de él como único método
 - prueba el restore en una copia temporal antes de dar la estrategia por válida
 
 ## Referencias
@@ -258,6 +281,7 @@ Buenas prácticas de restore:
 - [Linkding - Installation](https://linkding.link/installation/)
 - [Linkding - Options](https://linkding.link/options/)
 - [Linkding - Backups](https://linkding.link/backups/)
+- [Docker Hub - sissbruecker/linkding](https://hub.docker.com/r/sissbruecker/linkding)
 - [Linkding - Browser Extension](https://linkding.link/browser-extension/)
 - [Linkding - Repositorio oficial](https://github.com/sissbruecker/linkding)
 - [Extensión oficial de Linkding](https://github.com/sissbruecker/linkding-extension)

@@ -33,6 +33,8 @@ En este diseño, **Pi-hole no actúa como servidor DHCP**. El DHCP sigue en el r
   - `80/tcp`
   - `443/tcp`
 
+Las IPs usadas en este documento siguen el ejemplo definido en [01-macvlan.md](01-macvlan.md). Si en tu red real cambiaste ese bloque, sustituye aquí `192.168.1.194`, `192.168.1.222`, `192.168.1.1` y `192.168.1.10` por tus valores reales antes de desplegar el stack.
+
 ## Docker Compose
 
 Archivo: `/home/<user>/homelab/compose/infra-pihole-unbound/docker-compose.yml`
@@ -77,6 +79,7 @@ Notas sobre este Compose:
 - se declara `env_file: .env` para que el stack sea autocontenido tanto por CLI como desde Portainer
 - el upstream inicial usa resolutores públicos solo para bootstrap
 - cuando completes [03-unbound.md](03-unbound.md), cambia `FTLCONF_dns_upstreams` para apuntar a `192.168.1.195#5335`
+- en Pi-hole v6 basta con persistir `/etc/pihole` para un despliegue nuevo; no montes `/etc/dnsmasq.d` salvo que hayas verificado que necesitas configuración `dnsmasq` personalizada o una migración heredada
 
 Archivo recomendado: `/home/<user>/homelab/compose/infra-pihole-unbound/.env`
 
@@ -187,7 +190,8 @@ Razón operativa:
 Formas de gestionarlo:
 
 - desde la interfaz web, añadiendo registros DNS locales
-- mediante configuración persistida dentro de `/etc/pihole`
+- mediante configuración persistida dentro de `/home/<user>/homelab/data/pihole/`
+- <!-- TODO: verificar el mecanismo exacto si más adelante se decide mantener overrides manuales en `dnsmasq` con Pi-hole v6; no activarlo por defecto en este stack -->
 
 Validación desde el host o desde otro equipo:
 
@@ -298,7 +302,7 @@ Notas operativas:
 
 - Pi-hole no almacena multimedia ni datos de usuario en `hd2t` o `hd5t`
 - mantener estos datos en el SSD reduce latencia y simplifica el backup
-- si más adelante añades ficheros auxiliares manuales, guárdalos bajo este mismo árbol
+- si más adelante añades ficheros auxiliares manuales, guárdalos bajo este mismo árbol y documenta si requieren activar persistencia adicional
 
 ## Backup
 

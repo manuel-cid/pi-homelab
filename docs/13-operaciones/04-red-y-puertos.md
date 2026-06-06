@@ -66,6 +66,7 @@ Interpretación práctica:
 | Host | IP Tailscale del host | `22/tcp` | SSH | Tailscale |
 | Host | IP LAN del host | `80/tcp` | Caddy | LAN |
 | Host | IP Tailscale del host | `443/tcp` | Caddy | Tailscale |
+| Host | `eth0` | `41641/udp` | Tailscale | conectividad directa de la tailnet en LAN |
 | Macvlan | IP de Pi-hole | `53/tcp` | Pi-hole | LAN |
 | Macvlan | IP de Pi-hole | `53/udp` | Pi-hole | LAN |
 | Macvlan | IP de Pi-hole | `80/tcp` | Pi-hole | LAN |
@@ -74,18 +75,16 @@ Interpretación práctica:
 
 Estas entradas siguen siendo la base del diseño de red del proyecto y coinciden con [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 
-#### 2.2 Puertos publicados actualmente en el host
+#### 2.2 Puertos documentados con acceso directo en el host
 
 | Puerto | Protocolo | Servicio | Estado documental actual | Exposición prevista |
 |-------|-----------|----------|---------------------------|---------------------|
+| `10001` | TCP | WUD | publicado en `0.0.0.0` | LAN + Tailscale |
 | `9443` | TCP | Portainer | publicado en `0.0.0.0` | LAN + Tailscale |
 | `1883` | TCP | Mosquitto | publicado en `0.0.0.0` | LAN + Tailscale |
-| `8096` | TCP | Jellyfin | publicado en `0.0.0.0` | LAN + Tailscale |
-| `9090` | TCP | Linkding | publicado en `0.0.0.0` | LAN + Tailscale |
 | `12000` | TCP | Syncthing GUI | publicado en `0.0.0.0` | LAN + Tailscale |
 | `8123` | TCP | Home Assistant | publicado en `network_mode: host` | LAN + Tailscale |
-| `13378` | TCP | Audiobookshelf | publicado en `0.0.0.0` | LAN + Tailscale |
-| `13001` | TCP | Zigbee2MQTT | publicado en `0.0.0.0` | LAN + Tailscale |
+| `13001` | TCP | Zigbee2MQTT | publicado en `0.0.0.0` | LAN |
 | `13002` | TCP | Node-RED | publicado en `0.0.0.0` | LAN + Tailscale |
 | `137` | UDP | Samba | publicado en `0.0.0.0` | LAN |
 | `138` | UDP | Samba | publicado en `0.0.0.0` | LAN |
@@ -98,7 +97,6 @@ Estas entradas siguen siendo la base del diseño de red del proyecto y coinciden
 | `15001` | TCP | Prowlarr | publicado en `0.0.0.0` | LAN + Tailscale |
 | `15002` | TCP | Sonarr | publicado en `0.0.0.0` | LAN + Tailscale |
 | `15003` | TCP | Radarr | publicado en `0.0.0.0` | LAN + Tailscale |
-| `16002` | TCP | Paperless-ngx | publicado en `0.0.0.0` | LAN + Tailscale |
 | `16003` | TCP | Mealie | publicado en `0.0.0.0` | LAN + Tailscale |
 | `16004` | TCP | Stirling PDF | publicado en `0.0.0.0` | LAN + Tailscale |
 | `17000` | TCP | Homepage | publicado en `0.0.0.0` | LAN + Tailscale |
@@ -112,7 +110,14 @@ Lectura operativa:
 
 - todo puerto de esta tabla requiere revisión explícita en el firewall del host
 - si un servicio deja de necesitar acceso directo, lo correcto es moverlo a `127.0.0.1` o dejarlo solo detrás de **Caddy**
-- en el estado actual de la documentación, varios servicios siguen expuestos directamente además de poder vivir detrás de Caddy
+- esta tabla refleja solo los servicios cuyos documentos sí describen una publicación directa en la IP del host
+
+Servicios que **no** deben tratarse aquí como acceso directo fijo en host:
+
+- **Jellyfin**: el documento base lo deja detrás de **Caddy** sin `ports:` en el host; `8096/tcp` queda como puerto interno o publicación temporal de diagnóstico
+- **Linkding**: el documento base lo deja detrás de **Caddy** con `expose: "9090"` y sin publicación directa en la IP del host
+- **Audiobookshelf**: el documento base lo deja detrás de **Caddy**; `127.0.0.1:13378` aparece solo como publicación temporal para bootstrap o diagnóstico
+- **Paperless-ngx**: `16002/tcp` se documenta solo en `127.0.0.1` para bootstrap local o diagnóstico, no como exposición directa en LAN/Tailscale
 
 #### 2.3 Puertos publicados solo en loopback
 
@@ -120,7 +125,9 @@ Lectura operativa:
 |------|--------|----------|--------|
 | `127.0.0.1` | `11000/tcp` | Prometheus | acceso local o vía proxy, no LAN directa |
 | `127.0.0.1` | `11002/tcp` | Uptime Kuma | acceso local o vía proxy, no LAN directa |
-| `127.0.0.1` | `13000/tcp` | Grafana | acceso local o vía proxy, no LAN directa |
+| `127.0.0.1` | `11100/tcp` | Grafana | acceso local o vía proxy, no LAN directa |
+| `127.0.0.1` | `13378/tcp` | Audiobookshelf | bootstrap o diagnóstico local; operación normal detrás de Caddy |
+| `127.0.0.1` | `16002/tcp` | Paperless-ngx | bootstrap o diagnóstico local; operación normal detrás de Caddy |
 | `127.0.0.1` | `16005/tcp` | FreshRSS | acceso local o vía proxy, no LAN directa |
 | `127.0.0.1` | `18080/tcp` | `infra-port-policy-test` | validación temporal de política de puertos |
 
@@ -133,12 +140,13 @@ Estos puertos **no** deberían requerir aperturas generales en `ufw` o `nftables
 | `80/tcp` | Vaultwarden | publicado detrás de Caddy, no directo en host |
 | `9091/tcp` | Authelia | backend interno para Caddy |
 | `9100/tcp` | Node Exporter | expuesto solo a otras redes Docker |
-| `9090/tcp` | Prometheus | puerto interno del contenedor; no confundir con `9090/tcp` del host usado por Linkding |
-| `3000/tcp` | Grafana | puerto interno del contenedor; el host usa `13000/tcp` en loopback |
+| `9090/tcp` | Prometheus | puerto interno del contenedor; no confundir con `9090/tcp` interno de Linkding usado como upstream de Caddy |
+| `3000/tcp` | Grafana | puerto interno del contenedor; el host usa `11100/tcp` en loopback |
 | `3001/tcp` | Uptime Kuma | puerto interno del contenedor; el host usa `11002/tcp` en loopback |
 | `9999/tcp` | Stash | puerto interno del contenedor; el host publica `14004/tcp` |
 | `1880/tcp` | Node-RED | puerto interno del contenedor; el host publica `13002/tcp` |
 | `8080/tcp` | Zigbee2MQTT | puerto interno del contenedor; el host publica `13001/tcp` |
+| `8000/tcp` | Paperless-ngx | puerto interno del contenedor; el host usa `16002/tcp` solo en loopback |
 
 Estos puertos no deben convertirse en reglas de firewall del host salvo que un documento de servicio cambie expresamente su política de publicación.
 
@@ -157,21 +165,26 @@ Eso significa:
 
 | Caso | Reserva en Fase 3 | Estado real documentado | Lectura operativa | Acción recomendada |
 |------|-------------------|-------------------------|-------------------|--------------------|
+| WUD | no reflejado en el registro vivo base | `10001/tcp` en host | la UI queda publicada directamente en LAN + Tailscale | añadir `10001` al consolidado y tratarlo como excepción explícita |
 | Portainer | `10001/tcp` | `9443/tcp` en host | prevalece el puerto real de Portainer | mantener `9443` como referencia actual |
 | Home Assistant | `13000/tcp` | `8123/tcp` en host | el servicio usa su puerto estándar en `network_mode: host` | documentar `8123` como canon operativo |
-| Jellyfin | `14000/tcp` | `8096/tcp` en host | se usa el puerto estándar del servicio | no reservar `14000` como si Jellyfin lo usara ya |
-| Audiobookshelf | `14002/tcp` | `13378/tcp` en host | se usa el puerto estándar del servicio | documentar `13378` como canon operativo |
-| Linkding | `16001/tcp` | `9090/tcp` en host | se usa el puerto estándar del servicio | tratar `16001` como reserva no materializada |
-| Grafana | `11001/tcp` | `13000/tcp` en `127.0.0.1` | hay deriva de rango y de clasificación | no asignar `13000` a otro servicio sin revisar |
+| Jellyfin | `14000/tcp` | `8096/tcp` interno en el contenedor o bind temporal de diagnóstico | el servicio base entra por Caddy y no necesita publicación directa fija | no reservar `14000` como si Jellyfin lo usara ya |
+| Audiobookshelf | `14002/tcp` | `13378/tcp` solo en `127.0.0.1` para bootstrap o diagnóstico | el servicio no se documenta como acceso directo fijo en LAN/Tailscale | tratar `13378` como loopback temporal, no como exposición estable |
+| Linkding | `16001/tcp` | `9090/tcp` solo interno en Docker | el acceso recomendado va por Caddy, no por publicación directa | tratar `16001` como reserva no materializada |
+| Grafana | `11001/tcp` | `11100/tcp` en `127.0.0.1` | hay deriva de rango, aunque sigue siendo loopback | no asignar `11100` a otro servicio sin revisar |
+| Paperless-ngx | `16002/tcp` sin matiz en la política base | `16002/tcp` solo en `127.0.0.1` | el puerto existe para bootstrap local, no para exposición directa | tratarlo como loopback y no como acceso LAN/Tailscale |
 
 #### 3.3 Riesgos de conflicto futuros
 
 Los puntos que merecen más atención son estos:
 
-- `13000/tcp` aparece reservado en Fase 3 para **Home Assistant**, pero el servicio hoy está documentado en `8123/tcp` y ese bind ya lo ocupa **Grafana** en `127.0.0.1`
+- `13000/tcp` aparece reservado en Fase 3 para **Home Assistant**, pero el servicio hoy está documentado en `8123/tcp`; además **Grafana** usa `11100/tcp` en `127.0.0.1`, así que ese tramo ya no coincide con la reserva histórica
 - `11001/tcp`, que Fase 3 proponía para **Grafana**, queda libre en la práctica
 - `14000/tcp`, `14002/tcp` y `16001/tcp` siguen pareciendo libres si alguien mira solo la tabla antigua, aunque los servicios equivalentes ya usan otros puertos reales
+- `10001/tcp` parece libre si alguien mira solo [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md), pero hoy está documentado para **WUD**
+- `16002/tcp` puede parecer un puerto web directo más si alguien mira solo una lectura superficial del registro, pero **Paperless-ngx** hoy está documentado solo en `127.0.0.1`
 - `16005/tcp` puede parecer un puerto web directo más si alguien mira solo la política base, pero **FreshRSS** hoy está documentado solo en `127.0.0.1`
+- `9090/tcp` puede parecer un puerto web directo del host si alguien mira solo la política base, pero **Linkding** hoy lo usa solo como upstream interno de **Caddy**
 - muchos servicios siguen documentados con `BIND_IP=0.0.0.0`, lo que amplía la superficie de ataque respecto a la política más estricta de “`127.0.0.1` + Caddy”
 
 Conclusión operativa:
@@ -254,7 +267,7 @@ Señales de alerta:
 Checklist operativo:
 
 - comprobar que **LAN** accede a `http://<servicio>.lan` o al puerto directo esperado
-- comprobar que **Tailscale** accede a `https://pi-homelab.<tailnet>.ts.net/` y a los servicios remotos previstos
+- comprobar que **Tailscale** accede a `https://pi-homelab.<tailnet>.ts.net/` y a los servicios remotos previstos; no asumir acceso remoto directo para servicios documentados solo en LAN como **Zigbee2MQTT**
 - confirmar que el router sigue sin `port forwarding` hacia la Raspberry Pi
 - confirmar que `UPnP` sigue deshabilitado si esa es la política elegida
 
@@ -282,9 +295,9 @@ Si uno de esos pasos no se hace, el inventario de puertos deja de ser fiable.
 
 Los archivos y rutas que forman parte del estado operativo de red y puertos son estos:
 
-- este documento: `/Users/x441425/workspace2/homelab/docs/13-operaciones/04-red-y-puertos.md`
-- la política base: `/Users/x441425/workspace2/homelab/docs/03-red/06-puertos-y-firewall.md`
-- hardening base del host: `/Users/x441425/workspace2/homelab/docs/01-sistema/03-seguridad-base.md`
+- este documento: [04-red-y-puertos.md](04-red-y-puertos.md)
+- la política base: [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
+- hardening base del host: [03-seguridad-base.md](../01-sistema/03-seguridad-base.md)
 - ficheros `.env` de cada stack que definan `BIND_IP` y puertos publicados
 - configuración de **Caddy**
 - configuración de **Tailscale**

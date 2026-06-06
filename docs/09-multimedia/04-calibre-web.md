@@ -8,9 +8,10 @@ La política de este proyecto se mantiene igual que en el resto de servicios mul
 
 - la configuración, la base de datos interna de la aplicación y el estado del servicio viven en `/home/<user>/homelab/data/calibre-web/` sobre el **SSD NVMe**
 - la biblioteca de ebooks vive en `/media/hd2t/media/books/calibre-library/`
-- el acceso principal se hace desde la **LAN**
-- el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
-- **Caddy** puede usarse como reverse proxy interno según [05-caddy.md](../03-red/05-caddy.md)
+- el acceso principal se hace desde la **LAN** preferentemente a través de **Caddy**
+- el acceso remoto se hace por **Tailscale**, preferentemente a través de **Caddy**, sin abrir puertos en el router
+- el puerto directo en host queda como opción operativa para bootstrap, diagnóstico o clientes que prefieras configurar sin proxy
+- **Caddy** puede usarse como reverse proxy interno siguiendo el patrón general descrito en [05-caddy.md](../03-red/05-caddy.md), pero el bloque específico de `calibre-web.lan` debe añadirse en el `Caddyfile` del despliegue
 
 Calibre-Web no sustituye a **Calibre** como gestor completo de biblioteca. En este homelab conviene entenderlo como una capa web sobre una biblioteca que ya existe y cuyo índice principal es el fichero `metadata.db`.
 
@@ -21,12 +22,13 @@ Calibre-Web no sustituye a **Calibre** como gestor completo de biblioteca. En es
 - Haber fijado la convención de stacks y `.env` descrita en [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Haber desplegado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceso remoto seguro.
 - Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Calibre-Web detrás del reverse proxy interno.
+- Añadir en tu `Caddyfile` un bloque dedicado para `http://calibre-web.lan` si vas a seguir el patrón de hostname interno del homelab.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
 - Tener montado `hd2t` en `/media/hd2t`.
 - Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Tener preparada una biblioteca Calibre válida en `hd2t`, con `metadata.db` en la raíz de la carpeta que vayas a montar.
 - Puertos necesarios:
-  - `14003/tcp` en el host para acceso web desde LAN o Tailscale
+  - `14003/tcp` en el host solo si quieres mantener acceso directo además del proxy
   - `8083/tcp` como puerto interno del contenedor
 
 ## Docker Compose
@@ -70,6 +72,7 @@ Notas sobre este Compose:
 - la biblioteca se monta en modo lectura para reducir el riesgo de corromper `metadata.db` o mezclar escrituras concurrentes con otras herramientas
 - el servicio se conecta también a `homelab_proxy` para que **Caddy** pueda alcanzarlo por nombre interno Docker
 - este despliegue base no habilita conversión avanzada de ebooks dentro del contenedor; en una Raspberry Pi 5 conviene asumir un rol de catálogo y lectura web, no de pipeline pesado de conversión
+- si estandarizas el acceso exclusivamente detrás de **Caddy**, puedes eliminar por completo el bloque `ports:`; **Caddy** no necesita que el contenedor publique `8083` en la IP del host
 
 ## Configuración
 
@@ -107,7 +110,7 @@ find /media/hd2t/media/books/calibre-library -maxdepth 2 -type d | head
 Puntos importantes:
 
 - copia la **biblioteca completa**, no solo los ficheros `.epub`, `.pdf` o `.mobi`
-- `metadata.db` debe quedar en la raíz de `library/`
+- `metadata.db` debe quedar en la raíz de `calibre-library/`
 - cada libro suele vivir en subcarpetas organizadas por autor y título; no reestructures eso manualmente si ya proviene de Calibre
 
 Si todavía no tienes biblioteca Calibre, créala primero con la aplicación de escritorio y mueve esa biblioteca al directorio anterior antes de configurar Calibre-Web.
@@ -150,8 +153,8 @@ PROXY_NETWORK=homelab_proxy
 Notas prácticas:
 
 - `PUID` y `PGID` deben coincidir con el usuario real del host
-- `CALIBRE_WEB_BIND_IP=0.0.0.0` deja el servicio accesible desde la LAN y también desde la IP Tailscale del host
-- si prefieres acceso solo detrás de Caddy, puedes publicar `127.0.0.1:14003`
+- `CALIBRE_WEB_BIND_IP=0.0.0.0` deja el servicio accesible desde la LAN y también desde la IP Tailscale del host como acceso directo opcional
+- si prefieres acceso solo detrás de Caddy, elimina el bloque `ports:` del Compose en lugar de publicarlo en `127.0.0.1`
 
 ### 5. Desplegar el stack
 
@@ -170,6 +173,13 @@ ss -ltnp | grep 14003
 curl -I http://127.0.0.1:14003
 ```
 
+Si eliminas `ports:` y dejas solo el acceso por **Caddy**, sustituye esas comprobaciones por:
+
+```bash
+docker inspect media-calibre-web-calibre-web-1 --format '{{json .NetworkSettings.Networks}}'
+curl -I -H 'Host: calibre-web.lan' http://127.0.0.1
+```
+
 Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en:
 
 - `http://IP_DE_LA_PI:14003`
@@ -178,6 +188,8 @@ Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en
 Y, si ya tienes Caddy operativo:
 
 - `http://calibre-web.lan`
+
+<!-- TODO: verificar y documentar en [05-caddy.md](../03-red/05-caddy.md) el bloque definitivo de Caddy para Calibre-Web antes de tratar `calibre-web.lan` como referencia ya consolidada del repositorio. -->
 
 ### 6. Primer arranque e importación desde Calibre
 
@@ -211,9 +223,21 @@ Puntos prácticos a revisar después del primer acceso:
 
 Recomendación operativa:
 
-- para la **LAN**, usa `http://calibre-web.lan` o acceso directo a `:14003`
-- para acceso remoto sencillo, Tailscale directo a `:14003` suele ser la opción más simple
-- usa Caddy delante de Calibre-Web cuando quieras centralizar nombres internos del homelab
+- para la **LAN**, usa preferentemente `http://calibre-web.lan`
+- reserva el acceso directo a `:14003` para bootstrap, pruebas o clientes que no quieras pasar por proxy
+- para acceso remoto sencillo, Tailscale directo a `:14003` sigue siendo válido mientras no dependas de un nombre unificado detrás de Caddy
+- usa Caddy delante de Calibre-Web cuando quieras centralizar nombres internos del homelab y mantener una entrada coherente con el resto de servicios web
+
+Si vas a exponerlo por hostname interno en **Caddy**, el bloque esperado sigue el mismo patrón que otros servicios multimedia ya documentados:
+
+```caddy
+http://calibre-web.lan {
+    import common_proxy
+    reverse_proxy calibre-web:8083
+}
+```
+
+Este bloque debe añadirse al `Caddyfile` del stack de Caddy antes de dar por operativo `http://calibre-web.lan`.
 
 ### 8. Política recomendada de importación y escritura
 
@@ -273,7 +297,7 @@ Respaldar como mínimo:
 Aquí conviene hacer una distinción importante:
 
 - `config/` contiene la configuración de Calibre-Web, usuarios, preferencias y base interna propia del servicio
-- `library/` contiene la **biblioteca real** de ebooks, incluido `metadata.db`, así que también es crítica y no puede tratarse como simple contenido prescindible
+- `calibre-library/` contiene la **biblioteca real** de ebooks, incluido `metadata.db`, así que también es crítica y no puede tratarse como simple contenido prescindible
 
 Para una copia más consistente:
 

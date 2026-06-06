@@ -4,7 +4,7 @@
 
 Procedimiento para aplicar el **endurecimiento inicial del sistema operativo** sobre la **Raspberry Pi 5** una vez que ya arranca desde el **SSD NVMe** y tiene completada su configuración básica. El objetivo es dejar el host con una postura de seguridad razonable para un homelab de **solo acceso local (LAN) + Tailscale**, sin exposición directa a internet y sin depender todavía de medidas específicas de cada servicio.
 
-Este documento cubre cinco bloques: cambio de contraseña inicial, acceso por **claves SSH**, desactivación del login por contraseña, firewall a nivel de host y protección básica con **Fail2ban** solo para **SSH**. También deja activadas las **actualizaciones automáticas** del sistema. Las reglas de puertos más detalladas y la política final de acceso se complementarán más adelante en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
+Este documento cubre seis bloques: cambio de contraseña inicial, acceso por **claves SSH**, desactivación del login por contraseña, firewall a nivel de host, protección básica con **Fail2ban** solo para **SSH** y **actualizaciones automáticas** del sistema. Las reglas de puertos más detalladas y la política final de acceso se complementarán más adelante en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 
 La configuración avanzada de **Fail2ban** para servicios concretos no se hace aquí. Esa parte se documenta más adelante en [02-fail2ban.md](../04-seguridad/02-fail2ban.md).
 
@@ -117,7 +117,7 @@ Con esta configuración:
 Valida la sintaxis antes de reiniciar el servicio:
 
 ```bash
-sudo sshd -t
+sudo /usr/sbin/sshd -t
 ```
 
 Si no devuelve errores, aplica el cambio:
@@ -141,12 +141,12 @@ Se usa **`ufw`** como capa operativa de firewall por simplicidad. En sistemas mo
 
 ### 6. Activar una política mínima de firewall
 
-En esta fase todavía no hay servicios de aplicación expuestos, así que la política base debe ser muy conservadora:
+En esta fase todavía no hay servicios de aplicación expuestos, así que la política base debe ser muy conservadora. La regla siguiente cubre el acceso administrativo inicial por la **LAN** sobre `eth0`; el acceso por **Tailscale** se añadirá más adelante, cuando la interfaz `tailscale0` exista realmente:
 
 ```bash
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
-sudo ufw allow OpenSSH
+sudo ufw allow in on eth0 proto tcp from 192.168.1.0/24 to any port 22 comment 'SSH desde LAN'
 sudo ufw enable
 ```
 
@@ -160,10 +160,12 @@ Resultado esperado en esta fase:
 
 - política por defecto `deny` para tráfico entrante
 - política `allow` para tráfico saliente
-- **SSH** permitido
+- **SSH** permitido solo desde la **LAN** por `eth0`
 - ningún otro puerto abierto manualmente todavía
 
-`ufw allow OpenSSH` abre el acceso SSH en el host sin entrar todavía en reglas finas por subred, interfaz o servicio. Ese refinamiento vendrá más adelante, cuando el mapa completo de puertos del homelab esté definido en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
+Sustituye `192.168.1.0/24` por la subred real de tu LAN. En esta fase se deja **SSH** limitado a la red local sobre `eth0` para no abrir acceso administrativo indiscriminado en todas las interfaces del host antes de tener definida la política completa.
+
+Cuando más adelante instales **Tailscale**, añade la excepción correspondiente para `tailscale0` y documenta también la apertura de `udp/41641` en el mapa central de puertos. Esa ampliación se hace junto con [04-tailscale.md](../03-red/04-tailscale.md) y debe quedar reflejada en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 
 ### 7. Configurar Fail2ban solo para SSH
 
@@ -247,7 +249,7 @@ Para este homelab es razonable **no forzar reinicios automáticos** tras una act
 Antes de pasar a la siguiente guía, ejecuta una comprobación rápida:
 
 ```bash
-sudo sshd -t
+sudo /usr/sbin/sshd -t
 sudo ufw status verbose
 sudo fail2ban-client status sshd
 systemctl list-timers --all | grep -E 'apt-daily|apt-daily-upgrade'

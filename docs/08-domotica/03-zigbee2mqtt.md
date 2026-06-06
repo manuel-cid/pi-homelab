@@ -11,7 +11,9 @@ Este enfoque evita depender de integraciones propietarias y deja la topología c
 - Mosquitto transporta estados y comandos por MQTT
 - Home Assistant descubre los dispositivos y los expone como entidades
 
-El servicio se publica solo en la **LAN** y a través de **Tailscale**. No hay exposición directa a Internet.
+El servicio se publica de forma directa solo en la **LAN** para bootstrap y operación local. Si más adelante necesitas acceso remoto, lo coherente con la política del proyecto es pasarlo por **Caddy** sobre **Tailscale**, no abrir `13001/tcp` hacia Internet ni añadir excepciones innecesarias en el firewall.
+
+Cuando en este documento aparezcan `IP_DE_LA_PI`, `CAMBIAR_PASSWORD` o rutas de ejemplo en `/dev/serial/by-id/...`, sustitúyelos por los valores reales de tu instalación.
 
 ## Requisitos Previos
 
@@ -112,6 +114,7 @@ mqtt:
 serial:
   port: /dev/zigbee
   adapter: zstack
+  # <!-- TODO: verificar si el dongle es SONOFF ZBDongle-P (zstack) o ZBDongle-E (ember) antes de dejar este valor fijo -->
 
 advanced:
   log_level: info
@@ -241,6 +244,8 @@ docker compose logs --tail=100 zigbee2mqtt
 ## Almacenamiento
 
 Todo el estado de Zigbee2MQTT debe residir en el **SSD NVMe** bajo `/home/<user>/homelab/data/zigbee2mqtt/`.
+
+En este servicio hay una excepción deliberada respecto al patrón general `config/<servicio>/` + `data/<servicio>/`: Zigbee2MQTT espera mantener `configuration.yaml` junto con su base de datos y el resto de estado en `/app/data`. Para evitar una separación artificial y frágil, en este caso se documenta un único bind mount sobre `data/zigbee2mqtt/`.
 
 Contenido típico de esta ruta:
 

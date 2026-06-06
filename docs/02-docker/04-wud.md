@@ -4,7 +4,9 @@
 
 **WUD** (What's Up Docker) monitoriza los contenedores Docker del host, detecta cuándo existen imágenes nuevas disponibles y permite decidir si actualizar automáticamente o solo recibir notificación. Dispone de una **interfaz web** que muestra el estado de cada contenedor, las versiones disponibles y los triggers configurados.
 
-En este proyecto, WUD se plantea como una herramienta de **mantenimiento controlado**, no como una política de actualización ciega para todo el host. La recomendación es trabajar en modo **opt-in**: solo se monitorizan los contenedores que no se excluyan expresamente, y las actualizaciones automáticas solo se activan para los servicios donde resulte seguro. Así se evita tocar sin supervisión servicios críticos, bases de datos o componentes de infraestructura sensibles.
+En este proyecto, WUD se plantea como una herramienta de **mantenimiento controlado**, no como una política de actualización ciega para todo el host. La recomendación es trabajar con **monitorización por defecto y exclusiones explícitas**: WUD vigila todos los contenedores salvo los que se marquen expresamente para excluirlos, y las actualizaciones automáticas solo se activan para los servicios donde resulte seguro. Así se evita tocar sin supervisión servicios críticos, bases de datos o componentes de infraestructura sensibles.
+
+Ese mismo criterio aplica a **WUD como servicio de infraestructura**: no conviene dejar su propia imagen en `latest`. La opción recomendada para este homelab es fijarla a una **rama estable menor** como `8.2`, revisar manualmente los cambios publicados y decidir cuándo saltar a otra rama o a otra major.
 
 ## Requisitos Previos
 
@@ -17,7 +19,7 @@ En este proyecto, WUD se plantea como una herramienta de **mantenimiento control
 - Disponer de conectividad saliente desde la Raspberry hacia los registros de imágenes Docker que usen los stacks del homelab.
 - Si se van a activar notificaciones, disponer también de conectividad hacia el destino elegido: SMTP, webhook, Gotify u otro backend compatible.
 - Puertos necesarios en esta fase:
-  - **3000/tcp** publicado en el host para la interfaz web de WUD
+  - **10001/tcp** publicado en el host para la interfaz web de WUD
   - el acceso debe limitarse a **LAN + Tailscale**; no exponer a internet
 
 ## Objetivo de esta Fase
@@ -27,6 +29,7 @@ Al terminar este documento, el estado esperado es este:
 - WUD queda desplegado como stack propio `infra-wud`.
 - Las comprobaciones de actualización quedan programadas en una ventana de mantenimiento definida.
 - WUD monitoriza todos los contenedores por defecto, pero solo actualiza automáticamente los que tienen un trigger explícito.
+- La propia imagen de WUD queda fijada a una rama estable y fuera de su propia monitorización.
 - Los servicios sensibles quedan excluidos de la monitorización mediante la etiqueta `wud.watch=false`.
 - La interfaz web queda accesible desde la LAN o desde Tailscale.
 - Las notificaciones quedan documentadas como una opción adicional, no como un requisito obligatorio del despliegue base.
@@ -40,7 +43,7 @@ name: infra-wud
 
 services:
   wud:
-    image: getwud/wud:latest
+    image: getwud/wud:8.2
     container_name: wud
     restart: unless-stopped
     security_opt:
@@ -56,14 +59,25 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /etc/localtime:/etc/localtime:ro
+    labels:
+      - wud.watch=false
 ```
 
 Este Compose sigue la convención definida en [02-estructura-compose.md](02-estructura-compose.md):
 
 - stack independiente de infraestructura
 - sin campo legado `version:`
+- tag de imagen fijado a una rama estable en lugar de `latest`
 - uso de `env_file` para separar configuración del YAML
-- publicación explícita del puerto de la UI web
+- publicación explícita del puerto de la UI web en un rango coherente con la convención de infraestructura del proyecto
+- exclusión explícita de la propia monitorización de WUD
+
+Sobre la imagen `getwud/wud`, la política recomendada es esta:
+
+- **recomendado**: `getwud/wud:8.2`
+- **alternativa más conservadora**: `getwud/wud:8.2.2` si quieres máxima reproducibilidad y actualizar solo tras cambiar el patch manualmente
+- **alternativa con menos mantenimiento**: `getwud/wud:8` si aceptas recibir también cambios menores dentro de la major actual
+- **no recomendado en este homelab**: `getwud/wud:latest`, porque introduce cambios silenciosos en un servicio con acceso administrativo al socket Docker
 
 ## Configuración
 
@@ -86,7 +100,7 @@ TZ=Europe/Madrid
 WUD_WATCHER_CRON=0 4 * * *
 WUD_WATCHER_WATCHBYDEFAULT=true
 WUD_BIND_IP=0.0.0.0
-WUD_PORT=3000
+WUD_PORT=10001
 ```
 
 Notas de esta configuración:
@@ -95,7 +109,9 @@ Notas de esta configuración:
 - `0 4 * * *` significa comprobación diaria a las **04:00**.
 - La zona horaria de referencia será `Europe/Madrid`, tanto para logs como para la planificación.
 - `WUD_WATCHER_WATCHBYDEFAULT=true` indica que WUD monitoriza todos los contenedores del host salvo los excluidos expresamente con la etiqueta `wud.watch=false`.
-- `WUD_BIND_IP=0.0.0.0` permite acceso desde la **LAN** y desde la IP de **Tailscale** del host.
+- `WUD_BIND_IP=0.0.0.0` permite acceso desde la **LAN** y desde la IP de **Tailscale** del host. En este proyecto sigue siendo aceptable porque el alcance es solo **LAN + Tailscale** y no se abren puertos en el router.
+- `WUD_PORT=10001` mantiene la UI dentro del rango reservado a infraestructura y orquestación en este repositorio.
+- El tag de imagen de WUD no se parametriza en el `.env`, porque interesa que el cambio de versión quede visible en el `docker-compose.yml` y se revise conscientemente.
 
 Si en el futuro guardas secretos en este `.env`, por ejemplo credenciales de autenticación o una URL de webhook, aplica permisos restrictivos:
 
@@ -119,17 +135,17 @@ Comprobaciones útiles tras el arranque:
 ```bash
 docker compose logs --tail=50 wud
 docker inspect "$(docker compose ps -q wud)" --format '{{json .Mounts}}'
-ss -ltnp | grep 3000
+ss -ltnp | grep 10001
 ```
 
-El resultado esperado es que el contenedor quede en estado `Up`, que monte correctamente `/var/run/docker.sock` y `/etc/localtime`, y que el host escuche en `3000/tcp`.
+El resultado esperado es que el contenedor quede en estado `Up`, que monte correctamente `/var/run/docker.sock` y `/etc/localtime`, y que el host escuche en `10001/tcp`.
 
 ### 4. Acceso a la interfaz web
 
 Abre WUD desde un navegador en:
 
-- `http://<ip-lan-de-la-raspberry>:3000`
-- o `http://<ip-tailscale-de-la-raspberry>:3000`
+- `http://<ip-lan-de-la-raspberry>:10001`
+- o `http://<ip-tailscale-de-la-raspberry>:10001`
 
 La interfaz web muestra:
 
@@ -175,6 +191,7 @@ Regla práctica recomendada:
 - **sí** dejar que WUD monitorice todos los contenedores para tener visibilidad de versiones pendientes
 - **sí** considerar triggers de actualización para aplicaciones sencillas sin dependencia fuerte de esquema o migraciones
 - **no** configurar triggers de actualización para bases de datos, reverse proxy, DNS, autenticación o piezas troncales del homelab
+- **no** dejar que WUD se monitorice o se actualice a sí mismo automáticamente; trátalo como infraestructura base, igual que Portainer
 
 ### 6. Exclusiones
 
@@ -247,7 +264,8 @@ Recomendaciones prácticas:
 
 - guarda credenciales fuera del `docker-compose.yml`, en el `.env`
 - si el `.env` contiene secretos, protégelo con `chmod 600`
-- usa `wud.trigger.include` en los contenedores para controlar qué triggers aplican a cada uno
+- usa `wud.trigger.include` en los contenedores para controlar qué triggers aplican a cada uno cuando decidas habilitar actualizaciones automáticas selectivas
+- el despliegue base documentado aquí deja los triggers automáticos desactivados; primero monitoriza, luego automatiza solo los servicios que hayas validado manualmente
 
 En este proyecto, las notificaciones son opcionales porque el alcance del homelab es **LAN + Tailscale**, sin exposición pública a internet.
 
@@ -267,6 +285,7 @@ Nota importante:
 - WUD **no** debe convertirse en sustituto de una revisión mínima de cambios mayores
 - sin triggers configurados, WUD solo informa; no actualiza nada
 - la actualización de WUD debe hacerse manualmente cuando toque revisar la pila de infraestructura
+- el cambio recomendado es mantener una rama estable (`8.2`) y actualizar a `8.2.2`, `8.3` o `9.x` solo tras revisar release notes y compatibilidad
 
 ## Almacenamiento
 
@@ -297,5 +316,6 @@ No hay una base de datos propia de WUD ni un volumen persistente que conservar. 
 
 - WUD Docs: [Getting started](https://getwud.github.io/wud/)
 - WUD GitHub: [getwud/wud](https://github.com/getwud/wud)
+- WUD GitHub: [Releases](https://github.com/getwud/wud/releases)
 - Docker Hub: [getwud/wud](https://hub.docker.com/r/getwud/wud)
 - Guía práctica: [How to Keep Containers Up-to-Date with WUD](https://linuxiac.com/how-to-keep-containers-up-to-date-with-whats-up-docker-wud/)

@@ -31,8 +31,8 @@ El objetivo de este documento es desplegar Samba como contenedor Docker con **un
 Al terminar este documento, el estado esperado es este:
 
 - Samba queda desplegado como stack propio `files-samba`.
-- `hd2t` queda expuesto por shares independientes para `video`, `music`, `audiobooks`, `books` y `downloads`.
-- `hd5t` puede exponerse opcionalmente como share `stash`.
+- `hd2t` queda expuesto por shares independientes para `movies`, `tv`, `music`, `audiobooks`, `podcasts`, `books` y `downloads`.
+- `hd5t` puede exponerse opcionalmente como share `library`.
 - Los accesos SMB requieren usuario y contraseña; no se usa acceso invitado.
 - Los permisos en disco quedan alineados con el `UID` y `GID` del usuario operativo del host.
 
@@ -66,9 +66,19 @@ services:
       SAMBA_CONF_MAP_TO_GUEST: Never
       WSDD2_DISABLE: "1"
       AVAHI_DISABLE: "1"
-      SAMBA_VOLUME_CONFIG_video: |
-        [video]
-        path = /shares/video
+      SAMBA_VOLUME_CONFIG_movies: |
+        [movies]
+        path = /shares/movies
+        valid users = media
+        guest ok = no
+        read only = no
+        browseable = yes
+        force user = media
+        create mask = 0664
+        directory mask = 2775
+      SAMBA_VOLUME_CONFIG_tv: |
+        [tv]
+        path = /shares/tv
         valid users = media
         guest ok = no
         read only = no
@@ -116,9 +126,19 @@ services:
         force user = media
         create mask = 0664
         directory mask = 2775
-      SAMBA_VOLUME_CONFIG_stash: |
-        [stash]
-        path = /shares/stash
+      SAMBA_VOLUME_CONFIG_podcasts: |
+        [podcasts]
+        path = /shares/podcasts
+        valid users = media
+        guest ok = no
+        read only = no
+        browseable = yes
+        force user = media
+        create mask = 0664
+        directory mask = 2775
+      SAMBA_VOLUME_CONFIG_library: |
+        [library]
+        path = /shares/library
         valid users = media
         guest ok = no
         read only = no
@@ -127,12 +147,14 @@ services:
         create mask = 0664
         directory mask = 2775
     volumes:
-      - /media/hd2t/media/video:/shares/video
+      - /media/hd2t/media/movies:/shares/movies
+      - /media/hd2t/media/tv:/shares/tv
       - /media/hd2t/media/music:/shares/music
       - /media/hd2t/media/audiobooks:/shares/audiobooks
       - /media/hd2t/media/books:/shares/books
       - /media/hd2t/downloads:/shares/downloads
-      - /media/hd5t/media:/shares/stash
+      - /media/hd2t/media/podcasts:/shares/podcasts
+      - /media/hd5t/media:/shares/library
     labels:
       - wud.watch=true
 ```
@@ -145,10 +167,10 @@ Este Compose sigue la política general del proyecto:
 - shares por carpeta en los discos USB
 - datos de usuario reales conservados en `hd2t` y `hd5t`, no dentro del contenedor
 
-Si **no** quieres compartir `hd5t`, elimina estas dos líneas:
+Si **no** quieres compartir `hd5t`, elimina estas dos secciones del Compose:
 
-- `SAMBA_VOLUME_CONFIG_stash`
-- `- /media/hd5t/media:/shares/stash`
+- `SAMBA_VOLUME_CONFIG_library: | ...`
+- `- /media/hd5t/media:/shares/library`
 
 ## Configuración
 
@@ -165,7 +187,7 @@ find /media/hd5t -maxdepth 2 -type d | sort
 Si todavía faltan carpetas, créalas:
 
 ```bash
-sudo mkdir -p /media/hd2t/media/{video,music,audiobooks,books}
+sudo mkdir -p /media/hd2t/media/{movies,tv,music,audiobooks,books,podcasts}
 sudo mkdir -p /media/hd2t/downloads
 sudo mkdir -p /media/hd5t/media
 ```
@@ -220,8 +242,9 @@ Notas importantes:
 
 - `SAMBA_ACCOUNT_MEDIA` usa el formato `usuario;password`.
 - `PUID` y `PGID` deben coincidir con el usuario real del host que posee las carpetas.
-- `SAMBA_BIND_IP=0.0.0.0` expone SMB en la LAN y también en la IP de Tailscale del host si el firewall lo permite.
-- Si prefieres limitar Samba solo a la LAN principal del host, puedes publicar en una IP concreta del host en lugar de `0.0.0.0`.
+- `SAMBA_BIND_IP=0.0.0.0` expone SMB en todas las interfaces del host, incluida `tailscale0` si existe y el firewall lo permite.
+- Si prefieres limitar Samba solo a la LAN principal del host, publica en la IP LAN fija de la Raspberry Pi en lugar de `0.0.0.0`.
+- <!-- TODO: verificar la IP LAN fija que usa la Raspberry Pi para sustituir el ejemplo genérico si se quiere restringir `SAMBA_BIND_IP`. -->
 
 Protege el fichero:
 
@@ -260,6 +283,8 @@ sudo ufw allow from 192.168.1.0/24 to any port 445 proto tcp comment 'Samba SMB 
 sudo ufw status verbose
 ```
 
+<!-- TODO: verificar la subred LAN real del homelab y sustituir `192.168.1.0/24` si no coincide. -->
+
 Si también quieres usar Samba por **Tailscale**, añade además:
 
 ```bash
@@ -267,16 +292,17 @@ sudo ufw allow in on tailscale0 to any port 445 proto tcp comment 'Samba SMB Tai
 sudo ufw allow in on tailscale0 to any port 139 proto tcp comment 'Samba session Tailscale'
 ```
 
-En la práctica, para clientes modernos suele bastar `445/tcp`, pero mantener `139/tcp` evita sorpresas con herramientas o clientes heredados.
+En la práctica, para clientes modernos suele bastar `445/tcp`, pero mantener `139/tcp` evita sorpresas con herramientas o clientes heredados. Los puertos `137/udp` y `138/udp` no suelen ser necesarios en Tailscale porque el acceso se hace normalmente por IP o MagicDNS, no por descubrimiento NetBIOS.
 
 ### 7. Acceso desde Windows, macOS y Linux
 
 Rutas típicas de acceso:
 
-- **Windows**: `\\<ip-o-hostname>\video`
+- **Windows**: `\\<ip-o-hostname>\movies`
 - **Windows**: `\\<ip-o-hostname>\downloads`
-- **macOS**: `smb://<ip-o-hostname>/video`
-- **Linux**: `smb://<ip-o-hostname>/video`
+- **Windows**: `\\<ip-o-hostname>\library` si expones `hd5t`
+- **macOS**: `smb://<ip-o-hostname>/movies`
+- **Linux**: `smb://<ip-o-hostname>/movies`
 
 Credenciales:
 
@@ -285,9 +311,9 @@ Credenciales:
 
 Pasos rápidos por sistema:
 
-- **Windows**: Explorador de archivos → barra de direcciones → `\\<ip-o-hostname>\video`
-- **macOS**: Finder → `Ir` → `Conectarse al servidor` → `smb://<ip-o-hostname>/video`
-- **Linux (GNOME/KDE)**: gestor de archivos → `Otras ubicaciones` → `smb://<ip-o-hostname>/video`
+- **Windows**: Explorador de archivos → barra de direcciones → `\\<ip-o-hostname>\movies`
+- **macOS**: Finder → `Ir` → `Conectarse al servidor` → `smb://<ip-o-hostname>/movies`
+- **Linux (GNOME/KDE)**: gestor de archivos → `Otras ubicaciones` → `smb://<ip-o-hostname>/movies`
 
 Si la detección automática en la red no muestra el servidor, no es un error: en este despliegue se prioriza acceso directo por **IP** o **hostname** y se desactivan los componentes adicionales de descubrimiento (`wsdd2` y `avahi`) para mantener la exposición mínima.
 
@@ -301,12 +327,14 @@ smbclient -L //127.0.0.1 -U media
 
 Deberías ver al menos estos recursos:
 
-- `video`
+- `movies`
+- `tv`
 - `music`
 - `audiobooks`
+- `podcasts`
 - `books`
 - `downloads`
-- `stash` si no has eliminado el share opcional
+- `library` si no has eliminado el share opcional
 
 ## Almacenamiento
 
@@ -314,12 +342,14 @@ Rutas implicadas en este despliegue:
 
 - `docker-compose.yml`: `/home/<user>/homelab/compose/files-samba/docker-compose.yml`
 - `.env`: `/home/<user>/homelab/compose/files-samba/.env`
-- share `video`: `/media/hd2t/media/video`
+- share `movies`: `/media/hd2t/media/movies`
+- share `tv`: `/media/hd2t/media/tv`
 - share `music`: `/media/hd2t/media/music`
 - share `audiobooks`: `/media/hd2t/media/audiobooks`
+- share `podcasts`: `/media/hd2t/media/podcasts`
 - share `books`: `/media/hd2t/media/books`
 - share `downloads`: `/media/hd2t/downloads`
-- share opcional `stash`: `/media/hd5t/media`
+- share opcional `library`: `/media/hd5t/media`
 
 Reglas operativas recomendadas:
 

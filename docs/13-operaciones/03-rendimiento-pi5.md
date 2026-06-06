@@ -9,6 +9,8 @@ Este documento define una política de tuning para la **Raspberry Pi 5 (8 GB)** 
 - estabilidad de los discos USB `hd2t` y `hd5t`
 - previsibilidad del consumo de CPU, RAM y temperatura
 
+El alcance de red se mantiene igual que en el resto del proyecto: **solo LAN + Tailscale**, sin exposición directa a internet ni cambios de puertos en el router.
+
 En este proyecto, optimizar rendimiento significa:
 
 - medir antes de cambiar
@@ -32,8 +34,8 @@ Regla principal:
 - Tener acceso administrativo por **SSH** o consola local.
 - Tener instaladas estas herramientas en el host:
   - `docker`
-  - `docker compose`
-  - `vcgencmd`
+  - plugin `docker compose`
+  - `vcgencmd` (incluido en Raspberry Pi OS)
   - `util-linux`
   - `procps`
 - Herramientas opcionales recomendadas para pruebas de carga:
@@ -42,7 +44,7 @@ Regla principal:
 
 Puertos necesarios en esta fase:
 
-- ninguno adicional a los ya definidos en el proyecto
+- ninguno adicional a los ya definidos en el proyecto; usar como referencia central [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
 
 ## Docker Compose
 
@@ -191,6 +193,8 @@ sudo cp /boot/firmware/config.txt /boot/firmware/config.txt.bak
 
 Perfil conservador de partida para probar:
 
+> Este perfil es un **punto de partida orientativo**, no un valor universal garantizado para cualquier Raspberry Pi 5. La estabilidad real depende de la unidad concreta, la fuente, la carcasa, la temperatura ambiente y la carga simultánea sobre NVMe y USB.
+
 Archivo: `/boot/firmware/config.txt`
 
 ```ini
@@ -282,7 +286,7 @@ Deben seguir siendo estables, pero pueden llevar límites más estrictos:
 
 - `vaultwarden`
 - `mealie`
-- `paperless`
+- `paperless-ngx`
 - `grafana`
 - `prometheus`
 - `linkding`
@@ -343,6 +347,7 @@ Reglas prácticas:
 - no impongas límites extremadamente bajos a bases de datos o aplicaciones Java/.NET sin validarlas
 - no sumes límites pensando que esa RAM queda reservada; son topes, no reservas
 - aun así, evita declarar límites absurdamente altos en muchos contenedores a la vez
+- como este proyecto usa **`docker compose` local** y no Docker Swarm, define los topes con `mem_limit` y `cpus` dentro del servicio; no muevas estos ejemplos a `deploy.resources`
 
 Guía inicial orientativa para una Pi 5 de **8 GB**:
 
@@ -359,23 +364,27 @@ Ejemplo práctico en un `docker-compose.yml`:
 ```yaml
 services:
   caddy:
-    image: caddy:latest
+    image: caddy:2.10
     restart: unless-stopped
     mem_limit: 256m
     cpus: 0.50
 
   mealie:
-    image: ghcr.io/mealie-recipes/mealie:v3.17.0
+    image: ghcr.io/mealie-recipes/mealie:v3.1.2
     restart: unless-stopped
     mem_limit: 1g
     cpus: 1.00
 
   jellyfin:
-    image: jellyfin/jellyfin:latest
+    image: jellyfin/jellyfin:10.10.7
     restart: unless-stopped
     mem_limit: 1500m
     cpus: 2.50
 ```
+
+Usa siempre etiquetas fijadas y coherentes con la documentación específica de cada servicio; evita `latest` en este homelab para no introducir cambios inesperados durante el mantenimiento.
+
+Si un stack ya está publicado detrás de **Caddy**, limita primero CPU y memoria antes de añadir más réplicas o más procesos: este homelab está pensado para **un único host Raspberry Pi 5**, no para escalar horizontalmente.
 
 Qué debes observar después de aplicar límites:
 
@@ -508,6 +517,7 @@ Buenas prácticas:
 - [02-configuracion-inicial.md](../01-sistema/02-configuracion-inicial.md)
 - [03-node-exporter.md](../05-monitorizacion/03-node-exporter.md)
 - [01-mantenimiento-periodico.md](01-mantenimiento-periodico.md)
+- [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
 - Raspberry Pi Docs: [config.txt](https://www.raspberrypi.com/documentation/computers/config_txt.html)
 - Raspberry Pi Docs: [Raspberry Pi OS utilities (`vcgencmd`)](https://www.raspberrypi.com/documentation/computers/os.html#vcgencmd)
 - Raspberry Pi Docs: [Frequency management and thermal control](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#frequency-management-and-thermal-control)

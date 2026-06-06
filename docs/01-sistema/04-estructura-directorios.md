@@ -62,10 +62,12 @@ Usa esta distribución como criterio estable del proyecto:
 | Ubicación | Disco | Uso |
 |-----------|-------|-----|
 | `/home/<user>/homelab/` | SSD NVMe | `compose`, configs, `.env`, volúmenes persistentes, bases de datos, uploads, logs y utilidades del homelab |
-| `/media/hd2t/media/video/` | `hd2t` | Películas, series y vídeos |
+| `/media/hd2t/media/movies/` | `hd2t` | Películas |
+| `/media/hd2t/media/tv/` | `hd2t` | Series |
 | `/media/hd2t/media/music/` | `hd2t` | Biblioteca musical |
-| `/media/hd2t/media/audiobooks/` | `hd2t` | Audiolibros y podcasts |
 | `/media/hd2t/media/books/` | `hd2t` | Ebooks y documentos |
+| `/media/hd2t/media/audiobooks/` | `hd2t` | Audiolibros |
+| `/media/hd2t/media/podcasts/` | `hd2t` | Podcasts |
 | `/media/hd2t/downloads/` | `hd2t` | Descargas temporales o procesadas |
 | `/media/hd2t/backups/` | `hd2t` | Backups del host, exports y copias de datos de servicios |
 | `/media/hd5t/media/` | `hd5t` | Biblioteca multimedia dedicada |
@@ -127,11 +129,19 @@ UUID=<uuid-de-hd5t>  /media/hd5t  ext4  defaults,nofail,noatime,x-systemd.device
 Si alguno de los discos reutilizados sigue en **NTFS** o **exFAT**, no declares `ext4` en `fstab`. Usa el tipo correcto y fija acceso por `uid`/`gid`:
 
 ```fstab
-UUID=<uuid-de-hd2t>  /media/hd2t  ntfs3  uid=1000,gid=1000,umask=0022,nofail,noatime,x-systemd.device-timeout=10  0  0
-UUID=<uuid-de-hd5t>  /media/hd5t  exfat  uid=1000,gid=1000,umask=0022,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=<uuid-de-hd2t>  /media/hd2t  ntfs3  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
+UUID=<uuid-de-hd5t>  /media/hd5t  exfat  uid=1000,gid=1000,umask=002,nofail,noatime,x-systemd.device-timeout=10  0  0
 ```
 
-<!-- TODO: verificar el `uid` y `gid` reales del usuario operativo antes de fijar opciones de montaje para discos NTFS o exFAT. -->
+Usa **`uid=1000,gid=1000`** como valor por defecto si tu Raspberry Pi OS tiene un único usuario administrativo creado durante la instalación, porque es el caso más habitual.
+
+Antes de darlo por bueno, comprueba el identificador real del usuario operativo:
+
+```bash
+id <user>
+```
+
+Si la salida muestra un `uid` o `gid` distinto de `1000`, sustituye esos valores en `fstab` por los que devuelva tu sistema. En discos **NTFS** o **exFAT**, esta comprobación es la referencia correcta: no intentes corregir luego el acceso con `chown -R`.
 
 Si en `fstab` todavía aparecen rutas anteriores como `/srv/storage/hd2t` o `/srv/storage/hd5t`, **sustitúyelas** por las rutas nuevas en `/media/...`. No dejes entradas duplicadas para el mismo disco.
 
@@ -172,7 +182,7 @@ Estructura recomendada:
 
 Criterio de uso:
 
-- `compose/`: archivos `docker-compose.yml` o stacks separados por servicio.
+- `compose/`: archivos `docker-compose.yml` y `.env` organizados por stack funcional.
 - `config/`: configuraciones editables, plantillas y ficheros auxiliares versionables o respaldables.
 - `.env`: variables compartidas del homelab o de stacks concretos.
 - `data/`: bind mounts persistentes de cada servicio, incluidas bases de datos y uploads.
@@ -186,21 +196,23 @@ Si más adelante necesitas más subdirectorios, añádelos sin romper esta idea 
 Prepara el disco de 2 TB para su función mixta de media, descargas y backups. La estructura se organiza por **tipo de contenido**, no por servicio:
 
 ```bash
-sudo mkdir -p /media/hd2t/media/{video,music,audiobooks,books}
+sudo mkdir -p /media/hd2t/media/{movies,tv,music,books,audiobooks,podcasts}
 sudo mkdir -p /media/hd2t/downloads
 sudo mkdir -p /media/hd2t/backups
 ```
 
 Criterio de uso:
 
-- `/media/hd2t/media/video/` — películas, series y vídeos caseros.
+- `/media/hd2t/media/movies/` — películas.
+- `/media/hd2t/media/tv/` — series.
 - `/media/hd2t/media/music/` — biblioteca musical.
-- `/media/hd2t/media/audiobooks/` — audiolibros y podcasts.
 - `/media/hd2t/media/books/` — ebooks y documentos.
+- `/media/hd2t/media/audiobooks/` — audiolibros.
+- `/media/hd2t/media/podcasts/` — podcasts.
 - `/media/hd2t/downloads/` — descargas temporales o finales.
 - `/media/hd2t/backups/` — backups centralizados del homelab.
 
-Cada servicio multimedia que despliegues más adelante montará la categoría de contenido que le corresponda. Si necesitas subcarpetas internas como `movies/`, `series/`, `podcasts/` o `incoming/`, créalas dentro de estos bloques sin cambiar los puntos de anclaje principales.
+Cada servicio multimedia que despliegues más adelante montará la categoría de contenido que le corresponda. Si necesitas subcarpetas internas como `4k/`, `kids/`, `processed/` o `incoming/`, créalas dentro de estos bloques sin cambiar los puntos de anclaje principales.
 
 ### 8. Crear la estructura de `hd5t`
 
@@ -259,10 +271,12 @@ Resumen de uso por tipo de dato:
   - `/home/<user>/homelab/data/<servicio>/`
   - `/home/<user>/homelab/logs/`
 - **`hd2t`**
-  - `/media/hd2t/media/video/`
+  - `/media/hd2t/media/movies/`
+  - `/media/hd2t/media/tv/`
   - `/media/hd2t/media/music/`
-  - `/media/hd2t/media/audiobooks/`
   - `/media/hd2t/media/books/`
+  - `/media/hd2t/media/audiobooks/`
+  - `/media/hd2t/media/podcasts/`
   - `/media/hd2t/downloads/`
   - `/media/hd2t/backups/`
 - **`hd5t`**
@@ -299,5 +313,6 @@ Notas prácticas:
 - [01-instalacion-os.md](01-instalacion-os.md)
 - [02-configuracion-inicial.md](02-configuracion-inicial.md)
 - [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md)
+- [04-discos-con-datos.md](../00-hardware/04-discos-con-datos.md)
 - [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md)
 - `fstab(5)`
