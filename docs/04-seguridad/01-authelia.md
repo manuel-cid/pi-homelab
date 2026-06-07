@@ -61,18 +61,13 @@ services:
       - .env
     environment:
       TZ: ${TZ}
+    ports:
+      - "127.0.0.1:9091:9091"
     volumes:
       - /home/<user>/homelab/config/authelia:/config
       - /home/<user>/homelab/data/authelia:/data
-    networks:
-      - homelab_proxy
     labels:
       - wud.watch=false
-
-networks:
-  homelab_proxy:
-    external: true
-    name: homelab_proxy
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/auth-authelia/.env`
@@ -84,8 +79,8 @@ TAILSCALE_DOMAIN=pi-homelab.<tailnet>.ts.net
 
 Notas sobre este Compose:
 
-- **Authelia** no publica puertos en la IP del host
-- **Caddy** lo alcanza por nombre de servicio interno `authelia:9091` a través de `homelab_proxy`
+- **Authelia** publica el puerto `9091` solo en `127.0.0.1`, no en la LAN
+- **Caddy** lo alcanza en `127.0.0.1:9091` porque usa `network_mode: host` según [05-caddy.md](../03-red/05-caddy.md)
 - la configuración editable queda fuera del contenedor en `/config`
 - el estado persistente queda en `/data`
 - se recomienda **no** configurar triggers de actualización automática de WUD para Authelia
@@ -273,7 +268,7 @@ La base de Caddy ya se definió en [05-caddy.md](../03-red/05-caddy.md). Para in
 
 ```caddyfile
 (authelia_forward_auth) {
-	forward_auth authelia:9091 {
+	forward_auth 127.0.0.1:9091 {
 		uri /api/authz/forward-auth?authelia_url=https://{$TAILSCALE_DOMAIN}/authelia
 		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
 	}
@@ -294,12 +289,12 @@ https://{$TAILSCALE_DOMAIN} {
 
 	@authelia path /authelia /authelia/*
 	handle @authelia {
-		reverse_proxy authelia:9091
+		reverse_proxy 127.0.0.1:9091
 	}
 
 	handle_path /homepage/* {
 		import authelia_forward_auth
-		reverse_proxy homepage:3000
+		reverse_proxy 127.0.0.1:3000
 	}
 
 	handle {
@@ -316,6 +311,7 @@ Notas importantes sobre este patrón:
 - el ejemplo se limita a `Homepage` porque su publicación remota por subruta ya queda alineada con la documentación del repositorio; añade otros servicios solo cuando su documento confirme ese patrón
 - `Portainer` no se incluye en este ejemplo porque su documento actual lo deja publicado en `:9443` y aquí no queda demostrada una adaptación correcta a `/portainer/`
 - si un servicio no soporta bien subrutas, no lo metas aquí sin revisar primero su configuración
+- con `network_mode: host` en Caddy, la cabecera `X-Forwarded-For` que Caddy envía a Authelia contiene la IP real del cliente (LAN o Tailscale), necesario para que [02-fail2ban.md](02-fail2ban.md) funcione correctamente; ya no se necesita `header_up X-Real-IP` porque Caddy ve directamente al cliente
 
 Tras modificar el `Caddyfile`:
 

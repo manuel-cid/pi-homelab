@@ -103,7 +103,19 @@ docker compose logs --tail 100 authelia
 ls -lh /home/<user>/homelab/data/authelia/authelia.log
 ```
 
-Haz un intento fallido de login y valida después que el log contiene la IP real del cliente, no una IP interna de Docker. Si en el log solo ves una IP del proxy o de la red `172.x`, corrige primero el tratamiento de cabeceras y proxies antes de activar el jail.
+Haz un intento fallido de login y valida después que el log contiene la IP real del cliente, no una IP interna de Docker.
+
+Si en el log ves una IP del rango `172.x.x.x` en el campo `remote_ip`, la causa más probable es que **Caddy no esté usando `network_mode: host`** en su stack de Docker. Cuando Caddy se publica con `ports:` normales, Docker reenvía las conexiones al contenedor mediante `docker-proxy`, que abre una nueva conexión TCP desde la IP del gateway Docker (`172.x.x.1`). La IP real del cliente se pierde irreversiblemente a nivel TCP y ni Caddy ni Authelia pueden recuperarla.
+
+La corrección es asegurar que Caddy use `network_mode: host` tal como se documenta en [05-caddy.md](../03-red/05-caddy.md). Con esa configuración, Caddy escucha directamente en la pila de red del host y ve la IP real de todos los clientes (LAN y Tailscale). La cabecera `X-Forwarded-For` que Caddy envía a Authelia contendrá la IP correcta.
+
+Después de aplicar o confirmar el cambio, repite la prueba:
+
+```bash
+tail -20 /home/<user>/homelab/data/authelia/authelia.log | grep -i "remote_ip"
+```
+
+Si ahora ves la IP real del cliente (por ejemplo `100.x.x.x` para Tailscale o `192.168.x.x` para LAN), el tratamiento es correcto y puedes continuar con la activación del jail.
 
 ### 4. Preparar Vaultwarden para logging persistente
 
@@ -123,13 +135,7 @@ Con esta decisión:
 - el fichero persistente visible desde el host será `/home/<user>/homelab/data/vaultwarden/vaultwarden.log`
 - `warn` sigue siendo suficiente para que los eventos relevantes de Fail2ban aparezcan en el log
 
-Si **Vaultwarden** va detrás de **Caddy**, revisa además su bloque `reverse_proxy` para que el backend reciba la IP real del cliente. El patrón documentado en [01-vaultwarden.md](../11-productividad/01-vaultwarden.md) incluye este encabezado:
-
-```caddyfile
-reverse_proxy vaultwarden:80 {
-	header_up X-Real-IP {remote_host}
-}
-```
+Si **Vaultwarden** va detrás de **Caddy**, la IP real del cliente llegará correctamente al backend gracias a que Caddy usa `network_mode: host` según [05-caddy.md](../03-red/05-caddy.md). El patrón documentado en [01-vaultwarden.md](../11-productividad/01-vaultwarden.md) incluye además `header_up X-Real-IP {remote_host}` para que Vaultwarden registre esa IP en su log.
 
 Antes de habilitar el jail de Vaultwarden, comprueba con un login fallido que `vaultwarden.log` refleja la IP del cliente y no `127.0.0.1`.
 
