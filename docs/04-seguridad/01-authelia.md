@@ -190,7 +190,7 @@ access_control:
       resources:
         - '^/$'
         - '^/homepage(/.*)?$'
-      policy: one_factor
+      policy: two_factor
 
 session:
   name: authelia_session
@@ -231,7 +231,7 @@ Qué fija esta configuración:
 - el portal de Authelia se sirve bajo la subruta `/authelia`
 - el backend de usuarios es local por fichero
 - la política por defecto es `deny`
-- `Homepage` queda con ejemplo de `one_factor`
+- `Homepage` queda con `two_factor` para que Authelia ofrezca el registro TOTP desde el primer momento; si solo existiesen reglas `one_factor`, el portal no mostraría la opción de registrar segundo factor
 - las rutas `two_factor` adicionales deben añadirse solo cuando su documento confirme compatibilidad real con subruta y con `forward_auth`
 - las notificaciones se guardan en fichero local, útil para bootstrap y pruebas sin depender todavía de SMTP
 - se genera además un log persistente en `/home/<user>/homelab/data/authelia/authelia.log`, necesario para la integración posterior con [02-fail2ban.md](02-fail2ban.md)
@@ -267,9 +267,9 @@ El resultado esperado es este:
 
 ### 6. Integrar Authelia en Caddy con `forward_auth`
 
-La base de Caddy ya se definió en [05-caddy.md](../03-red/05-caddy.md). Para integrar Authelia, actualiza el `Caddyfile` de ese documento con este patrón.
+La base de Caddy ya se definió en [05-caddy.md](../03-red/05-caddy.md). Para integrar Authelia, actualiza el `Caddyfile` de ese documento con dos cambios:
 
-Añade un bloque reutilizable:
+**Primero**, añade un snippet reutilizable **en el nivel raíz** del `Caddyfile`, justo debajo de `(common_proxy)` y antes de cualquier bloque de servidor. Es importante que quede al mismo nivel que `(common_proxy)`, no dentro de un bloque `http://` o `https://`:
 
 ```caddyfile
 (authelia_forward_auth) {
@@ -280,7 +280,7 @@ Añade un bloque reutilizable:
 }
 ```
 
-Después, dentro del bloque HTTPS de `https://{$TAILSCALE_DOMAIN}`, publica primero el portal de Authelia y luego protege solo las rutas que lo necesiten:
+**Después**, dentro del bloque HTTPS de `https://{$TAILSCALE_DOMAIN}`, publica primero el portal de Authelia y luego protege solo las rutas que lo necesiten:
 
 ```caddyfile
 https://{$TAILSCALE_DOMAIN} {
@@ -322,7 +322,7 @@ Tras modificar el `Caddyfile`:
 ```bash
 cd /home/<user>/homelab/compose/infra-caddy
 docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile
-docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+docker compose restart caddy
 docker compose logs --tail 100 caddy
 ```
 
@@ -337,15 +337,23 @@ Inicia sesión con el usuario definido en `users.yml`.
 En el primer acceso deja completado al menos esto:
 
 - confirmar que la autenticación básica funciona
-- registrar una aplicación TOTP en tu móvil o gestor compatible
-- guardar los códigos o secretos de recuperación que decidas conservar
+- registrar una aplicación TOTP
 - comprobar que una ruta marcada como `two_factor` exige realmente el segundo factor
 
-Como el `notifier` está en modo `filesystem`, las notificaciones de bootstrap o recuperación quedan en:
+Para registrar TOTP con el `notifier` en modo `filesystem`:
 
-- `/home/<user>/homelab/data/authelia/notification.txt`
+1. en el portal de Authelia, pulsa **"Register device"** en la sección de segundo factor
+2. Authelia escribe un enlace de confirmación en el fichero del host, no envía correo:
+   ```bash
+   cat /home/<user>/homelab/data/authelia/notification.txt
+   ```
+3. copia la URL que aparece en ese fichero y ábrela en el navegador
+4. escanea el código QR con tu app TOTP (Google Authenticator, Aegis, 2FAS, etc.)
+5. introduce el código TOTP que genere la app para confirmar el registro
 
-Eso es suficiente para una fase inicial. Cuando más adelante dispongas de SMTP o notificaciones externas, podrás sustituir este backend sin mover el resto del stack.
+Si el portal muestra "No hay aplicaciones protegidas que requieran un método de segundo factor", revisa que exista al menos una regla con `policy: two_factor` en `configuration.yml`.
+
+Este flujo es suficiente para una fase inicial. Cuando más adelante dispongas de SMTP o notificaciones externas, podrás sustituir el backend `filesystem` sin mover el resto del stack.
 
 ### 8. Política recomendada de uso
 
