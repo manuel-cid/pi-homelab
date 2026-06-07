@@ -30,7 +30,7 @@ Cuando en este documento aparezcan `<user>`, `<tailnet>`, `paperless.lan` o ruta
 - Haber completado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Paperless-ngx con el patrón recomendado del proyecto.
 - Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceso remoto por la tailnet después de validar la publicación HTTPS.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para documentar el puerto del servicio.
-- Revisar [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir sus bind mounts en la estrategia de copias.
+- Revisar [01-estrategia-backup.md](../07-backups/01-estrategia-backup.md) para la política general y [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir sus bind mounts en la estrategia de copias.
 - Disponer de `/home/<user>/homelab/` en el **SSD NVMe** con permisos normales para el usuario administrador.
 - Tener decidido el idioma principal de OCR. Para un uso doméstico en España suele ser razonable empezar con `spa+eng`.
 - Puertos necesarios en esta fase:
@@ -100,16 +100,8 @@ services:
       - /home/<user>/homelab/data/paperless/consume:/usr/src/paperless/consume
     expose:
       - "8000"
-    networks:
-      - default
-      - proxy
     labels:
       - wud.watch=false
-
-networks:
-  proxy:
-    external: true
-    name: ${PROXY_NETWORK}
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/paperless-ngx/.env`
@@ -118,7 +110,6 @@ Archivo recomendado: `/home/<user>/homelab/compose/paperless-ngx/.env`
 TZ=Europe/Madrid
 PUID=1000
 PGID=1000
-PROXY_NETWORK=homelab_proxy
 PAPERLESS_BIND_IP=127.0.0.1
 PAPERLESS_PORT=16002
 PAPERLESS_DB_NAME=paperless
@@ -135,7 +126,7 @@ Notas sobre este Compose:
 
 - `Paperless-ngx` queda como un stack único porque `webserver`, `PostgreSQL` y `Redis` forman una sola aplicación lógica.
 - la persistencia completa queda en bind mounts sobre el **SSD NVMe**
-- `PROXY_NETWORK=homelab_proxy` permite que **Caddy** alcance el upstream por nombre interno `webserver:8000`
+- este stack no necesita `homelab_proxy` para **Caddy**, porque [05-caddy.md](../03-red/05-caddy.md) fija `network_mode: host` y el upstream recomendado es `127.0.0.1:16002`
 - `PAPERLESS_BIND_IP=127.0.0.1` evita exponer Paperless directamente en todas las interfaces del host
 - `PAPERLESS_TASK_WORKERS=1` es una base prudente para una Raspberry Pi 5 de 8 GB; puedes subirlo después si importas lotes grandes
 - `PAPERLESS_CONSUMER_RECURSIVE=true` y `PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS=true` permiten usar subcarpetas dentro de `consume/` como **etiquetas automáticas**
@@ -196,7 +187,6 @@ docker compose logs --tail=100 webserver
 Validaciones rápidas:
 
 ```bash
-docker network ls | grep homelab_proxy
 curl -I http://127.0.0.1:16002/
 ls -lah /home/<user>/homelab/data/paperless
 docker compose logs --tail=50 db
@@ -208,7 +198,7 @@ Si vas a publicarlo con Caddy, añade un bloque equivalente a este en `/home/<us
 ```caddyfile
 http://paperless.lan {
 	import common_proxy
-	reverse_proxy webserver:8000
+	reverse_proxy 127.0.0.1:16002
 }
 ```
 

@@ -33,8 +33,8 @@ La decisión operativa es deliberada:
   - `443/tcp` para HTTPS sobre Tailscale
 - Confirmar que el router **no** tiene reglas de `port forwarding` hacia la Raspberry Pi.
 - Tener claro cómo llegarán los upstreams a Caddy:
-  - opción recomendada: los servicios se conectan también a la red Docker externa `homelab_proxy`
-  - opción de transición: Caddy proxya a `host.docker.internal:<puerto>` si el servicio publica solo en el host
+  - patrón oficial del proyecto: los upstreams apuntan a `127.0.0.1:<puerto>`
+  - cada servicio downstream que se publique detrás de Caddy debe exponer su puerto en loopback con `127.0.0.1:<puerto_host>:<puerto_interno>`
 
 ## Docker Compose
 
@@ -74,6 +74,7 @@ Notas sobre este Compose:
 - sin `network_mode: host`, Docker reenvía las conexiones al contenedor mediante `docker-proxy`, que abre una nueva conexión TCP desde la IP del gateway Docker (`172.x.x.1`); la IP real del cliente se pierde irreversiblemente y servicios como [02-fail2ban.md](../04-seguridad/02-fail2ban.md) no pueden funcionar
 - como consecuencia, Caddy **no está en ninguna red Docker** y no puede resolver nombres de contenedor como `jellyfin:8096`; los upstreams deben apuntar a `127.0.0.1:<puerto>`
 - cada servicio downstream que deba publicarse por Caddy necesita exponer su puerto en `127.0.0.1` mediante `ports:` en su stack
+- la red Docker compartida `homelab_proxy` puede seguir existiendo para comunicación entre otros stacks, pero **no** es el mecanismo base para que Caddy llegue a los servicios
 - no se necesitan `ports:` en el bloque de Caddy porque el contenedor comparte directamente los puertos del host
 - la configuración editable queda fuera del contenedor y puede versionarse en git
 - los certificados emitidos con `tailscale cert` se montan en modo lectura desde `/home/<user>/homelab/data/caddy/certs/`
@@ -245,7 +246,8 @@ Reglas prácticas:
 - usa siempre `127.0.0.1:<puerto>:<puerto_interno>` en los stacks downstream
 - no publiques el mismo puerto en `0.0.0.0` si el acceso directo no es necesario
 - si un servicio usa `network_mode: host` (como Home Assistant), Caddy ya lo alcanza directamente por su puerto en el host
-- el acceso por nombre de contenedor a través de `homelab_proxy` ya no es necesario para Caddy, pero otros servicios pueden seguir usando esa red entre sí si la necesitan para comunicación interna (por ejemplo, Prometheus → Grafana)
+- no uses `host.docker.internal` como upstream base de Caddy en este proyecto; con `network_mode: host`, el proxy ya alcanza directamente el host mediante `127.0.0.1`
+- el acceso por nombre de contenedor a través de `homelab_proxy` no es necesario para Caddy, pero otros servicios pueden seguir usando esa red entre sí si la necesitan para comunicación interna (por ejemplo, Prometheus → Grafana)
 
 ### 6. Ajustar DNS local en Pi-hole
 

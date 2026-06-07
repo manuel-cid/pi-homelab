@@ -8,7 +8,7 @@ En esta Raspberry Pi 5 se despliega como stack Docker propio, con acceso **solo 
 
 - la aplicación vive en `/home/<user>/homelab/compose/productivity-linkding/`
 - los datos persistentes viven en `/home/<user>/homelab/data/linkding/` sobre el **SSD NVMe**
-- el contenedor escucha en su puerto interno `9090/tcp`, pero el acceso recomendado se hace a través de **Caddy** para mantener una exposición coherente con el resto del homelab
+- el contenedor escucha en su puerto interno `9090/tcp` y publica `127.0.0.1:16001:9090` para que **Caddy** lo alcance por loopback sin exponerlo directamente a la LAN
 - se usa la imagen `sissbruecker/linkding:latest`, suficiente para un despliegue estándar sin archivado local de páginas HTML
 
 Para un homelab personal, esta topología suele ser la más práctica: despliegue sencillo, base SQLite local, backup fácil y configuración mínima en clientes.
@@ -22,7 +22,8 @@ Para un homelab personal, esta topología suele ser la más práctica: despliegu
 - Revisar [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount de Linkding en el plan de copias.
 - Disponer de la raíz operativa del homelab en `/home/<user>/homelab/`.
 - Puertos necesarios en esta fase:
-  - **`9090/tcp` solo como puerto interno del contenedor** para el upstream de Caddy
+  - **`127.0.0.1:16001/tcp`** publicado solo en loopback para que **Caddy** alcance Linkding sin exponerlo directamente a la LAN
+  - **`9090/tcp`** solo como puerto interno del contenedor
   - **`80/tcp` en el host** si Linkding se sirve por `http://linkding.lan` a través de Caddy dentro de la LAN
   - **`443/tcp` en `tailscale0`** solo si más adelante validas y publicas un acceso remoto para Linkding dentro del bloque HTTPS común de Caddy
   - no hace falta exponer ningún puerto a internet ni abrir nada en el router
@@ -44,20 +45,12 @@ services:
       TZ: ${TZ}
       LD_SUPERUSER_NAME: ${LINKDING_SUPERUSER_NAME}
       LD_SUPERUSER_PASSWORD: ${LINKDING_SUPERUSER_PASSWORD}
-    expose:
-      - "9090"
+    ports:
+      - "127.0.0.1:${LINKDING_HOST_PORT}:9090"
     volumes:
       - ${DATA_ROOT}/linkding:/etc/linkding/data
-    networks:
-      - default
-      - proxy
     labels:
       - wud.watch=true
-
-networks:
-  proxy:
-    external: true
-    name: ${PROXY_NETWORK}
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/productivity-linkding/.env`
@@ -65,7 +58,7 @@ Archivo recomendado: `/home/<user>/homelab/compose/productivity-linkding/.env`
 ```dotenv
 TZ=Europe/Madrid
 DATA_ROOT=/home/<user>/homelab/data
-PROXY_NETWORK=homelab_proxy
+LINKDING_HOST_PORT=16001
 LINKDING_SUPERUSER_NAME=admin
 LINKDING_SUPERUSER_PASSWORD=cambiar-esta-clave
 ```
@@ -74,8 +67,8 @@ Notas sobre este Compose:
 
 - Linkding usa **SQLite por defecto**, así que no necesita una base de datos externa para este caso
 - el bind mount a `/etc/linkding/data` deja toda la persistencia en el **SSD NVMe**
-- `expose: "9090"` basta para que **Caddy** alcance el upstream dentro de la red Docker compartida
-- `PROXY_NETWORK=homelab_proxy` mantiene este stack alineado con la convención definida en [02-estructura-compose.md](../02-docker/02-estructura-compose.md)
+- `127.0.0.1:${LINKDING_HOST_PORT}:9090` sigue la convención definida en [02-estructura-compose.md](../02-docker/02-estructura-compose.md): **Caddy** corre con `network_mode: host` y alcanza los servicios por loopback
+- este stack no necesita red Docker compartida con Caddy; `homelab_proxy` solo tendría sentido si otro contenedor de otro stack necesitara hablar con Linkding por nombre Docker
 - `LD_SUPERUSER_NAME` y `LD_SUPERUSER_PASSWORD` permiten crear el primer usuario automáticamente al arrancar
 - WUD puede monitorizar este servicio sin riesgo porque es pequeño y fácil de recuperar
 
@@ -112,7 +105,7 @@ Si vas a publicarlo con Caddy, añade un bloque equivalente a este en `/home/<us
 ```caddyfile
 http://linkding.lan {
 	import common_proxy
-	reverse_proxy linkding:9090
+	reverse_proxy 127.0.0.1:16001
 }
 ```
 
@@ -121,7 +114,7 @@ http://linkding.lan {
 Validaciones rápidas con el patrón recomendado:
 
 ```bash
-docker network ls | grep homelab_proxy
+ss -ltnp | grep 16001
 ls -lah /home/<user>/homelab/data/linkding
 curl -I -H 'Host: linkding.lan' http://127.0.0.1
 ```

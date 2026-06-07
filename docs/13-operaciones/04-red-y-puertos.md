@@ -6,8 +6,10 @@ Este documento consolida el **mapa operativo final de puertos** del homelab y si
 
 Su objetivo en esta fase no es rediseñar la arquitectura, sino dejar clara una regla práctica:
 
-- para operación diaria, este documento y los documentos específicos de cada servicio mandan sobre reservas antiguas
+- en caso de duda, primero mandan [plan/plan.md](../../plan/plan.md) y `SERVICES.md`
 - [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) sigue siendo la política base y el registro de convenciones
+- este documento consolida el estado operativo documentado sin contradecir esas referencias maestras
+- los documentos específicos de cada servicio afinan el detalle solo cuando no contradicen la arquitectura base
 - cualquier puerto publicado en el host debe seguir teniendo una razón explícita
 - cualquier deriva entre la política base y el despliegue real debe quedar auditada
 
@@ -46,13 +48,14 @@ No aplica en este documento. Aquí se consolida el estado de puertos, la auditor
 
 Para evitar confusión entre reservas antiguas y puertos reales, usa este orden:
 
-1. este documento como **mapa operativo consolidado**
-2. el documento específico del servicio cuando detalle el `bind` y el puerto publicado
-3. [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) como política base, convención de rangos y referencia histórica
+1. [plan/plan.md](../../plan/plan.md) y `SERVICES.md` como referencias maestras
+2. [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) como política base, convención de rangos y referencia histórica
+3. este documento como **mapa operativo consolidado** del estado ya documentado
+4. el documento específico del servicio cuando detalle el `bind` y el puerto publicado sin contradecir lo anterior
 
 Interpretación práctica:
 
-- si un servicio ya tiene documento propio con un puerto concreto, ese es el puerto operativo real
+- si un servicio ya tiene documento propio con un puerto concreto y no contradice las referencias maestras, ese es el puerto operativo real
 - si [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) reservó otro puerto distinto, eso se trata como **deriva documental**, no como orden de cambiar el servicio sin revisión
 - si un puerto aparece escuchando en el host y no aparece ni aquí ni en el documento del servicio, se trata como incidencia de revisión
 
@@ -75,36 +78,34 @@ Interpretación práctica:
 
 Estas entradas siguen siendo la base del diseño de red del proyecto y coinciden con [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
 
-#### 2.2 Puertos documentados con acceso directo en el host
+#### 2.2 Puertos documentados con acceso directo en la IP del host
 
 | Puerto | Protocolo | Servicio | Estado documental actual | Exposición prevista |
 |-------|-----------|----------|---------------------------|---------------------|
-| `10001` | TCP | WUD | publicado en `0.0.0.0` | LAN + Tailscale |
-| `9443` | TCP | Portainer | publicado en `0.0.0.0` | LAN + Tailscale |
-| `1883` | TCP | Mosquitto | publicado en `0.0.0.0` | LAN + Tailscale |
-| `12000` | TCP | Syncthing GUI | publicado en `0.0.0.0` | LAN + Tailscale |
+| `10001` | TCP | WUD | publicado en el host para acceso directo | LAN + Tailscale |
+| `9443` | TCP | Portainer | publicado en el host para acceso directo | LAN + Tailscale |
+| `1883` | TCP | Mosquitto | publicado en el host para clientes MQTT | LAN + Tailscale |
+| `12000` | TCP | Syncthing GUI | publicado en el host para acceso directo | LAN + Tailscale |
 | `8123` | TCP | Home Assistant | publicado en `network_mode: host` | LAN + Tailscale |
-| `13001` | TCP | Zigbee2MQTT | publicado en `0.0.0.0` | LAN |
-| `13002` | TCP | Node-RED | publicado en `0.0.0.0` | LAN + Tailscale |
-| `137` | UDP | Samba | publicado en `0.0.0.0` | LAN |
-| `138` | UDP | Samba | publicado en `0.0.0.0` | LAN |
-| `139` | TCP | Samba | publicado en `0.0.0.0` | LAN |
-| `445` | TCP | Samba | publicado en `0.0.0.0` | LAN |
-| `14001` | TCP | Navidrome | publicado en `0.0.0.0` | LAN + Tailscale |
-| `14003` | TCP | Calibre-Web | publicado en `0.0.0.0` | LAN + Tailscale |
-| `14004` | TCP | Stash | publicado en `0.0.0.0` | LAN + Tailscale |
-| `15000` | TCP | Transmission Web UI | publicado en `0.0.0.0` | LAN + Tailscale |
-| `15001` | TCP | Prowlarr | publicado en `0.0.0.0` | LAN + Tailscale |
-| `15002` | TCP | Sonarr | publicado en `0.0.0.0` | LAN + Tailscale |
-| `15003` | TCP | Radarr | publicado en `0.0.0.0` | LAN + Tailscale |
-| `16003` | TCP | Mealie | publicado en `0.0.0.0` | LAN + Tailscale |
-| `16004` | TCP | Stirling PDF | publicado en `0.0.0.0` | LAN + Tailscale |
-| `17000` | TCP | Homepage | publicado en `0.0.0.0` | LAN + Tailscale |
-| `22000` | TCP | Syncthing sync | publicado en `0.0.0.0` | LAN + Tailscale |
-| `22000` | UDP | Syncthing sync | publicado en `0.0.0.0` | LAN + Tailscale |
-| `21027` | UDP | Syncthing discovery | publicado en `0.0.0.0` | LAN |
-| `51413` | TCP | Transmission peers | publicado en `0.0.0.0` | LAN + Tailscale |
-| `51413` | UDP | Transmission peers | publicado en `0.0.0.0` | LAN + Tailscale |
+| `13001` | TCP | Zigbee2MQTT | publicado en la IP LAN del host | LAN |
+| `13002` | TCP | Node-RED | publicado en el host para acceso directo | LAN + Tailscale |
+| `137` | UDP | Samba | publicado en el host por requerimiento SMB | LAN |
+| `138` | UDP | Samba | publicado en el host por requerimiento SMB | LAN |
+| `139` | TCP | Samba | publicado en el host por requerimiento SMB | LAN |
+| `445` | TCP | Samba | publicado en el host por requerimiento SMB | LAN |
+| `14004` | TCP | Stash | publicado en el host para acceso directo | LAN + Tailscale |
+| `15000` | TCP | Transmission Web UI | publicado en el host para acceso directo | LAN + Tailscale |
+| `15001` | TCP | Prowlarr | publicado en el host para acceso directo | LAN + Tailscale |
+| `15002` | TCP | Sonarr | publicado en el host para acceso directo | LAN + Tailscale |
+| `15003` | TCP | Radarr | publicado en el host para acceso directo | LAN + Tailscale |
+| `16003` | TCP | Mealie | publicado en el host para acceso directo | LAN + Tailscale |
+| `16004` | TCP | Stirling PDF | publicado en el host para acceso directo | LAN + Tailscale |
+| `17000` | TCP | Homepage | publicado en el host para acceso directo | LAN + Tailscale |
+| `22000` | TCP | Syncthing sync | publicado en el host por el protocolo de sincronización | LAN + Tailscale |
+| `22000` | UDP | Syncthing sync | publicado en el host por el protocolo de sincronización | LAN + Tailscale |
+| `21027` | UDP | Syncthing discovery | publicado en el host para descubrimiento local | LAN |
+| `51413` | TCP | Transmission peers | publicado en el host por el protocolo BitTorrent | LAN + Tailscale |
+| `51413` | UDP | Transmission peers | publicado en el host por el protocolo BitTorrent | LAN + Tailscale |
 
 Lectura operativa:
 
@@ -112,23 +113,34 @@ Lectura operativa:
 - si un servicio deja de necesitar acceso directo, lo correcto es moverlo a `127.0.0.1` o dejarlo solo detrás de **Caddy**
 - esta tabla refleja solo los servicios cuyos documentos sí describen una publicación directa en la IP del host
 
-Servicios que **no** deben tratarse aquí como acceso directo fijo en host:
+Servicios que **no** deben tratarse aquí como acceso directo fijo en la IP del host:
 
-- **Jellyfin**: el documento base lo deja detrás de **Caddy** sin `ports:` en el host; `8096/tcp` queda como puerto interno o publicación temporal de diagnóstico
-- **Linkding**: el documento base lo deja detrás de **Caddy** con `expose: "9090"` y sin publicación directa en la IP del host
+- **Jellyfin**: el documento base publica `127.0.0.1:8096:8096` para upstream local de **Caddy**, no acceso LAN directo
+- **Linkding**: el documento base publica `127.0.0.1:16001:9090` para que **Caddy** lo alcance por loopback
 - **Audiobookshelf**: el documento base lo deja detrás de **Caddy**; `127.0.0.1:13378` aparece solo como publicación temporal para bootstrap o diagnóstico
 - **Paperless-ngx**: `16002/tcp` se documenta solo en `127.0.0.1` para bootstrap local o diagnóstico, no como exposición directa en LAN/Tailscale
+- **Navidrome**: el documento base publica `14001/tcp` en `127.0.0.1` como upstream local de **Caddy**
+- **Calibre-Web**: el documento base publica `14003/tcp` en `127.0.0.1` como upstream local de **Caddy**
+- **Vaultwarden**: el documento base publica `127.0.0.1:16006:80` para que **Caddy** lo alcance sin exposición directa
+- **Authelia**: el documento base publica `127.0.0.1:9091:9091` para uso interno con **Caddy**
+- **FreshRSS**: `16005/tcp` se documenta solo en `127.0.0.1` como upstream local o bootstrap
 
 #### 2.3 Puertos publicados solo en loopback
 
 | Bind | Puerto | Servicio | Motivo |
 |------|--------|----------|--------|
+| `127.0.0.1` | `8096/tcp` | Jellyfin | upstream local de Caddy; no LAN directa |
+| `127.0.0.1` | `9091/tcp` | Authelia | backend local de Caddy; no LAN directa |
 | `127.0.0.1` | `11000/tcp` | Prometheus | acceso local o vía proxy, no LAN directa |
 | `127.0.0.1` | `11002/tcp` | Uptime Kuma | acceso local o vía proxy, no LAN directa |
 | `127.0.0.1` | `11100/tcp` | Grafana | acceso local o vía proxy, no LAN directa |
 | `127.0.0.1` | `13378/tcp` | Audiobookshelf | bootstrap o diagnóstico local; operación normal detrás de Caddy |
+| `127.0.0.1` | `14001/tcp` | Navidrome | upstream local de Caddy; acceso directo opcional solo si cambias el bind |
+| `127.0.0.1` | `14003/tcp` | Calibre-Web | upstream local de Caddy; bootstrap o diagnóstico local |
+| `127.0.0.1` | `16001/tcp` | Linkding | upstream local de Caddy; no LAN directa |
 | `127.0.0.1` | `16002/tcp` | Paperless-ngx | bootstrap o diagnóstico local; operación normal detrás de Caddy |
 | `127.0.0.1` | `16005/tcp` | FreshRSS | acceso local o vía proxy, no LAN directa |
+| `127.0.0.1` | `16006/tcp` | Vaultwarden | upstream local de Caddy; no LAN directa |
 | `127.0.0.1` | `18080/tcp` | `infra-port-policy-test` | validación temporal de política de puertos |
 
 Estos puertos **no** deberían requerir aperturas generales en `ufw` o `nftables` para la LAN. Si aparecen escuchando en `0.0.0.0`, hay deriva real de seguridad.
@@ -137,10 +149,10 @@ Estos puertos **no** deberían requerir aperturas generales en `ufw` o `nftables
 
 | Puerto interno | Servicio | Nota |
 |---------------|----------|------|
-| `80/tcp` | Vaultwarden | publicado detrás de Caddy, no directo en host |
-| `9091/tcp` | Authelia | backend interno para Caddy |
+| `80/tcp` | Vaultwarden | puerto interno del contenedor; el host usa `127.0.0.1:16006` |
 | `9100/tcp` | Node Exporter | expuesto solo a otras redes Docker |
 | `9090/tcp` | Prometheus | puerto interno del contenedor; no confundir con `9090/tcp` interno de Linkding usado como upstream de Caddy |
+| `9090/tcp` | Linkding | puerto interno del contenedor; el host usa `127.0.0.1:16001` |
 | `3000/tcp` | Grafana | puerto interno del contenedor; el host usa `11100/tcp` en loopback |
 | `3001/tcp` | Uptime Kuma | puerto interno del contenedor; el host usa `11002/tcp` en loopback |
 | `9999/tcp` | Stash | puerto interno del contenedor; el host publica `14004/tcp` |
@@ -170,9 +182,11 @@ Eso significa:
 | Home Assistant | `13000/tcp` | `8123/tcp` en host | el servicio usa su puerto estándar en `network_mode: host` | documentar `8123` como canon operativo |
 | Jellyfin | `14000/tcp` | `8096/tcp` interno en el contenedor o bind temporal de diagnóstico | el servicio base entra por Caddy y no necesita publicación directa fija | no reservar `14000` como si Jellyfin lo usara ya |
 | Audiobookshelf | `14002/tcp` | `13378/tcp` solo en `127.0.0.1` para bootstrap o diagnóstico | el servicio no se documenta como acceso directo fijo en LAN/Tailscale | tratar `13378` como loopback temporal, no como exposición estable |
-| Linkding | `16001/tcp` | `9090/tcp` solo interno en Docker | el acceso recomendado va por Caddy, no por publicación directa | tratar `16001` como reserva no materializada |
+| Linkding | `16001/tcp` | `127.0.0.1:16001/tcp` en host como upstream de Caddy | el acceso recomendado va por Caddy, no por publicación LAN/Tailscale directa | tratar `16001` como loopback operativo, no como acceso directo |
 | Grafana | `11001/tcp` | `11100/tcp` en `127.0.0.1` | hay deriva de rango, aunque sigue siendo loopback | no asignar `11100` a otro servicio sin revisar |
 | Paperless-ngx | `16002/tcp` sin matiz en la política base | `16002/tcp` solo en `127.0.0.1` | el puerto existe para bootstrap local, no para exposición directa | tratarlo como loopback y no como acceso LAN/Tailscale |
+| Navidrome | `14001/tcp` como puerto multimedia genérico | `14001/tcp` en `127.0.0.1` | el servicio queda documentado detrás de Caddy y el acceso directo es opcional | tratar `14001` como loopback operativo mientras no se cambie el bind |
+| Calibre-Web | `14003/tcp` como puerto multimedia genérico | `14003/tcp` en `127.0.0.1` | el servicio queda documentado detrás de Caddy y no como exposición LAN/Tailscale directa | tratar `14003` como loopback operativo |
 
 #### 3.3 Riesgos de conflicto futuros
 
@@ -180,11 +194,13 @@ Los puntos que merecen más atención son estos:
 
 - `13000/tcp` aparece reservado en Fase 3 para **Home Assistant**, pero el servicio hoy está documentado en `8123/tcp`; además **Grafana** usa `11100/tcp` en `127.0.0.1`, así que ese tramo ya no coincide con la reserva histórica
 - `11001/tcp`, que Fase 3 proponía para **Grafana**, queda libre en la práctica
-- `14000/tcp`, `14002/tcp` y `16001/tcp` siguen pareciendo libres si alguien mira solo la tabla antigua, aunque los servicios equivalentes ya usan otros puertos reales
+- `14000/tcp` y `14002/tcp` siguen pareciendo libres si alguien mira solo la tabla antigua, aunque los servicios equivalentes ya usan otros puertos reales
 - `10001/tcp` parece libre si alguien mira solo [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md), pero hoy está documentado para **WUD**
 - `16002/tcp` puede parecer un puerto web directo más si alguien mira solo una lectura superficial del registro, pero **Paperless-ngx** hoy está documentado solo en `127.0.0.1`
 - `16005/tcp` puede parecer un puerto web directo más si alguien mira solo la política base, pero **FreshRSS** hoy está documentado solo en `127.0.0.1`
-- `9090/tcp` puede parecer un puerto web directo del host si alguien mira solo la política base, pero **Linkding** hoy lo usa solo como upstream interno de **Caddy**
+- `16001/tcp` puede parecer un puerto web directo más si alguien mira solo la política base, pero **Linkding** hoy lo usa solo en `127.0.0.1` como upstream de **Caddy**
+- `14001/tcp` y `14003/tcp` pueden parecer puertos LAN/Tailscale directos si alguien mira solo el rango multimedia, pero **Navidrome** y **Calibre-Web** hoy están documentados en `127.0.0.1`
+- `9090/tcp` puede parecer un puerto web directo del host si alguien confunde puerto interno y puerto publicado, pero **Linkding** lo usa solo dentro del contenedor
 - muchos servicios siguen documentados con `BIND_IP=0.0.0.0`, lo que amplía la superficie de ataque respecto a la política más estricta de “`127.0.0.1` + Caddy”
 
 Conclusión operativa:
@@ -318,6 +334,13 @@ En esta fase no hay una base de datos propia que respaldar, pero sí conviene pr
 En una recuperación del host, restaurar datos sin restaurar la política de puertos y firewall deja el homelab funcional pero no necesariamente seguro ni coherente.
 
 ## Referencias
+
+- [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
+- [03-seguridad-base.md](../01-sistema/03-seguridad-base.md)
+- [05-caddy.md](../03-red/05-caddy.md)
+- [04-tailscale.md](../03-red/04-tailscale.md)
+- [SERVICES.md](../../SERVICES.md)
+- [plan/plan.md](../../plan/plan.md)
 
 - [03-seguridad-base.md](../01-sistema/03-seguridad-base.md)
 - [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)

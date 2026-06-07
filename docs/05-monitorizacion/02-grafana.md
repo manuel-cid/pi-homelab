@@ -21,6 +21,7 @@ En este homelab conviene mantener un criterio simple:
 - Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 - Haber completado [01-prometheus.md](01-prometheus.md).
 - Haber completado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
+- Recomendable haber completado [05-caddy.md](../03-red/05-caddy.md) y [01-authelia.md](../04-seguridad/01-authelia.md) si también vas a publicar Grafana por HTTPS remoto en la subruta `/grafana/` sobre Tailscale.
 - Recomendable haber completado [03-node-exporter.md](03-node-exporter.md) si se van a usar dashboards de sistema y temperatura.
 - Tener creada la red Docker externa `homelab_proxy` para que Grafana alcance Prometheus por nombre interno.
 - Poder crear directorios persistentes en `/home/<user>/homelab/config/` y `/home/<user>/homelab/data/`.
@@ -49,6 +50,8 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL}
+      GF_SERVER_SERVE_FROM_SUB_PATH: ${GRAFANA_SERVE_FROM_SUB_PATH}
     ports:
       - "${GRAFANA_BIND_IP}:${GRAFANA_PORT}:3000"
     volumes:
@@ -77,6 +80,8 @@ GRAFANA_BIND_IP=127.0.0.1
 GRAFANA_PORT=11100
 GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=<cambia-esta-password>
+GRAFANA_ROOT_URL=http://127.0.0.1:11100/
+GRAFANA_SERVE_FROM_SUB_PATH=false
 PROXY_NETWORK=homelab_proxy
 ```
 
@@ -88,8 +93,18 @@ Puntos importantes de este Compose:
 - el stack se une a `homelab_proxy` para alcanzar `http://prometheus:9090` sin publicar Prometheus en la red local
 - los datos persistentes viven en `/home/<user>/homelab/data/grafana/` sobre el **SSD NVMe**
 - el aprovisionamiento de datasource y dashboards vive fuera del contenedor, bajo `/home/<user>/homelab/config/grafana/`
+- `GF_SERVER_ROOT_URL` y `GF_SERVER_SERVE_FROM_SUB_PATH` permiten dejar preparado el acceso remoto en `https://pi-homelab.<tailnet>.ts.net/grafana/` cuando lo publiques detrás de Caddy
 - la imagen queda fijada a `grafana/grafana:11.6.15` para evitar cambios inesperados al recrear el contenedor
 - se recomienda **no** configurar triggers de actualización automática de WUD para Grafana
+
+En el `.env` anterior, el valor por defecto mantiene Grafana con acceso local directo en `http://127.0.0.1:11100/`. Cuando actives la publicación remota por Caddy en `/grafana/`, cambia estos dos valores:
+
+```dotenv
+GRAFANA_ROOT_URL=https://pi-homelab.<tailnet>.ts.net/grafana/
+GRAFANA_SERVE_FROM_SUB_PATH=true
+```
+
+<!-- TODO: verificar el hostname MagicDNS final del nodo antes de sustituir `pi-homelab.<tailnet>.ts.net` en `GRAFANA_ROOT_URL`, Caddy y Authelia; si no coincide exactamente, el login remoto y los assets pueden fallar. -->
 
 ## Configuración
 
@@ -192,6 +207,8 @@ Abre la UI desde el host o mediante un túnel SSH local:
 
 - `http://127.0.0.1:11100`
 
+Esta URL local es la opción más simple mientras `GRAFANA_ROOT_URL` siga en `http://127.0.0.1:11100/`. Si más adelante activas la publicación remota con `GRAFANA_ROOT_URL=https://pi-homelab.<tailnet>.ts.net/grafana/`, Grafana pasará a considerar esa subruta HTTPS como URL canónica y la UI local puede redirigir ahí.
+
 Pasos recomendados nada más entrar:
 
 1. Iniciar sesión con `GRAFANA_ADMIN_USER` y `GRAFANA_ADMIN_PASSWORD`.
@@ -205,7 +222,62 @@ Si Grafana no puede conectar con Prometheus, las causas habituales son estas:
 - Grafana y Prometheus no comparten la red `homelab_proxy`
 - el nombre del servicio no es `prometheus`
 
-### 6. Verificar consultas con Explore
+### 6. Publicación remota opcional en `/grafana/` detrás de Caddy + Authelia
+
+El plan maestro de este repositorio reserva para Grafana una publicación HTTPS remota bajo la subruta `/grafana/`, accesible solo por **Tailscale** y protegida con **Authelia**.
+
+El patrón correcto en este proyecto es este:
+
+- **Caddy** sigue usando `network_mode: host` y llega a Grafana en `127.0.0.1:11100`
+- Grafana se configura con `GF_SERVER_ROOT_URL=https://pi-homelab.<tailnet>.ts.net/grafana/`
+- Grafana activa `GF_SERVER_SERVE_FROM_SUB_PATH=true`
+- **Authelia** protege `/grafana/*` con `forward_auth`
+
+Primero, ajusta el `.env` del stack de Grafana:
+
+```dotenv
+GRAFANA_ROOT_URL=https://pi-homelab.<tailnet>.ts.net/grafana/
+GRAFANA_SERVE_FROM_SUB_PATH=true
+```
+
+Después recrea Grafana:
+
+```bash
+cd /home/<user>/homelab/compose/monitoring-grafana
+docker compose up -d
+docker compose ps
+```
+
+Luego, en el `Caddyfile` definido en [05-caddy.md](../03-red/05-caddy.md), añade dentro del bloque `https://{$TAILSCALE_DOMAIN}` este bloque:
+
+```caddyfile
+handle_path /grafana/* {
+	import authelia_forward_auth
+	reverse_proxy 127.0.0.1:11100
+}
+```
+
+Y en `configuration.yml` de Authelia, descrito en [01-authelia.md](../04-seguridad/01-authelia.md), añade una regla `two_factor` para esa subruta:
+
+```yaml
+access_control:
+  rules:
+    - domain: 'pi-homelab.<tailnet>.ts.net'
+      resources:
+        - '^/grafana(/.*)?$'
+      policy: two_factor
+```
+
+Puntos importantes para no romper el acceso remoto:
+
+- usa `handle_path /grafana/*` en Caddy, no `handle /grafana*`, para que Grafana reciba las peticiones sin el prefijo duplicado
+- mantén la barra final en `GRAFANA_ROOT_URL`, porque Grafana genera enlaces y assets en función de esa URL exacta
+- no publiques Grafana directamente en la LAN; el patrón de este repositorio es `127.0.0.1:11100` más proxy inverso si hace falta acceso web
+- si no has validado todavía Authelia o Caddy, mantén temporalmente `GRAFANA_ROOT_URL=http://127.0.0.1:11100/` y pospone la subruta HTTPS
+
+<!-- TODO: verificar en una prueba real si el flujo final de login remoto exige además ajustar `GF_AUTH_DISABLE_LOGIN_FORM` o encabezados extra en Caddy; con la arquitectura actual no debería hacer falta, pero conviene validarlo al desplegar `Authelia` y `Caddy` juntos. -->
+
+### 7. Verificar consultas con Explore
 
 Antes de importar dashboards, conviene validar que las métricas llegan bien:
 
@@ -231,7 +303,7 @@ Lectura práctica:
 - `node_uname_info` funcionará cuando esté desplegado [03-node-exporter.md](03-node-exporter.md)
 - `engine_daemon_engine_cpus_cpus` funcionará si en [01-prometheus.md](01-prometheus.md) ya habilitaste el endpoint nativo `/metrics` de Docker Engine
 
-### 7. Dashboards recomendados
+### 8. Dashboards recomendados
 
 #### Dashboard 1: sistema del host con Node Exporter Full
 
@@ -337,7 +409,7 @@ Ajustes recomendados del panel:
 
 Si no aparece ninguna métrica de temperatura, revisa la configuración de [03-node-exporter.md](03-node-exporter.md), porque ahí es donde debe quedar resuelta la exportación de métricas del host.
 
-### 8. Operación diaria
+### 9. Operación diaria
 
 Comandos útiles para operación diaria:
 

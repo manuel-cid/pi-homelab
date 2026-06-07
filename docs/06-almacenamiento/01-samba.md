@@ -40,6 +40,8 @@ Al terminar este documento, el estado esperado es este:
 
 Archivo: `/home/<user>/homelab/compose/files-samba/docker-compose.yml`
 
+Sustituye `<user>` por el usuario real del host que administra el homelab.
+
 ```yaml
 name: files-samba
 
@@ -228,6 +230,13 @@ mkdir -p /home/<user>/homelab/compose/files-samba
 
 Archivo: `/home/<user>/homelab/compose/files-samba/.env`
 
+Sustituye los valores de ejemplo antes de desplegar:
+
+- `<user>` por el usuario real del host
+- `PUID` y `PGID` por los IDs reales de ese usuario
+- `cambiar-esta-clave` por una contraseña robusta
+- `SAMBA_BIND_IP` por la IP LAN fija de la Raspberry Pi si no quieres exponer SMB en todas las interfaces del host
+
 ```dotenv
 TZ=Europe/Madrid
 PUID=1000
@@ -304,6 +313,12 @@ Rutas típicas de acceso:
 - **macOS**: `smb://<ip-o-hostname>/movies`
 - **Linux**: `smb://<ip-o-hostname>/movies`
 
+Sustituye `<ip-o-hostname>` por una de estas opciones, según cómo accedas al homelab:
+
+- la IP LAN fija de la Raspberry Pi
+- el hostname local si tu red lo resuelve correctamente
+- el nombre MagicDNS de Tailscale si accedes por la VPN mesh
+
 Credenciales:
 
 - usuario: `media`
@@ -374,6 +389,11 @@ No hace falta respaldar estado interno efímero del contenedor si mantienes:
 - el `docker-compose.yml`
 - el `.env`
 - la estructura y permisos correctos en disco
+
+La estrategia general y la automatización de estas copias se documentan en:
+
+- [01-estrategia-backup.md](../07-backups/01-estrategia-backup.md)
+- [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md)
 
 ## Referencias
 

@@ -70,6 +70,8 @@ uptime
 df -h /
 df -h /media/hd2t
 df -h /media/hd5t
+findmnt /media/hd2t
+findmnt /media/hd5t
 docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 systemctl --failed
 ```
@@ -80,6 +82,7 @@ Qué debes confirmar:
 - el **NVMe** no está cerca de llenarse
 - `hd2t` conserva espacio suficiente para backups y exports
 - `hd5t` no está al límite por crecimiento de su biblioteca multimedia
+- `hd2t` y `hd5t` siguen montados sobre sus dispositivos reales y no están resolviendo contra `/`
 - no hay unidades `systemd` fallidas ni contenedores reiniciando en bucle
 
 Umbrales prácticos recomendados:
@@ -167,7 +170,8 @@ Si prefieres revisar solo contenedores críticos, empieza por:
 - `wud`
 - `caddy`
 - bases de datos como `mariadb` o `postgres`
-- servicios de acceso como `authelia`, `vaultwarden` o `tailscale`
+- servicios de acceso como `authelia` o `vaultwarden`
+- `tailscale` si lo has desplegado como contenedor; si lo instalaste en el host, revisa `systemctl status tailscaled`
 
 Qué señales deben disparar revisión inmediata:
 
@@ -214,15 +218,17 @@ Reglas recomendadas:
 Primero identifica los dispositivos reales:
 
 ```bash
-lsblk -o NAME,MODEL,SIZE,TRAN,MOUNTPOINT
+lsblk -f -o NAME,LABEL,FSTYPE,SIZE,TRAN,MOUNTPOINT
 ```
+
+No asumas que `hd2t` y `hd5t` serán siempre `/dev/sda` y `/dev/sdb`: tras reinicios o reconexiones USB ese orden puede cambiar. Usa la salida de `lsblk -f` para mapear primero cada etiqueta con su dispositivo real y ejecuta `smartctl` contra ese dispositivo.
 
 Comprobaciones típicas:
 
 ```bash
 sudo smartctl -a /dev/nvme0n1
-sudo smartctl -a -d sat /dev/sda
-sudo smartctl -a -d sat /dev/sdb
+sudo smartctl -a -d sat /dev/<dispositivo-hd2t>
+sudo smartctl -a -d sat /dev/<dispositivo-hd5t>
 ```
 
 Si la carcasa USB no expone SMART con `-d sat`, prueba con `-d scsi` según el chipset del adaptador.
@@ -238,8 +244,8 @@ Prueba corta recomendada una vez al mes:
 
 ```bash
 sudo smartctl -t short /dev/nvme0n1
-sudo smartctl -t short -d sat /dev/sda
-sudo smartctl -t short -d sat /dev/sdb
+sudo smartctl -t short -d sat /dev/<dispositivo-hd2t>
+sudo smartctl -t short -d sat /dev/<dispositivo-hd5t>
 ```
 
 Vuelve a consultar el resultado al cabo de unos minutos con `smartctl -a`.

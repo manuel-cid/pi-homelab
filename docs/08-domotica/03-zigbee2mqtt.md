@@ -42,10 +42,12 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    env_file:
+      - .env
     environment:
-      TZ: Europe/Madrid
+      TZ: ${TZ}
     ports:
-      - "13001:8080"
+      - "${ZIGBEE2MQTT_BIND_IP}:13001:8080"
     volumes:
       - /home/<user>/homelab/data/zigbee2mqtt:/app/data
       - /run/udev:/run/udev:ro
@@ -55,10 +57,18 @@ services:
       - wud.watch=false
 ```
 
+Archivo recomendado: `/home/<user>/homelab/compose/iot-zigbee2mqtt/.env`
+
+```dotenv
+TZ=Europe/Madrid
+ZIGBEE2MQTT_BIND_IP=IP_DE_LA_PI
+```
+
 Notas sobre este Compose:
 
 - la ruta en `devices:` debe sustituirse por la ruta real del coordinador en `/dev/serial/by-id/`
 - el bind mount de `/run/udev` permite a Zigbee2MQTT detectar correctamente el adaptador
+- `ZIGBEE2MQTT_BIND_IP` debe sustituirse por la IP LAN real de la Raspberry Pi para que la interfaz no quede expuesta por accidente en otras interfaces del host
 - el puerto `13001` del host publica la interfaz web local del contenedor en `8080`
 - se excluye de la monitorización de WUD para evitar cambios inesperados en una pieza crítica de la domótica
 
@@ -70,6 +80,14 @@ Notas sobre este Compose:
 mkdir -p /home/<user>/homelab/compose/iot-zigbee2mqtt
 mkdir -p /home/<user>/homelab/data/zigbee2mqtt
 ```
+
+Guarda también el `.env` del apartado anterior antes de desplegar el stack y deja permisos restrictivos:
+
+```bash
+chmod 600 /home/<user>/homelab/compose/iot-zigbee2mqtt/.env
+```
+
+Si en el futuro decides publicar Zigbee2MQTT solo detrás de Caddy, cambia `ZIGBEE2MQTT_BIND_IP=127.0.0.1`.
 
 ### 2. Identificar el adaptador USB
 
@@ -114,11 +132,12 @@ mqtt:
 serial:
   port: /dev/zigbee
   adapter: zstack
-  # <!-- TODO: verificar si el dongle es SONOFF ZBDongle-P (zstack) o ZBDongle-E (ember) antes de dejar este valor fijo -->
 
 advanced:
   log_level: info
 ```
+
+<!-- TODO: verificar si el dongle es SONOFF ZBDongle-P (zstack) o ZBDongle-E (ember) antes de dejar `serial.adapter` fijo en `zstack`. -->
 
 Puntos importantes:
 
@@ -157,6 +176,14 @@ Resultado esperado:
 - la interfaz web responde en `http://IP_DE_LA_PI:13001`
 - los logs muestran conexión correcta al broker MQTT
 - no aparecen errores de apertura del puerto serie
+
+Si usas `ufw`, recuerda abrir `13001/tcp` solo desde la LAN si vas a mantener este acceso directo:
+
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 13001 proto tcp
+```
+
+Sustituye `192.168.1.0/24` por tu subred real. Si cambias el servicio para publicarlo solo en `127.0.0.1`, elimina esta excepción y pásalo por Caddy siguiendo la política general del proyecto.
 
 ### 6. Integración con Home Assistant
 

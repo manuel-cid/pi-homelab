@@ -49,16 +49,8 @@ services:
       - "${NODE_RED_BIND_IP}:${NODE_RED_PORT}:1880"
     volumes:
       - ${DATA_ROOT}/node-red:/data
-    networks:
-      - default
-      - proxy
     labels:
       - wud.watch=false
-
-networks:
-  proxy:
-    external: true
-    name: ${PROXY_NETWORK}
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/iot-node-red/.env`
@@ -68,7 +60,6 @@ TZ=Europe/Madrid
 DATA_ROOT=/home/<user>/homelab/data
 NODE_RED_BIND_IP=0.0.0.0
 NODE_RED_PORT=13002
-PROXY_NETWORK=homelab_proxy
 ```
 
 Este stack sigue el mismo patrón que el resto de la fase:
@@ -76,8 +67,8 @@ Este stack sigue el mismo patrón que el resto de la fase:
 - `docker-compose.yml` dentro de `compose/`
 - `.env` junto al Compose para no fijar rutas y puertos en duro
 - persistencia en `data/`
-- puerto publicado en el host para clientes en LAN y Tailscale
-- union adicional a `homelab_proxy` para poder poner Node-RED detras de Caddy sin rehacer el stack
+- puerto publicado en el host para clientes en LAN y, si el firewall lo permite, tambien por Tailscale
+- si va detras de Caddy, el patron correcto en este proyecto es publicarlo en `127.0.0.1`, no conectarlo a una red Docker compartida para el proxy
 - sin secretos en el Compose
 - actualizaciones manuales para evitar romper flujos o nodos contrib en un momento inoportuno
 
@@ -93,12 +84,6 @@ sudo chown -R 1000:1000 /home/<user>/homelab/data/node-red
 ```
 
 La imagen oficial de Node-RED usa por defecto el UID/GID `1000` dentro del contenedor. Si la ruta bind-mounted no pertenece a ese usuario, suelen aparecer errores al guardar flujos, instalar nodos o escribir contexto persistente.
-
-Si la red compartida del proxy aun no existe, creala una sola vez:
-
-```bash
-docker network inspect homelab_proxy >/dev/null 2>&1 || docker network create homelab_proxy
-```
 
 Guarda tambien el `.env` del apartado Compose y, como contiene parametros operativos del stack, restringe permisos:
 
@@ -123,7 +108,16 @@ Tras el primer arranque, la interfaz queda disponible en:
 
 Este primer inicio crea en `/home/<user>/homelab/data/node-red/` los ficheros base del runtime, incluido `settings.js`.
 
-Si prefieres publicar Node-RED solo detras de [05-caddy.md](../03-red/05-caddy.md), cambia `NODE_RED_BIND_IP=127.0.0.1` en el `.env` antes de levantar el stack o elimina directamente el bloque `ports:` si vas a exponerlo solo por la red Docker compartida `homelab_proxy`.
+Si prefieres publicar Node-RED solo detras de [05-caddy.md](../03-red/05-caddy.md), cambia `NODE_RED_BIND_IP=127.0.0.1` en el `.env` antes de levantar el stack. En esta arquitectura, Caddy alcanza los servicios por `127.0.0.1:<puerto>`, no por nombre de contenedor en una red Docker compartida.
+
+Si usas `ufw` y mantienes el acceso directo en `13002/tcp`, abre solo lo que realmente necesites:
+
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 13002 proto tcp
+sudo ufw allow in on tailscale0 to any port 13002 proto tcp
+```
+
+Sustituye `192.168.1.0/24` por tu subred real. Si pasas Node-RED a `127.0.0.1`, elimina estas excepciones y deja el acceso web unicamente a traves de Caddy.
 
 ### 3. Ajustar `settings.js`
 
@@ -164,7 +158,7 @@ En una LAN domestica de confianza puede bastar con restringir el acceso por red,
 - publicar Node-RED detras de [05-caddy.md](../03-red/05-caddy.md) y protegerlo con [01-authelia.md](../04-seguridad/01-authelia.md)
 - o bien activar autenticacion propia del editor mediante `adminAuth` en `settings.js`
 
-Si no vas a ponerlo detras de Caddy, la opcion mas simple es mantenerlo accesible solo por IP interna y por Tailscale en `13002/tcp`, que es el puerto reservado para este servicio en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
+Si no vas a ponerlo detras de Caddy, la opcion mas simple es mantenerlo accesible solo por IP interna y, si hace falta, por Tailscale en `13002/tcp`, que es el puerto reservado para este servicio en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md). En ese caso, revisa tambien las reglas del firewall del host para no dejarlo abierto mas alla de lo previsto.
 
 ### 5. Instalar la integracion con Home Assistant
 

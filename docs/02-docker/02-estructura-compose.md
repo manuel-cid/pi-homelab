@@ -2,7 +2,7 @@
 
 ## Descripción
 
-Este documento define la **estrategia de organización** de los despliegues Docker del homelab. El objetivo no es levantar todavía un servicio concreto, sino fijar una base operativa mantenible para las siguientes fases: cómo dividir los stacks, dónde guardar cada `docker-compose.yml`, cómo usar una **red Docker compartida** entre stacks y qué convención seguir con los ficheros **`.env`**.
+Este documento define la **estrategia de organización** de los despliegues Docker del homelab. El objetivo no es levantar todavía un servicio concreto, sino fijar una base operativa mantenible para las siguientes fases: cómo dividir los stacks, dónde guardar cada `docker-compose.yml`, cuándo usar una **red Docker compartida** entre stacks y qué convención seguir con los ficheros **`.env`**.
 
 Para este proyecto, la recomendación es clara: **no** usar un único `docker-compose.yml` monolítico para todo el homelab y **no** fragmentar sin criterio en un fichero por contenedor. El punto de equilibrio es usar **un `docker-compose.yml` por stack funcional**, entendiendo por stack un conjunto de servicios que comparten ciclo de vida, dependencias y contexto operativo.
 
@@ -20,7 +20,8 @@ Esto encaja especialmente bien con una Raspberry Pi 5: simplifica actualizacione
   - **`/media/hd5t`** para la biblioteca multimedia dedicada
 - Puertos necesarios en esta fase:
   - ninguno obligatorio a nivel host
-  - se recomienda reservar el nombre de la red compartida Docker `homelab_proxy`
+  - si un servicio va a publicarse detrás de Caddy, debe reservar un puerto en loopback `127.0.0.1:<puerto>:<puerto_interno>`
+  - si varios contenedores de stacks distintos necesitan comunicarse directamente entre sí, se recomienda reservar el nombre de la red compartida Docker `homelab_proxy`
 
 Cuando este documento use placeholders como `<user>`, `<stack>` o `<servicio>`, deben sustituirse por valores reales del entorno antes de ejecutar ningún comando.
 
@@ -30,13 +31,13 @@ Al terminar este documento, el criterio operativo esperado es este:
 
 - Cada grupo lógico de servicios del homelab tiene su propio directorio bajo `compose/`.
 - Cada stack tiene su propio `docker-compose.yml` y su propio `.env`.
-- Existe una red Docker externa compartida para los servicios que deban hablar con un reverse proxy u otros stacks de forma controlada.
+- Existe un criterio explícito para decidir cuándo un stack publica puertos en `127.0.0.1` y cuándo además necesita una red Docker externa compartida con otros stacks.
 - Las rutas persistentes siguen una convención estable y predecible.
 - El despliegue manual por CLI y la gestión posterior desde Portainer comparten la misma estructura.
 
 ## Docker Compose
 
-Ejemplo de stack autocontenido siguiendo la convención recomendada. En este caso se usa **Linkding** solo como muestra de estructura: un stack pequeño, con datos persistentes en el NVMe, un `.env` local y conexión a la red compartida para publicarlo detrás de Caddy.
+Ejemplo de stack autocontenido siguiendo la convención recomendada. En este caso se usa **Linkding** solo como muestra de estructura: un stack pequeño, con datos persistentes en el NVMe, un `.env` local y publicación en loopback para que **Caddy**, ejecutándose con `network_mode: host`, lo alcance en `127.0.0.1`.
 
 Archivo: `/home/<user>/homelab/compose/productivity-linkding/docker-compose.yml`
 
@@ -53,20 +54,12 @@ services:
       TZ: ${TZ}
       LD_SUPERUSER_NAME: ${LINKDING_SUPERUSER_NAME}
       LD_SUPERUSER_PASSWORD: ${LINKDING_SUPERUSER_PASSWORD}
-    expose:
-      - "9090"
+    ports:
+      - "127.0.0.1:${LINKDING_HOST_PORT}:9090"
     volumes:
       - ${DATA_ROOT}/linkding:/etc/linkding/data
-    networks:
-      - default
-      - proxy
     labels:
       - wud.watch=true
-
-networks:
-  proxy:
-    external: true
-    name: ${PROXY_NETWORK}
 ```
 
 Puntos importantes del ejemplo:
@@ -75,8 +68,9 @@ Puntos importantes del ejemplo:
 - no se usa el campo legado `version:`
 - el stack es autocontenido: `docker-compose.yml` y `.env` viven juntos
 - los datos persistentes van al **SSD NVMe** bajo `/home/<user>/homelab/data/`
-- la red `proxy` es **externa** y compartida entre stacks solo cuando haga falta
-- al ir detrás de Caddy, el servicio no necesita publicar puertos en el host; basta con `expose` y la red compartida
+- el acceso directo al contenedor queda restringido a `127.0.0.1`
+- **Caddy** lo alcanza por `127.0.0.1:${LINKDING_HOST_PORT}` porque en este proyecto corre con `network_mode: host`
+- una red Docker externa compartida solo se añade cuando el stack necesita hablar con otros contenedores de otros stacks por nombre interno Docker
 
 ## Configuración
 
@@ -162,9 +156,9 @@ Convención recomendada:
 - `data/<servicio>/`: datos persistentes, bases de datos, uploads y estado
 - `logs/<servicio>/`: solo si interesa persistir logs fuera del contenedor
 
-### 3. Crear la red Docker compartida
+### 3. Crear la red Docker compartida cuando haga falta
 
-Cuando varios stacks deban conectarse al mismo reverse proxy o compartir una comunicación controlada entre servicios, usa una red externa única y nombrada explícitamente.
+Cuando varios stacks necesiten comunicarse directamente entre sí por nombre interno Docker, usa una red externa única y nombrada explícitamente.
 
 Créala una sola vez:
 
@@ -181,11 +175,13 @@ La política recomendada es esta:
 
 Casos típicos en los que **sí** conviene usarla:
 
-- servicios web publicados detrás de Caddy para acceso interno desde LAN o a través de Tailscale
 - dashboards o servicios auxiliares que deban alcanzar otros contenedores por nombre DNS interno de Docker
+- parejas o grupos de servicios repartidos en varios stacks que deban hablar entre sí sin pasar por la IP del host
+- monitorización entre contenedores, por ejemplo Prometheus alcanzando exporters o Uptime Kuma comprobando servicios Docker por nombre interno
 
 Casos en los que **no** conviene usarla por defecto:
 
+- servicios web que **Caddy** va a alcanzar por `127.0.0.1:<puerto>` desde el host
 - bases de datos que solo usa su propia aplicación
 - Redis, PostgreSQL o MariaDB internos de un stack
 - servicios que no necesitan exposición transversal
@@ -243,7 +239,7 @@ TZ=Europe/Madrid
 PUID=1000
 PGID=1000
 DATA_ROOT=/home/<user>/homelab/data
-PROXY_NETWORK=homelab_proxy
+LINKDING_HOST_PORT=16001
 LINKDING_SUPERUSER_NAME=admin
 LINKDING_SUPERUSER_PASSWORD=cambiar-esta-clave
 ```
@@ -253,6 +249,7 @@ Convenciones útiles:
 - `TZ`, `PUID` y `PGID` repetidos por stack si la imagen los usa
 - rutas siempre **absolutas**, no relativas
 - credenciales fuera del `docker-compose.yml`
+- añade `PROXY_NETWORK=homelab_proxy` solo en stacks que realmente se unan a esa red externa
 - permisos restrictivos para `.env` con secretos:
 
 ```bash
@@ -265,8 +262,8 @@ No todos los servicios deben exponerse igual.
 
 Regla recomendada:
 
-- usa `expose:` o ningún mapeo de puertos para servicios HTTP publicados detrás de **Caddy** en la red Docker compartida
-- usa `127.0.0.1:<puerto>:<puerto_interno>` solo cuando el acceso previsto sea desde el propio host
+- usa `127.0.0.1:<puerto>:<puerto_interno>` para servicios HTTP que vayan a publicarse detrás de **Caddy**, porque **Caddy** corre con `network_mode: host` y llega a ellos por loopback
+- usa `expose:` o ningún mapeo de puertos para servicios que solo deban ser accesibles desde otros contenedores en una red Docker compartida
 - usa `0.0.0.0:<puerto>:<puerto_interno>` solo cuando el servicio deba ser accesible directamente desde la LAN o Tailscale
 - evita `network_mode: host` salvo que un servicio realmente lo requiera por su naturaleza
 
@@ -288,8 +285,9 @@ Caso especial:
 
 Regla importante para evitar errores de diseño:
 
-- si un servicio se va a publicar a través de **Caddy en Docker** usando la red compartida `homelab_proxy`, normalmente **no** debe usar `ports:`
+- en este proyecto, si un servicio se va a publicar a través de **Caddy**, normalmente **sí** debe usar `127.0.0.1:<puerto>:<puerto_interno>`
 - `127.0.0.1:<puerto>:<puerto_interno>` no sirve para que otro contenedor alcance el servicio a través de la red Docker; para eso hay que compartir red entre contenedores
+- `expose:` por sí solo no sirve para que **Caddy** lo vea, porque **Caddy** no comparte la red bridge de Docker: usa `network_mode: host`
 
 ### 7. Flujo recomendado de despliegue
 

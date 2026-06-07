@@ -23,9 +23,9 @@ En una **Raspberry Pi 5**, Jellyfin funciona bien si el objetivo principal es **
 - Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Jellyfin detrás del reverse proxy interno.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener la política de no exponer servicios web en `0.0.0.0` cuando pueden ir detrás de Caddy.
 - Tener montado `hd2t` en `/media/hd2t`.
-- Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:
   - `8096/tcp` interno del contenedor para la interfaz web y API HTTP de Jellyfin
+  - `127.0.0.1:8096:8096` en el host para que **Caddy**, al usar `network_mode: host`, alcance Jellyfin en loopback
   - `1900/udp` solo si quieres DLNA
   - `7359/udp` solo si quieres descubrimiento automático de clientes
 
@@ -51,16 +51,10 @@ services:
       - /media/hd2t/media/movies:/media/movies:ro
       - /media/hd2t/media/tv:/media/tv:ro
       - /media/hd2t/media/music:/media/music:ro
-    networks:
-      - default
-      - proxy
+    ports:
+      - "127.0.0.1:8096:8096"
     labels:
       - wud.watch=true
-
-networks:
-  proxy:
-    external: true
-    name: ${PROXY_NETWORK}
 ```
 
 Notas sobre este Compose:
@@ -68,8 +62,8 @@ Notas sobre este Compose:
 - el stack queda aislado bajo `media-jellyfin`
 - los datos persistentes van al **SSD NVMe**
 - la biblioteca multimedia se monta desde las categorías compartidas de `hd2t` en modo lectura para reducir riesgo de borrados accidentales
-- el servicio se conecta también a `homelab_proxy` para que **Caddy** pueda alcanzarlo por nombre interno Docker
-- el Compose no publica `8096` en la IP del host; la entrada web recomendada del proyecto es **Caddy**
+- `8096` se publica solo en `127.0.0.1`, no en la IP LAN del host, para que **Caddy** lo alcance según la arquitectura definida en [05-caddy.md](../03-red/05-caddy.md)
+- la entrada web recomendada del proyecto sigue siendo **Caddy**; la publicación en loopback existe para el upstream interno, no para acceso directo desde la LAN
 - el Compose base no habilita aceleración hardware porque en Raspberry Pi depende del kernel, del stack multimedia disponible y de qué dispositivos exponga realmente el host
 
 ## Configuración
@@ -127,14 +121,13 @@ Archivo: `/home/<user>/homelab/compose/media-jellyfin/.env`
 TZ=Europe/Madrid
 PUID=1000
 PGID=1000
-PROXY_NETWORK=homelab_proxy
 ```
 
 Notas prácticas:
 
 - `PUID` y `PGID` deben coincidir con el usuario real del host
-- `PROXY_NETWORK` debe coincidir con la red externa usada por **Caddy**
-- si necesitas un acceso directo temporal para diagnóstico, publícalo en `127.0.0.1:8096:8096` y retíralo cuando termines
+- `127.0.0.1:8096:8096` ya deja el upstream listo para **Caddy** y permite diagnóstico local desde la propia Raspberry Pi o mediante túnel SSH
+- no cambies esa publicación a `0.0.0.0:8096:8096` salvo que tengas un motivo muy concreto y hayas revisado antes [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
 
 ### 4. Desplegar el stack
 
@@ -149,11 +142,10 @@ docker compose logs --tail=50 jellyfin
 Validaciones útiles:
 
 ```bash
-docker inspect media-jellyfin-jellyfin-1 --format '{{json .NetworkSettings.Networks}}'
 curl -I http://127.0.0.1:8096
 ```
 
-La comprobación HTTP desde el host requiere una entrada temporal en `ports:` como `127.0.0.1:8096:8096`. Si mantienes el patrón recomendado sin publicación directa, valida el flujo a través de **Caddy**:
+Para validar el flujo completo a través de **Caddy**:
 
 ```bash
 curl -I -H 'Host: jellyfin.lan' http://127.0.0.1
@@ -162,8 +154,8 @@ curl -I -H 'Host: jellyfin.lan' http://127.0.0.1
 Si todo ha arrancado bien, la interfaz quedará disponible en:
 
 - `http://jellyfin.lan` en la LAN
-
-- acceso remoto por Tailscale una vez documentes en Caddy una ruta o hostname compatible para Jellyfin
+- `http://127.0.0.1:8096` solo desde la propia Raspberry Pi o por túnel SSH, útil para bootstrap y diagnóstico
+- acceso remoto por Tailscale una vez valides en Caddy un patrón compatible para Jellyfin
 
 ### 5. Asistente inicial de Jellyfin
 
@@ -205,7 +197,7 @@ Recomendación operativa:
 
 - para la **LAN**, usa `http://jellyfin.lan`
 - para acceso remoto, usa Tailscale solo después de validar en Caddy un patrón compatible para Jellyfin
-- reserva la publicación directa de `8096` a `127.0.0.1` solo para bootstrap o diagnóstico puntual
+- mantén `127.0.0.1:8096` como upstream interno y punto de diagnóstico local; no lo conviertas en publicación LAN directa
 
 ### 7. Transcodificación por hardware en Raspberry Pi 5
 
@@ -259,6 +251,7 @@ Respaldar como mínimo:
 - `/home/<user>/homelab/compose/media-jellyfin/docker-compose.yml`
 - `/home/<user>/homelab/compose/media-jellyfin/.env`
 - `/home/<user>/homelab/data/jellyfin/config`
+- `/home/<user>/homelab/config/caddy/Caddyfile` si publicas Jellyfin detrás de Caddy
 
 Opcional según tu política de restauración:
 

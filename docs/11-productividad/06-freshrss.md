@@ -132,7 +132,7 @@ Si todo ha arrancado bien, la interfaz quedará accesible en una de estas URLs:
 
 ### 3. Publicar FreshRSS con Caddy
 
-Para este servicio, la opción más coherente con el resto del homelab es usar **una única URL canónica** y dejar que **Caddy** proxye al upstream local `host.docker.internal:16005`.
+Para este servicio, la opción más coherente con el resto del homelab es usar **una única URL canónica** y dejar que **Caddy** proxye al upstream local `127.0.0.1:16005`.
 
 Recomendación para este proyecto:
 
@@ -158,7 +158,7 @@ https://{$TAILSCALE_DOMAIN} {
 	redir /freshrss /freshrss/ 308
 
 	handle_path /freshrss/* {
-		reverse_proxy host.docker.internal:16005 {
+		reverse_proxy 127.0.0.1:16005 {
 			header_up X-Forwarded-Prefix "/freshrss"
 		}
 	}
@@ -172,7 +172,7 @@ https://{$TAILSCALE_DOMAIN} {
 Este patrón encaja bien aquí por tres motivos:
 
 - FreshRSS documenta explícitamente en Caddy el uso en **subruta** con `handle_path`, redirección a la barra final y cabecera `X-Forwarded-Prefix`
-- el stack actual publica FreshRSS solo en `127.0.0.1:16005`, así que desde el contenedor de Caddy el upstream correcto es `host.docker.internal:16005`
+- el stack actual publica FreshRSS solo en `127.0.0.1:16005`, y en este proyecto **Caddy** usa `network_mode: host`, así que el upstream correcto sigue siendo `127.0.0.1:16005`
 - reutiliza el certificado Tailscale ya emitido para el hostname principal y evita abrir otro frente de DNS o TLS
 - si tu bloque `https://{$TAILSCALE_DOMAIN}` ya contiene `@health` o el `handle` final por defecto, inserta solo `redir /freshrss /freshrss/ 308` y `handle_path /freshrss/*` respetando el orden actual
 - esta opción remota por subruta debe considerarse la URL canónica solo si confirmas que te interesa acceso por Tailscale; si no, mantén `http://freshrss.lan` como URL principal y omite la subruta HTTPS
@@ -184,7 +184,7 @@ Si no quieres acceso remoto por Tailscale y prefieres la opción más simple par
 ```caddyfile
 http://freshrss.lan {
 	import common_proxy
-	reverse_proxy host.docker.internal:16005
+	reverse_proxy 127.0.0.1:16005
 }
 ```
 

@@ -30,6 +30,8 @@ En este proyecto conviene mantener un criterio simple:
   - **`9100/tcp`** interno del contenedor para Prometheus
   - no hace falta publicar `9100/tcp` en `127.0.0.1` ni en la LAN
 
+Cuando este documento use placeholders como `<user>`, debes sustituirlos por el usuario real del sistema antes de ejecutar comandos o guardar rutas.
+
 ## Docker Compose
 
 Archivo: `/home/<user>/homelab/compose/monitoring-node-exporter/docker-compose.yml`
@@ -155,7 +157,7 @@ Si en [01-prometheus.md](01-prometheus.md) dejaste el bloque comentado, basta co
 
 ```bash
 cd /home/<user>/homelab/compose/monitoring-prometheus
-docker compose exec prometheus wget -qO- http://127.0.0.1:9090/-/reload
+docker compose exec prometheus wget -qO- --post-data='' http://127.0.0.1:9090/-/reload
 ```
 
 Validación mínima tras la recarga:

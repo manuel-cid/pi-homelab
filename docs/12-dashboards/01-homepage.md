@@ -9,7 +9,7 @@ La topología recomendada para esta Raspberry Pi 5 es esta:
 - la aplicación vive en `/home/<user>/homelab/compose/dashboards-homepage/`
 - la configuración editable vive en `/home/<user>/homelab/config/homepage/`
 - el servicio se publica en `17000/tcp` para acceso directo desde **LAN** y **Tailscale**
-- además se conecta a `homelab_proxy` para poder publicarlo detrás de **Caddy** y, si quieres, proteger la ruta remota con **Authelia**
+- **Caddy** lo alcanza a través de `127.0.0.1:17000`, igual que el resto de servicios publicados detrás del proxy con `network_mode: host`
 - Homepage no necesita base de datos propia; lo importante es respaldar sus YAML, imágenes locales y secretos de `.env`
 
 Para este homelab, esa combinación da un resultado razonable: un panel central sencillo, fácil de reconstruir y suficientemente flexible para crecer con el resto de servicios.
@@ -21,7 +21,6 @@ Para este homelab, esa combinación da un resultado razonable: un panel central 
 - Haber completado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Homepage como `http://homepage.lan` o bajo `https://pi-homelab.<tailnet>.ts.net/homepage/`.
 - Haber completado [01-authelia.md](../04-seguridad/01-authelia.md) si quieres exigir autenticación en la ruta remota `/homepage/`.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto `17000/tcp`.
-- Tener creada la red Docker externa `homelab_proxy` si vas a integrarlo con Caddy.
 - Tener ya definidos los servicios que quieras mostrar y sus URLs canónicas.
 - Tener a mano las claves de API solo de los widgets que realmente vayas a usar; no hace falta preparar tokens para todos desde el primer día.
 - Puertos necesarios en esta fase:
@@ -53,16 +52,8 @@ services:
       - /home/<user>/homelab:/mnt/nvme:ro
       - /media/hd2t:/media/hd2t:ro
       - /media/hd5t:/media/hd5t:ro
-    networks:
-      - default
-      - homelab_proxy
     labels:
       - wud.watch=true
-
-networks:
-  homelab_proxy:
-    external: true
-    name: homelab_proxy
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/dashboards-homepage/.env`
@@ -107,6 +98,7 @@ Notas sobre este Compose:
 - el subdirectorio `images/` permite usar fondos o logos locales sin montar todo `/app/public`
 - los mounts de `/mnt/nvme`, `/media/hd2t` y `/media/hd5t` están pensados para que el widget `resources` muestre el arbol operativo del homelab en el SSD y los dos HDD externos
 - si no quieres mostrar almacenamiento en Homepage, puedes quitar esos tres montajes de solo lectura
+- no hace falta unir Homepage a una red Docker compartida para publicarlo por **Caddy**; en este proyecto el proxy llega a él por `127.0.0.1:17000`
 
 ## Configuración
 
@@ -344,7 +336,7 @@ Bloque LAN recomendado para `/home/<user>/homelab/config/caddy/Caddyfile`:
 ```caddyfile
 http://homepage.lan {
 	import common_proxy
-	reverse_proxy homepage:3000
+	reverse_proxy 127.0.0.1:17000
 }
 ```
 
@@ -353,7 +345,7 @@ Si ya sigues el patrón descrito en [01-authelia.md](../04-seguridad/01-authelia
 ```caddyfile
 handle_path /homepage/* {
 	import authelia_forward_auth
-	reverse_proxy homepage:3000
+	reverse_proxy 127.0.0.1:17000
 }
 ```
 
@@ -375,6 +367,8 @@ Con esta topología puedes usar estas rutas:
 No cambies las tarjetas de `services.yaml` para que apunten automaticamente a la subruta remota `/homepage/`: las tarjetas deben seguir apuntando a la URL canonica de cada servicio documentada en su propio fichero.
 
 Si decides usar solo Caddy, puedes endurecer el servicio cambiando `HOMEPAGE_BIND_IP=127.0.0.1` y recreando el stack.
+
+<!-- TODO: verificar si en tu versión concreta de Homepage basta con `base:` en `settings.yaml` para servir correctamente bajo `/homepage/`; si aparecen rutas rotas de assets, revisar la documentación oficial antes de fijar la subruta como patrón definitivo. -->
 
 ### 6. Operación básica y mantenimiento
 

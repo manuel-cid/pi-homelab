@@ -12,6 +12,8 @@ Su objetivo es dejar una regla operativa clara:
 - el acceso remoto entra solo por **Tailscale**, según [04-tailscale.md](04-tailscale.md)
 - el router no publica nada hacia internet
 
+En caso de conflicto con documentos de servicio individuales, en esta guía prevalecen primero [plan/plan.md](../../plan/plan.md) y después `SERVICES.md`, porque son las referencias maestras de arquitectura, estructura de directorios y alcance de red del proyecto.
+
 Este documento es un **registro vivo**. Cada vez que se despliegue un servicio nuevo, hay que revisar y actualizar:
 
 - la tabla de puertos reservados
@@ -149,19 +151,48 @@ Infraestructura base ya fijada en esta fase:
 | Macvlan | `192.168.1.195` | `5335/tcp` | Unbound | upstream DNS TCP | interno DNS |
 | Macvlan | `192.168.1.195` | `5335/udp` | Unbound | upstream DNS UDP | interno DNS |
 
-Registro vivo de puertos ya fijados por otros documentos existentes del repositorio:
+Registro vivo de puertos documentados en el repositorio y coherentes con la arquitectura maestra del proyecto:
 
 | Servicio | Puerto recomendado | Nota |
 |---------|--------------------|------|
 | Portainer | `9443/tcp` | publicado en host según [03-portainer.md](../02-docker/03-portainer.md); si lo pasas por Caddy, mejor moverlo a `127.0.0.1` |
+| WUD | `10001/tcp` | publicado en host según [04-wud.md](../02-docker/04-wud.md); `0.0.0.0` por defecto para acceso LAN + Tailscale |
+| Jellyfin | `8096/tcp` | upstream esperado por **Caddy** en `127.0.0.1:8096` según `SERVICES.md` y [05-caddy.md](05-caddy.md); no debe quedar expuesto en `0.0.0.0` |
+| Prometheus | `11000/tcp` | publicado en `127.0.0.1` según [01-prometheus.md](../05-monitorizacion/01-prometheus.md); acceso local o vía proxy |
+| Uptime Kuma | `11002/tcp` | publicado en `127.0.0.1` según [04-uptime-kuma.md](../05-monitorizacion/04-uptime-kuma.md); acceso local o vía proxy |
+| Grafana | `11100/tcp` | publicado en `127.0.0.1` según [02-grafana.md](../05-monitorizacion/02-grafana.md); acceso local o vía proxy |
+| Syncthing | `12000/tcp` | GUI web publicada en host según [02-syncthing.md](../06-almacenamiento/02-syncthing.md); `0.0.0.0` por defecto |
+| Syncthing | `22000/tcp`, `22000/udp` | sincronización peer-to-peer según [02-syncthing.md](../06-almacenamiento/02-syncthing.md) |
+| Syncthing | `21027/udp` | descubrimiento local según [02-syncthing.md](../06-almacenamiento/02-syncthing.md) |
+| Samba | `137/udp`, `138/udp`, `139/tcp`, `445/tcp` | puertos estándar SMB según [01-samba.md](../06-almacenamiento/01-samba.md); `0.0.0.0` por defecto |
+| Home Assistant | `8123/tcp` | `network_mode: host` según [01-home-assistant.md](../08-domotica/01-home-assistant.md); acceso LAN + Tailscale |
+| Mosquitto | `1883/tcp` | broker MQTT según [02-mosquitto.md](../08-domotica/02-mosquitto.md); publicado en host para clientes dentro y fuera de Docker |
+| Zigbee2MQTT | `13001/tcp` | interfaz web según [03-zigbee2mqtt.md](../08-domotica/03-zigbee2mqtt.md); acceso directo LAN |
+| Node-RED | `13002/tcp` | editor web según [04-node-red.md](../08-domotica/04-node-red.md); `0.0.0.0` por defecto para LAN + Tailscale |
+| Audiobookshelf | `13378/tcp` | publicado en `127.0.0.1` según [03-audiobookshelf.md](../09-multimedia/03-audiobookshelf.md); solo bootstrap o diagnóstico, operación normal detrás de Caddy |
+| Navidrome | `14001/tcp` | publicado en `127.0.0.1` según [02-navidrome.md](../09-multimedia/02-navidrome.md); acceso directo opcional, recomendado detrás de Caddy |
+| Calibre-Web | `14003/tcp` | publicado en host según [04-calibre-web.md](../09-multimedia/04-calibre-web.md); `0.0.0.0` por defecto, eliminable si solo va detrás de Caddy |
+| Stash | `14004/tcp` | publicado en host según [05-stash.md](../09-multimedia/05-stash.md); `0.0.0.0` por defecto para LAN + Tailscale |
+| Transmission | `15000/tcp` | UI web según [01-transmission.md](../10-descargas/01-transmission.md); `0.0.0.0` por defecto para LAN + Tailscale |
+| Transmission peers | `51413/tcp`, `51413/udp` | tráfico BitTorrent según [01-transmission.md](../10-descargas/01-transmission.md) |
+| Prowlarr | `15001/tcp` | UI web según [02-prowlarr.md](../10-descargas/02-prowlarr.md); `0.0.0.0` por defecto para LAN + Tailscale |
+| Sonarr | `15002/tcp` | UI web según [03-sonarr.md](../10-descargas/03-sonarr.md); `0.0.0.0` por defecto para LAN + Tailscale |
+| Radarr | `15003/tcp` | UI web según [04-radarr.md](../10-descargas/04-radarr.md); `0.0.0.0` por defecto para LAN + Tailscale |
+| Vaultwarden | `16006/tcp` | upstream esperado por **Caddy** en `127.0.0.1:16006` según `SERVICES.md` y [05-caddy.md](05-caddy.md); no debe publicarse directamente en la LAN |
+| Paperless-ngx | `16002/tcp` | publicado en `127.0.0.1` según [03-paperless-ngx.md](../11-productividad/03-paperless-ngx.md); solo bootstrap o diagnóstico, operación normal detrás de Caddy |
+| Mealie | `16003/tcp` | publicado en host según [04-mealie.md](../11-productividad/04-mealie.md); `0.0.0.0` por defecto para LAN + Tailscale |
+| Stirling PDF | `16004/tcp` | publicado en host según [05-stirling-pdf.md](../11-productividad/05-stirling-pdf.md); `0.0.0.0` por defecto para LAN + Tailscale |
+| FreshRSS | `16005/tcp` | publicado en `127.0.0.1` según [06-freshrss.md](../11-productividad/06-freshrss.md); acceso local o vía Caddy |
+| Homepage | `17000/tcp` | publicado en host según [01-homepage.md](../12-dashboards/01-homepage.md); `0.0.0.0` por defecto para LAN + Tailscale |
 
 Regla de interpretación para esta tabla:
 
-- si un documento de servicio ya fija un puerto concreto, ese valor pasa a ser la referencia operativa de este registro vivo
+- si un documento de servicio ya fija un puerto concreto y no contradice [plan/plan.md](../../plan/plan.md) ni `SERVICES.md`, ese valor pasa a ser la referencia operativa de este registro vivo
 - la convención por rangos sigue siendo útil para servicios futuros, pero no debe pisar puertos estándar o ya documentados
 - esta tabla solo debe crecer cuando exista el documento del servicio correspondiente y el puerto haya quedado fijado allí
 - cuando un servicio pase a `127.0.0.1` o quede solo detrás de Caddy, actualiza aquí su nota de exposición
 
+<!-- TODO: revisar y alinear los documentos de Jellyfin y Vaultwarden con la arquitectura maestra: aquí y en `SERVICES.md` se registran como upstreams en `127.0.0.1:<puerto>`, pero sus guías de servicio describen otra topología. -->
 <!-- TODO: verificar y añadir aquí los puertos de fases posteriores cuando existan sus documentos en el repositorio. -->
 
 Puertos estándar que conviene documentar como excepción cuando esos servicios se desplieguen:
@@ -305,8 +336,8 @@ Cada vez que despliegues un servicio nuevo, ejecuta al menos esta revisión:
 ```bash
 ss -ltnup
 docker ps --format 'table {{.Names}}\t{{.Ports}}'
-sudo ufw status numbered
-sudo nft list ruleset
+sudo ufw status numbered        # solo si usas ufw
+sudo nft list ruleset           # solo si usas nftables
 ```
 
 Preguntas que debes resolver antes de dar por bueno el despliegue:

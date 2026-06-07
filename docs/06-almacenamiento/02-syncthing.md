@@ -57,10 +57,10 @@ services:
       PUID: ${PUID}
       PGID: ${PGID}
     ports:
-      - "${SYNCTHING_BIND_IP}:${SYNCTHING_GUI_PORT}:8384/tcp"
-      - "${SYNCTHING_BIND_IP}:${SYNCTHING_SYNC_PORT}:22000/tcp"
-      - "${SYNCTHING_BIND_IP}:${SYNCTHING_SYNC_PORT}:22000/udp"
-      - "${SYNCTHING_BIND_IP}:${SYNCTHING_DISCOVERY_PORT}:21027/udp"
+      - "${SYNCTHING_GUI_BIND_IP}:${SYNCTHING_GUI_PORT}:8384/tcp"
+      - "${SYNCTHING_SYNC_BIND_IP}:${SYNCTHING_SYNC_PORT}:22000/tcp"
+      - "${SYNCTHING_SYNC_BIND_IP}:${SYNCTHING_SYNC_PORT}:22000/udp"
+      - "${SYNCTHING_SYNC_BIND_IP}:${SYNCTHING_DISCOVERY_PORT}:21027/udp"
     volumes:
       - ${DATA_ROOT}/syncthing/config:/config
       - ${SYNC_FOLDERS_ROOT}/documents:/data/documents
@@ -106,7 +106,9 @@ sudo chown -R <user>:<user> /home/<user>/homelab/data/syncthing
 sudo chown -R <user>:<user> /media/hd2t/downloads/syncthing-media-drop
 
 sudo find /home/<user>/homelab/data/syncthing/folders -type d -exec chmod 2775 {} \;
+sudo find /home/<user>/homelab/data/syncthing/folders -type f -exec chmod 0664 {} \;
 sudo find /media/hd2t/downloads/syncthing-media-drop -type d -exec chmod 2775 {} \;
+sudo find /media/hd2t/downloads/syncthing-media-drop -type f -exec chmod 0664 {} \;
 ```
 
 Qué se busca con esto:
@@ -125,7 +127,8 @@ PUID=1000
 PGID=1000
 DATA_ROOT=/home/<user>/homelab/data
 SYNC_FOLDERS_ROOT=/home/<user>/homelab/data/syncthing/folders
-SYNCTHING_BIND_IP=0.0.0.0
+SYNCTHING_GUI_BIND_IP=0.0.0.0
+SYNCTHING_SYNC_BIND_IP=0.0.0.0
 SYNCTHING_GUI_PORT=12000
 SYNCTHING_SYNC_PORT=22000
 SYNCTHING_DISCOVERY_PORT=21027
@@ -135,8 +138,9 @@ Notas importantes:
 
 - `DATA_ROOT` mantiene la configuración del servicio en el **SSD NVMe**.
 - `SYNC_FOLDERS_ROOT` define la raíz de carpetas sincronizadas que quieres mantener también en SSD.
-- `SYNCTHING_BIND_IP=0.0.0.0` permite acceso desde la **LAN** y desde la IP de **Tailscale** del host si el firewall lo autoriza.
-- Si prefieres que la interfaz web no sea accesible desde la LAN, puedes cambiar `SYNCTHING_BIND_IP` a una IP concreta del host o a `127.0.0.1` y gestionar el acceso por otro camino.
+- `SYNCTHING_GUI_BIND_IP=0.0.0.0` deja la interfaz accesible desde la **LAN** y desde la IP de **Tailscale** del host si el firewall lo autoriza.
+- `SYNCTHING_SYNC_BIND_IP=0.0.0.0` mantiene operativo el protocolo de sincronización en las interfaces del host donde lo necesites.
+- Si prefieres que la interfaz web no sea accesible desde la LAN, puedes cambiar solo `SYNCTHING_GUI_BIND_IP` a una IP concreta del host o a `127.0.0.1` sin romper los puertos de sincronización.
 
 Protege el fichero:
 
@@ -262,6 +266,8 @@ sudo ufw allow in on tailscale0 to any port 22000 proto udp comment 'Syncthing s
 ```
 
 El descubrimiento local `21027/udp` no suele hacer falta en `tailscale0` porque fuera de la LAN normalmente trabajarás con dispositivos ya emparejados.
+
+Si has fijado `SYNCTHING_GUI_BIND_IP=127.0.0.1`, omite las reglas de `12000/tcp` y accede a la UI por un túnel SSH o a través de otro proxy interno que controles explícitamente.
 
 ### 9. Prueba funcional
 

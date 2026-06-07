@@ -13,6 +13,8 @@ La idea operativa es simple:
 
 Este diseño encaja bien con el alcance del proyecto: **solo LAN + Tailscale**, sin exposición pública a internet y sin abrir puertos en el router.
 
+<!-- TODO: verificar el rango IP definitivo reservado para `dns_lan` en el router antes de reutilizar los valores de ejemplo de este documento. -->
+
 ## Requisitos Previos
 
 - Haber completado [01-instalacion-os.md](../01-sistema/01-instalacion-os.md).
@@ -37,6 +39,7 @@ Al terminar este documento, el estado esperado es este:
 - queda definida una asignación clara de IPs para **Pi-hole**, **Unbound** y el **host shim**
 - el host puede hablar con los contenedores macvlan gracias a `macvlan-shim`
 - el diseño queda listo para ser reutilizado en [02-pihole.md](02-pihole.md) y [03-unbound.md](03-unbound.md)
+- el host sigue usando temporalmente un DNS funcional ajeno a Pi-hole hasta completar la configuración de fallback descrita en [02-pihole.md](02-pihole.md)
 
 ## Docker Compose
 
@@ -102,6 +105,7 @@ Notas importantes:
 - La IP `192.168.1.222` se reserva para el host y **no** debe asignarse a contenedores.
 - Si tu red no es `192.168.1.0/24`, cambia `subnet`, `gateway`, `ip-range` e IPs fijas en bloque; no mezcles valores de ejemplo con valores reales.
 - Antes de ejecutar ningún comando de este documento, sustituye también la IP de prueba `192.168.1.196` y cualquier otra IP fija de ejemplo por valores válidos dentro de tu rango reservado.
+- No configures todavía el host para usar **Pi-hole** como DNS único; primero completa [02-pihole.md](02-pihole.md) y deja resuelto el fallback del sistema para no perder resolución durante reinicios o caídas del stack DNS.
 
 ### 2. Reservar direcciones en el router y ajustar DHCP
 
@@ -195,6 +199,8 @@ La red Docker `dns_lan` persiste por sí sola, pero la interfaz `macvlan-shim` c
 
 Archivo: `/etc/systemd/system/macvlan-shim.service`
 
+Este servicio presupone que la ruta del binario `ip` es `/usr/sbin/ip`, que es la habitual en Raspberry Pi OS Lite 64-bit. Si en tu sistema `command -v ip` devuelve otra ruta, sustituye las líneas `ExecStart*` y `ExecStop` antes de habilitarlo.
+
 ```ini
 [Unit]
 Description=Host macvlan shim for Docker dns_lan
@@ -264,6 +270,13 @@ Si ambas pruebas funcionan, la red está lista para usar IPs fijas en los próxi
 - `192.168.1.194` para **Pi-hole**
 - `192.168.1.195` para **Unbound**
 
+Cuando termines la prueba, desmonta el stack temporal para no dejar un contenedor ocupando una IP del rango reservado:
+
+```bash
+cd /home/<user>/homelab/compose/infra-macvlan-test
+docker compose down
+```
+
 ### 8. Criterios operativos para los siguientes documentos
 
 A partir de aquí, mantén estas reglas:
@@ -317,6 +330,7 @@ Lo importante es poder reconstruir rápidamente:
 - [02-pihole.md](02-pihole.md)
 - [03-unbound.md](03-unbound.md)
 - [05-caddy.md](05-caddy.md)
+- [06-puertos-y-firewall.md](06-puertos-y-firewall.md)
 - Docker Docs: [Networking using a macvlan network driver](https://docs.docker.com/engine/network/drivers/macvlan/)
 - Docker Docs: [docker network create](https://docs.docker.com/reference/cli/docker/network/create/)
 - `ip-link(8)`

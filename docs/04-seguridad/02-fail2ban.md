@@ -15,7 +15,7 @@ El resultado buscado es este:
 
 - mantener el jail `sshd` ya existente sin romperlo
 - añadir un jail funcional para **Authelia**
-- dejar preparado el jail de **Vaultwarden** para activarlo cuando ese servicio quede desplegado
+- dejar preparado el jail de **Vaultwarden** para activarlo cuando ese servicio quede desplegado y publique su backend en loopback, en línea con la arquitectura base del proyecto
 - consumir logs persistentes y legibles desde el host, sin depender de rutas efímeras dentro de contenedores
 
 En todo el documento, sustituye los marcadores `<user>` y `<tailnet>` por tus valores reales antes de aplicar comandos o rutas.
@@ -28,7 +28,7 @@ En todo el documento, sustituye los marcadores `<user>` y `<tailnet>` por tus va
 - Tener Docker Engine operativo y con los stacks de infraestructura levantados.
 - Tener el servicio `fail2ban` activo en el host.
 - Poder usar `sudo` sobre la Raspberry Pi.
-- Tener disponible la cadena `DOCKER-USER`, lo habitual cuando Docker está arrancado y publica `80/tcp` o `443/tcp` mediante Caddy.
+- Tener disponible la cadena `DOCKER-USER`, lo habitual cuando Docker está arrancado y Caddy usa `network_mode: host`.
 - Tener almacenamiento persistente en el **SSD NVMe** dentro de `/home/<user>/homelab/data/`.
 - Puertos relevantes en esta fase:
   - **`22/tcp`** para el jail `sshd` ya existente
@@ -68,7 +68,7 @@ Si `DOCKER-USER` no existe, no continúes todavía con los jails de servicios. A
 En este homelab conviene distinguir claramente dos casos:
 
 - **host**: `sshd`, con bans integrados en `ufw`
-- **tráfico web que entra por Caddy publicado en Docker**: Authelia, Vaultwarden y otros servicios web, con bans en `DOCKER-USER`
+- **tráfico web que entra por Caddy ejecutándose en Docker con `network_mode: host`**: Authelia, Vaultwarden y otros servicios web, con bans en `DOCKER-USER`
 
 No sustituyas ni reescribas el fichero `sshd.local` definido en [03-seguridad-base.md](../01-sistema/03-seguridad-base.md). La ampliación de esta guía debe convivir con él.
 
@@ -78,7 +78,7 @@ Para que **Fail2ban** pueda leer los eventos de autenticación de **Authelia** d
 
 - `/home/<user>/homelab/config/authelia/configuration.yml`
 
-quede exactamente así, en línea con lo documentado en [01-authelia.md](01-authelia.md):
+incluya al menos estos valores, en línea con lo documentado en [01-authelia.md](01-authelia.md):
 
 ```yaml
 log:
@@ -135,7 +135,10 @@ Con esta decisión:
 - el fichero persistente visible desde el host será `/home/<user>/homelab/data/vaultwarden/vaultwarden.log`
 - `warn` sigue siendo suficiente para que los eventos relevantes de Fail2ban aparezcan en el log
 
-Si **Vaultwarden** va detrás de **Caddy**, la IP real del cliente llegará correctamente al backend gracias a que Caddy usa `network_mode: host` según [05-caddy.md](../03-red/05-caddy.md). El patrón documentado en [01-vaultwarden.md](../11-productividad/01-vaultwarden.md) incluye además `header_up X-Real-IP {remote_host}` para que Vaultwarden registre esa IP en su log.
+Además, para que **Fail2ban** pueda actuar a través de `DOCKER-USER`, Vaultwarden debe quedar alcanzable por **Caddy** mediante `127.0.0.1:<puerto>` o por otro patrón equivalente que siga atravesando la entrada publicada en el host, tal como exige la arquitectura base descrita en [05-caddy.md](../03-red/05-caddy.md) y en `SERVICES.md`.
+<!-- TODO: verificar y alinear [01-vaultwarden.md](../11-productividad/01-vaultwarden.md) con la arquitectura base de Caddy en `network_mode: host`, porque ese documento todavía describe `homelab_proxy` como via principal entre Caddy y Vaultwarden. -->
+
+Si **Vaultwarden** va detrás de **Caddy** con esa topología, la IP real del cliente llegará correctamente al backend gracias a que Caddy usa `network_mode: host` según [05-caddy.md](../03-red/05-caddy.md). El patrón documentado para Vaultwarden debe conservar además `header_up X-Real-IP {remote_host}` para que el servicio registre esa IP en su log.
 
 Antes de habilitar el jail de Vaultwarden, comprueba con un login fallido que `vaultwarden.log` refleja la IP del cliente y no `127.0.0.1`.
 
@@ -252,7 +255,7 @@ Notas sobre este diseño:
 - **Vaultwarden** y `vaultwarden-admin` quedan preparados pero deshabilitados hasta que el servicio exista y el log esté realmente disponible
 - cuando despliegues Vaultwarden, cambia `enabled = false` por `enabled = true` en el jail correspondiente
 - los bans afectan a todo el tráfico del origen contra el host a través de `DOCKER-USER`, no solo al backend concreto que generó el log
-- el jail `sshd` sigue usando `ufw` como en [03-seguridad-base.md](../01-sistema/03-seguridad-base.md); estos jails web usan `DOCKER-USER` porque el punto de entrada real es **Caddy** en Docker
+- el jail `sshd` sigue usando `ufw` como en [03-seguridad-base.md](../01-sistema/03-seguridad-base.md); estos jails web usan `DOCKER-USER` porque el punto de entrada real es **Caddy** ejecutándose en Docker con `network_mode: host`
 - aunque aquí se documente `port = 443`, el ban se aplica igualmente sobre cualquier tráfico Dockerizado que atraviese `DOCKER-USER`; ese campo queda como referencia operativa del punto de entrada HTTPS canónico del proyecto y el mismo origen quedará bloqueado también si intenta entrar por `80/tcp`
 
 ### 8. Validar filtros antes de reiniciar
@@ -354,7 +357,7 @@ Los fallos más habituales en esta fase suelen ser estos:
 - la IP registrada en el log es `127.0.0.1` o una IP de Docker, así que Fail2ban termina baneando la dirección equivocada
 - el jail apunta a una ruta distinta de la ruta real del log
 - `DOCKER-USER` no existe todavía porque Docker no estaba arrancado al validar
-- Caddy está publicando `80/443`, pero el backend no recibe la IP real del cliente por falta de cabeceras como `X-Real-IP`
+- Caddy está atendiendo `80/443`, pero el backend no recibe la IP real del cliente por falta de cabeceras como `X-Real-IP` o por una topología distinta de la arquitectura base del proyecto
 - el filtro regex no coincide con el formato real del log en tu versión del servicio
 
 Regla práctica: primero valida el **log**, luego el **filtro**, después el **jail** y solo al final el **ban**.

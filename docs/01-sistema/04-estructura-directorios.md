@@ -12,6 +12,8 @@ La política de este proyecto es estricta:
 
 En [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md) se validaron etiquetas, formato y montaje de los discos. Este documento **normaliza la estructura operativa final** y fija como puntos de montaje definitivos **`/media/hd2t`** y **`/media/hd5t`**.
 
+En todo el documento, sustituye **`<user>`** por el nombre real del usuario administrativo del host. La estructura y la política de almacenamiento deben mantenerse alineadas con `SERVICES.md`, en la sección **Estructura de Directorios y Política de Almacenamiento**.
+
 ## Requisitos Previos
 
 - Haber completado [01-instalacion-os.md](01-instalacion-os.md).
@@ -173,6 +175,9 @@ Estructura recomendada:
 /home/<user>/homelab/
 ├── .env
 ├── compose/
+│   └── <stack>/
+│       ├── docker-compose.yml
+│       └── .env
 ├── config/
 ├── data/
 │   └── <servicio>/
@@ -185,6 +190,7 @@ Criterio de uso:
 - `compose/`: archivos `docker-compose.yml` y `.env` organizados por stack funcional.
 - `config/`: configuraciones editables, plantillas y ficheros auxiliares versionables o respaldables.
 - `.env`: variables compartidas del homelab o de stacks concretos.
+- `compose/<stack>/`: cada stack funcional mantiene su propio `docker-compose.yml` y su `.env`, sin mezclar servicios no relacionados.
 - `data/`: bind mounts persistentes de cada servicio, incluidas bases de datos y uploads.
 - `logs/`: logs locales que interese conservar fuera de los contenedores.
 - `scripts/`: utilidades operativas, tareas de backup y mantenimiento.
@@ -315,4 +321,5 @@ Notas prácticas:
 - [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md)
 - [04-discos-con-datos.md](../00-hardware/04-discos-con-datos.md)
 - [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md)
+- [SERVICES.md](../../SERVICES.md)
 - `fstab(5)`

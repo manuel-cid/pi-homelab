@@ -24,9 +24,8 @@ Navidrome encaja especialmente bien en este homelab porque expone su biblioteca 
 - Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Navidrome detrás del reverse proxy interno.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener la política de no exponer servicios web en `0.0.0.0` cuando pueden ir detrás de Caddy.
 - Tener montado `hd2t` en `/media/hd2t`.
-- Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:
-  - `14001/tcp` en el host solo si necesitas acceso directo temporal o un cliente que no vaya a usar Caddy
+  - `14001/tcp` publicado en `127.0.0.1` en el host para bootstrap, diagnóstico y upstream local de Caddy
   - `4533/tcp` como puerto interno del contenedor
 
 ## Docker Compose
@@ -57,16 +56,8 @@ services:
       - /home/<user>/homelab/data/navidrome/data:/data
       - /home/<user>/homelab/data/navidrome/cache:/cache
       - /media/hd2t/media/music:/music:ro
-    networks:
-      - default
-      - proxy
     labels:
       - wud.watch=true
-
-networks:
-  proxy:
-    external: true
-    name: ${PROXY_NETWORK}
 ```
 
 Notas sobre este Compose:
@@ -74,9 +65,10 @@ Notas sobre este Compose:
 - el stack queda aislado bajo `media-navidrome`
 - la base de datos y la caché persisten en el **SSD NVMe**
 - la biblioteca musical se monta desde `hd2t` en modo lectura para proteger la colección frente a borrados accidentales desde el contenedor
-- el servicio se conecta también a `homelab_proxy` para que **Caddy** pueda alcanzarlo por nombre interno Docker
+- el puerto `14001` queda publicado en `127.0.0.1` para que **Caddy**, al ir en `network_mode: host`, pueda alcanzar Navidrome por `127.0.0.1:14001`
 - `ND_BASEURL` permite servir Navidrome detrás de una subruta como `/navidrome` cuando se publica por el hostname HTTPS de Tailscale detrás de Caddy
-- si estandarizas el acceso exclusivamente detrás de **Caddy**, puedes eliminar por completo el bloque `ports:`; **Caddy** no necesita que el contenedor publique `4533` en la IP del host
+- no elimines el bloque `ports:` si vas a usar **Caddy** con la arquitectura actual del proyecto; sin esa publicación local, el proxy en el host no tendría un upstream estable
+- <!-- TODO: verificar y alinear en `docs/03-red/05-caddy.md` el upstream de Navidrome; con la arquitectura actual debería apuntar a `127.0.0.1:14001`, no al puerto interno `4533` del contenedor. -->
 
 ## Configuración
 
@@ -129,15 +121,13 @@ PGID=1000
 NAVIDROME_BIND_IP=127.0.0.1
 NAVIDROME_HTTP_PORT=14001
 NAVIDROME_BASEURL=
-PROXY_NETWORK=homelab_proxy
 ```
 
 Notas prácticas:
 
 - `PUID` y `PGID` deben coincidir con el usuario real del host
-- `NAVIDROME_BIND_IP=127.0.0.1` deja el puerto directo restringido al propio host; es la opción coherente con la política general del proyecto
+- `NAVIDROME_BIND_IP=127.0.0.1` deja el puerto directo restringido al propio host y a **Caddy** como proxy local; es la opción coherente con la política general del proyecto
 - usa `NAVIDROME_BIND_IP=0.0.0.0` solo si decides exponer `14001` directamente en la LAN y actualizas en consecuencia el registro de [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
-- si prefieres acceso solo detrás de Caddy, elimina directamente el bloque `ports:` del Compose
 - deja `NAVIDROME_BASEURL` vacío si accedes por puerto directo o por `http://navidrome.lan`
 - usa `NAVIDROME_BASEURL=/navidrome` si vas a publicar el servicio en `https://<host>.ts.net/navidrome/` detrás de Caddy
 
@@ -176,10 +166,10 @@ ss -ltnp | grep 14001
 curl -I http://127.0.0.1:14001
 ```
 
-Si eliminas `ports:` y dejas solo el acceso por **Caddy**, sustituye esas comprobaciones por:
+Si quieres validar además el acceso detrás de **Caddy**, añade estas comprobaciones:
 
 ```bash
-docker inspect media-navidrome-navidrome-1 --format '{{json .NetworkSettings.Networks}}'
+curl -I http://127.0.0.1:14001
 curl -I -H 'Host: navidrome.lan' http://127.0.0.1
 ```
 
@@ -231,6 +221,7 @@ Notas operativas:
 - **Symfonium** suele ofrecer mejor experiencia moderna en Android, soporte OpenSubsonic y más opciones de caché, descarga y reproducción
 - si un cliente da problemas con una URL en subruta, prueba primero el acceso directo por puerto `:14001`
 - si quieres minimizar superficie expuesta en la IP LAN del host, usa `http://navidrome.lan` en la LAN y reserva `:14001` para diagnóstico o compatibilidad puntual
+- usa una única URL canónica por cliente para evitar bibliotecas duplicadas, sesiones separadas o cachés redundantes
 
 ## Almacenamiento
 

@@ -11,7 +11,7 @@ En esta arquitectura, Sonarr sigue la misma política general del proyecto:
 - la biblioteca final de series vive en `/media/hd2t/media/tv/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
-- el stack se une a la red Docker compartida `homelab_proxy` para comunicarse por nombre interno con **Transmission**, **Prowlarr** y, si lo necesitas, **Caddy**
+- el stack se une a la red Docker compartida `homelab_proxy` para comunicarse por nombre interno con **Transmission** y **Prowlarr**
 
 La decisión de diseño importante aquí es que **Sonarr no debe descargar directamente en la biblioteca final**. El flujo correcto es:
 
@@ -21,6 +21,8 @@ La decisión de diseño importante aquí es que **Sonarr no debe descargar direc
 4. **Jellyfin** solo consume esa biblioteca ya ordenada.
 
 Como la zona de descargas y la biblioteca final están en el mismo disco `hd2t`, más adelante podrás usar **hardlinks** para evitar copias innecesarias y reducir I/O.
+
+Cuando este documento use placeholders como `<user>`, `IP_DE_LA_PI`, `<hostname-de-tu-pi>` o `<tailnet>`, sustitúyelos por los valores reales de tu entorno antes de ejecutar comandos o guardar configuraciones.
 
 ## Requisitos Previos
 
@@ -61,7 +63,7 @@ services:
     volumes:
       - /home/<user>/homelab/data/sonarr/config:/config
       - /media/hd2t/media/tv:/tv
-      - /media/hd2t/downloads/transmission/complete:/downloads
+      - /media/hd2t/downloads/transmission:/downloads
     networks:
       - default
       - proxy
@@ -78,10 +80,10 @@ Notas sobre este Compose:
 
 - el stack queda aislado bajo `downloads-sonarr`
 - la base de datos y toda la persistencia del servicio viven en el **SSD NVMe**
-- Sonarr monta la biblioteca final y la carpeta de descargas del mismo modo que las necesita para importar sin traducciones extra de rutas
-- el servicio se conecta también a `homelab_proxy` para que **Prowlarr**, **Transmission** y **Caddy** puedan alcanzarlo por nombre interno Docker
+- Sonarr monta la biblioteca final y la raíz de descargas de Transmission del mismo modo que las necesita para importar sin traducciones extra de rutas
+- el servicio se conecta también a `homelab_proxy` para que **Prowlarr** y **Transmission** puedan alcanzarlo por nombre interno Docker
 - no se fuerza `user:` en el servicio porque la imagen de LinuxServer ya ajusta permisos mediante `PUID` y `PGID`, igual que en [01-transmission.md](01-transmission.md) y [02-prowlarr.md](02-prowlarr.md)
-- montar `/media/hd2t/downloads/transmission/complete` como `/downloads` evita depender de `Remote Path Mappings` en el caso base
+- montar `/media/hd2t/downloads/transmission` como `/downloads` mantiene visible dentro de Sonarr la misma ruta lógica que usa Transmission (`/downloads/complete/...`) y evita depender de `Remote Path Mappings` en el caso base
 
 ## Configuración
 
@@ -103,14 +105,14 @@ Usa el mismo usuario operativo del host que administra Docker y las carpetas del
 id <user>
 sudo chown -R <user>:<user> /home/<user>/homelab/data/sonarr
 sudo chown -R <user>:<user> /media/hd2t/media/tv
-sudo chown -R <user>:<user> /media/hd2t/downloads/transmission/complete
+sudo chown -R <user>:<user> /media/hd2t/downloads/transmission
 
 sudo find /home/<user>/homelab/data/sonarr -type d -exec chmod 775 {} \;
 sudo find /home/<user>/homelab/data/sonarr -type f -exec chmod 664 {} \;
 sudo find /media/hd2t/media/tv -type d -exec chmod 775 {} \;
 sudo find /media/hd2t/media/tv -type f -exec chmod 664 {} \;
-sudo find /media/hd2t/downloads/transmission/complete -type d -exec chmod 775 {} \;
-sudo find /media/hd2t/downloads/transmission/complete -type f -exec chmod 664 {} \;
+sudo find /media/hd2t/downloads/transmission -type d -exec chmod 775 {} \;
+sudo find /media/hd2t/downloads/transmission -type f -exec chmod 664 {} \;
 ```
 
 La lógica operativa es esta:
@@ -158,7 +160,16 @@ curl -I http://127.0.0.1:15002
 Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en:
 
 - `http://IP_DE_LA_PI:15002`
-- `http://pi-homelab.<tailnet>.ts.net:15002` desde dispositivos unidos a Tailscale
+- `http://<hostname-de-tu-pi>.<tailnet>.ts.net:15002` desde dispositivos unidos a Tailscale con MagicDNS
+
+Si tienes `ufw` activo y mantienes este acceso directo publicado en `0.0.0.0`, añade al menos estas reglas:
+
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 15002 proto tcp comment 'Sonarr desde LAN'
+sudo ufw allow in on tailscale0 to any port 15002 proto tcp comment 'Sonarr desde Tailscale'
+```
+
+<!-- TODO: verificar la subred LAN real antes de aplicar la regla de `ufw`; si tu red no es `192.168.1.0/24`, sustituirla por la correcta. -->
 
 Y, si ya tienes Caddy operativo:
 
@@ -180,13 +191,14 @@ Rutas relevantes dentro del contenedor:
 
 - configuración persistente: `/config`
 - biblioteca final de series: `/tv`
-- zona de descargas observada por Sonarr: `/downloads`
+- raíz de descargas compartida con Transmission: `/downloads`
+- descargas completadas observadas por Sonarr: `/downloads/complete`
 
 ### 6. Configurar rutas y gestión de medios
 
 El primer ajuste importante de Sonarr es dejar claras las dos zonas del flujo:
 
-- **entrada**: `/downloads`
+- **entrada**: `/downloads/complete`
 - **salida**: `/tv`
 
 Pasos recomendados:
@@ -197,6 +209,7 @@ Pasos recomendados:
 4. Activa `Use Hardlinks instead of Copy` si aparece disponible.
 5. Activa `Import Extra Files` solo si realmente quieres conservar subtítulos u otros adjuntos de las releases.
 6. En `Series` -> `Add New`, selecciona como root folder `/tv`.
+7. En `Settings` -> `Download Clients`, comprueba que Sonarr resuelve las descargas completadas bajo `/downloads/complete`.
 
 Recomendación práctica de nombres:
 
@@ -227,11 +240,11 @@ Buenas prácticas al guardar:
 
 1. Activa `Completed Download Handling`.
 2. Pulsa `Test`.
-3. Comprueba que Sonarr puede ver correctamente las descargas terminadas bajo `/downloads`.
+3. Comprueba que Sonarr puede ver correctamente las descargas terminadas bajo `/downloads/complete`.
 
 Punto importante de diseño:
 
-- como Transmission expone las descargas completas en `/downloads/complete` y Sonarr monta esa misma ruta del host como `/downloads`, en el despliegue base **no necesitas `Remote Path Mapping`**
+- como Transmission expone las descargas completas en `/downloads/complete` y Sonarr monta la raíz de descargas como `/downloads`, ambos servicios ven la misma ruta lógica para los ficheros terminados y en el despliegue base **no necesitas `Remote Path Mapping`**
 - si en el futuro cambias las rutas internas y cada contenedor ve las descargas con un path distinto, entonces sí tendrás que añadir ese mapeo manualmente
 
 ### 8. Integrar Prowlarr para los indexadores

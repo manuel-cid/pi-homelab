@@ -21,7 +21,7 @@ Catálogo de servicios recomendados para un homelab doméstico corriendo sobre *
 | **Pi-hole** | Servidor DNS con bloqueo de publicidad y telemetría a nivel de red |
 | **Unbound** | Resolver DNS recursivo local (complementa a Pi-hole para no depender de DNS externos) |
 | **Tailscale** | VPN mesh basada en WireGuard para acceso remoto seguro sin abrir puertos |
-| **Caddy** | Reverse proxy interno: HTTP en LAN (red confiable) y HTTPS para acceso remoto vía Tailscale, configuración declarativa vía Caddyfile |
+| **Caddy** | Reverse proxy interno con `network_mode: host`: HTTP en LAN (red confiable) y HTTPS para acceso remoto vía Tailscale, configuración declarativa vía Caddyfile. Usa `network_mode: host` para preservar la IP real de los clientes (necesario para Fail2ban y Authelia); los upstreams apuntan a `127.0.0.1:<puerto>` |
 
 ---
 
@@ -129,14 +129,15 @@ LAN / Tailscale (VPN mesh)
           │     ├─► WUD (monitorización de actualizaciones)
           │     └─► todos los servicios en contenedores
           │
-          ├─► Pi-hole + Unbound (DNS)
+          ├─► Pi-hole + Unbound (DNS, red macvlan con IP propia)
+          │
+          ├─► Caddy (network_mode: host, ve IP real del cliente)
+          │     ├─► Authelia (SSO/2FA) ─── 127.0.0.1:9091
+          │     ├─► Vaultwarden ────────── 127.0.0.1:16006
+          │     ├─► Jellyfin ──────────── 127.0.0.1:8096
+          │     └─► ... (otros servicios en 127.0.0.1:<puerto>)
           │
           ├─► Prometheus + Grafana (monitorización)
-          │
-          ├─► Caddy ──► Authelia (SSO/2FA)
-          │     ├─► Vaultwarden
-          │     ├─► Jellyfin
-          │     └─► ... (otros servicios)
           │
           ├─► SSD NVMe 500 GB (SO + Docker + configs + datos de servicios) — via M.2 en carcasa
           │

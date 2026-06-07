@@ -28,7 +28,7 @@ Esto mantiene la IP LAN del host libre para **Caddy** y otros servicios, evita p
 - Tener creada la red Docker externa `dns_lan`.
 - Tener reservada la IP `192.168.1.194` para Pi-hole, la IP `192.168.1.195` para Unbound y la IP `192.168.1.222` para `macvlan-shim`.
 - Mantener la Raspberry Pi conectada por `eth0` y con el `macvlan-shim` operativo para validar desde el host.
-- Tener disponibles `dig` y `curl` para las validaciones (`sudo apt install -y dnsutils curl` si todavía no están instalados).
+- Tener disponible `dig` para las validaciones (`sudo apt install -y dnsutils` si todavía no está instalado).
 - Puertos necesarios para Unbound en su IP macvlan:
   - `5335/tcp`
   - `5335/udp`
@@ -37,6 +37,8 @@ Esto mantiene la IP LAN del host libre para **Caddy** y otros servicios, evita p
   - `53/udp`
   - `5335/tcp`
   - `5335/udp`
+
+Las IPs y rutas de este documento siguen el ejemplo base definido en [01-macvlan.md](01-macvlan.md). Si en tu red real usas otro rango o tu usuario no coincide con `<user>`, sustituye todos esos valores antes de desplegar el stack.
 
 ## Docker Compose
 
@@ -102,7 +104,7 @@ Notas sobre este Compose:
 - **Unbound** no publica `ports:` porque ya tiene IP propia dentro de `dns_lan`
 - el upstream de Pi-hole queda fijado en `192.168.1.195#5335`
 - la configuración custom se monta como solo lectura en `/etc/unbound/custom.conf.d/`; la imagen gestiona internamente `root.hints`, `root.key` y la config base
-- los ficheros montados deben ser legibles por el usuario/grupo `101:102` de la imagen
+- los ficheros montados deben ser legibles desde el contenedor; usa permisos simples de solo lectura y ajusta propiedad solo si la imagen que despliegues lo exige
 
 ## Configuración
 
@@ -112,7 +114,7 @@ Notas sobre este Compose:
 mkdir -p /home/<user>/homelab/compose/infra-pihole-unbound
 mkdir -p /home/<user>/homelab/data/pihole
 mkdir -p /home/<user>/homelab/data/unbound/custom.conf.d
-sudo apt install -y dnsutils curl
+sudo apt install -y dnsutils
 ```
 
 Si ya existe el stack de Pi-hole, conserva su `.env` actual y reemplaza únicamente el `docker-compose.yml` por el bloque mostrado arriba.

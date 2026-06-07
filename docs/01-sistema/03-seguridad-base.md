@@ -141,7 +141,7 @@ Se usa **`ufw`** como capa operativa de firewall por simplicidad. En sistemas mo
 
 ### 6. Activar una política mínima de firewall
 
-En esta fase todavía no hay servicios de aplicación expuestos, así que la política base debe ser muy conservadora. La regla siguiente cubre el acceso administrativo inicial por la **LAN** sobre `eth0`; el acceso por **Tailscale** se añadirá más adelante, cuando la interfaz `tailscale0` exista realmente:
+En esta fase todavía no hay servicios de aplicación expuestos, así que la política base debe ser muy conservadora. La regla siguiente cubre el acceso administrativo inicial por la **LAN** sobre la interfaz principal del host. En un despliegue normal será `eth0`; si estás administrando temporalmente por WiFi de emergencia, sustituye la interfaz por `wlan0`. El acceso por **Tailscale** se añadirá más adelante, cuando la interfaz `tailscale0` exista realmente:
 
 ```bash
 sudo ufw default deny incoming
@@ -160,12 +160,13 @@ Resultado esperado en esta fase:
 
 - política por defecto `deny` para tráfico entrante
 - política `allow` para tráfico saliente
-- **SSH** permitido solo desde la **LAN** por `eth0`
+- **SSH** permitido solo desde la **LAN** por la interfaz administrativa activa del host
 - ningún otro puerto abierto manualmente todavía
 
-Sustituye `192.168.1.0/24` por la subred real de tu LAN. En esta fase se deja **SSH** limitado a la red local sobre `eth0` para no abrir acceso administrativo indiscriminado en todas las interfaces del host antes de tener definida la política completa.
+Sustituye `192.168.1.0/24` por la subred real de tu LAN y `eth0` por la interfaz desde la que administras realmente la Raspberry Pi. En esta fase se deja **SSH** limitado a la red local sobre una única interfaz para no abrir acceso administrativo indiscriminado en todas las interfaces del host antes de tener definida la política completa.
 
-Cuando más adelante instales **Tailscale**, añade la excepción correspondiente para `tailscale0` y documenta también la apertura de `udp/41641` en el mapa central de puertos. Esa ampliación se hace junto con [04-tailscale.md](../03-red/04-tailscale.md) y debe quedar reflejada en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
+Cuando más adelante instales **Tailscale**, añade la excepción correspondiente para `tailscale0`. Esa ampliación se hace junto con [04-tailscale.md](../03-red/04-tailscale.md) y debe quedar reflejada en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
+<!-- TODO: verificar en la fase de Tailscale si con `ufw` hace falta documentar una regla adicional para el tráfico UDP de `tailscaled` en Raspberry Pi OS Lite, o si basta con la política sobre `tailscale0`. -->
 
 ### 7. Configurar Fail2ban solo para SSH
 
@@ -298,7 +299,7 @@ Además, conserva en tu gestor de secretos:
 
 ## Referencias
 
-- OpenSSH
+- OpenSSH (`openssh-server`)
 - UFW
 - Fail2ban
 - unattended-upgrades

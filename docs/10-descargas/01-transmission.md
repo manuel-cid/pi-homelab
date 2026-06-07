@@ -14,6 +14,8 @@ La política de este proyecto se mantiene igual que en el resto de servicios:
 
 En este homelab hay una decisión de diseño importante: **no** se abren puertos en el router y **no** se expone Transmission a internet. Eso significa que el cliente seguirá funcionando, pero no debe esperarse el mismo nivel de conectividad entrante que en un despliegue con port forwarding. En la práctica, Transmission seguirá descargando mediante conexiones salientes, DHT y PEX, pero el estado del puerto de peers puede no aparecer como abierto desde internet, y eso es coherente con el alcance del proyecto.
 
+Cuando este documento use placeholders como `<user>`, `IP_DE_LA_PI`, `<hostname-de-tu-pi>` o `<tailnet>`, sustitúyelos por los valores reales de tu entorno antes de ejecutar comandos o guardar configuraciones.
+
 ## Requisitos Previos
 
 - Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
@@ -161,7 +163,7 @@ Validaciones útiles:
 
 ```bash
 ss -ltnup | grep -E '15000|51413'
-curl -sI http://127.0.0.1:15000 | head -n 5
+curl -sI http://127.0.0.1:15000/transmission/web/ | head -n 5
 ```
 
 Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en:
@@ -178,6 +180,17 @@ sudo ufw allow in on tailscale0 to any port 15000 proto tcp comment 'Transmissio
 
 El puerto de peers `51413/tcp` y `51413/udp` puede permanecer publicado en Docker aunque el router no haga `port forwarding`; eso no expone el servicio a internet por sí solo, pero sí conviene revisar que no lo estés bloqueando localmente si esperas tráfico BitTorrent desde la propia LAN.
 
+Si además quieres permitir conexiones entrantes de peers desde otros equipos de la LAN o desde nodos unidos por Tailscale, añade reglas explícitas coherentes con la política base del host:
+
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 51413 proto tcp comment 'Transmission peers TCP desde LAN'
+sudo ufw allow from 192.168.1.0/24 to any port 51413 proto udp comment 'Transmission peers UDP desde LAN'
+sudo ufw allow in on tailscale0 to any port 51413 proto tcp comment 'Transmission peers TCP desde Tailscale'
+sudo ufw allow in on tailscale0 to any port 51413 proto udp comment 'Transmission peers UDP desde Tailscale'
+```
+
+Si no necesitas conectividad entrante desde LAN o Tailscale, puedes omitir estas reglas y limitarte al acceso saliente normal del cliente.
+
 ### 5. Primer arranque y autenticación básica
 
 En el primer arranque:
@@ -186,6 +199,8 @@ En el primer arranque:
 2. Inicia sesión con el usuario y contraseña definidos en `.env`.
 3. Verifica que el servicio responde con normalidad y que no aparecen errores de permisos en los logs.
 4. Confirma que el stack ha creado correctamente `settings.json` dentro de `/home/<user>/homelab/data/transmission/config/`.
+
+Si la autenticación no entra a la primera, revisa el log del contenedor antes de editar nada: algunas imágenes generan o normalizan ajustes de `settings.json` durante el arranque inicial.
 
 Rutas relevantes dentro del contenedor:
 
