@@ -1,0 +1,18 @@
+$ sudo tail -20 /home/homelab/homelab/data/authelia/authelia.log
+time="2026-06-07T13:51:24+02:00" level=info msg="Storage schema is being checked for updates"
+time="2026-06-07T13:51:24+02:00" level=info msg="Storage schema migration from 0 to 24 is being attempted"
+time="2026-06-07T13:51:24+02:00" level=info msg="Storage schema migration from 0 to 24 is complete"
+time="2026-06-07T13:51:24+02:00" level=info msg="Startup complete"
+time="2026-06-07T13:51:24+02:00" level=info msg="Listening for non-TLS connections on '[::]:9091' path '/' and '/authelia'" server=main service=server
+time="2026-06-07T14:40:05+02:00" level=error msg="Request timeout occurred while handling request from client." error="read tcp 172.18.0.3:9091->172.18.0.2:37058: i/o timeout" method=GET path=/ remote_ip=172.18.0.2 status_code=408
+time="2026-06-07T14:40:57+02:00" level=error msg="Unsuccessful 1FA authentication attempt by user 'admin'" method=POST path=/api/firstfactor path_raw=/authelia/api/firstfactor remote_ip=172.18.0.1
+time="2026-06-07T16:36:14+02:00" level=error msg="Request timeout occurred while handling request from client." error="read tcp 172.18.0.3:9091->172.18.0.2:50210: i/o timeout" method=GET path=/ remote_ip=172.18.0.2 status_code=408
+time="2026-06-07T16:36:53+02:00" level=error msg="Request timeout occurred while handling request from client." error="read tcp 172.18.0.3:9091->172.18.0.2:34796: i/o timeout" method=GET path=/ remote_ip=172.18.0.2 status_code=408
+time="2026-06-07T16:40:13+02:00" level=error msg="Request timeout occurred while handling request from client." error="read tcp 172.18.0.3:9091->172.18.0.2:56084: i/o timeout" method=GET path=/ remote_ip=172.18.0.2 status_code=408
+time="2026-06-07T17:01:56+02:00" level=error msg="Unsuccessful 1FA authentication attempt by user 'admin'" method=POST path=/api/firstfactor path_raw=/authelia/api/firstfactor remote_ip=172.18.0.1
+time="2026-06-07T17:48:21+02:00" level=error msg="Unsuccessful 1FA authentication attempt by user 'admin'" method=POST path=/api/firstfactor path_raw=/authelia/api/firstfactor remote_ip=172.18.0.1
+time="2026-06-07T18:01:17+02:00" level=error msg="Unsuccessful 1FA authentication attempt by user 'admin'" method=POST path=/api/firstfactor path_raw=/authelia/api/firstfactor remote_ip=172.18.0.1
+$ sudo conntrack -L -p tcp --dport 443 2>/dev/null | head -10
+tcp      6 431979 ESTABLISHED src=192.168.1.132 dst=45.159.97.233 sport=51176 dport=443 src=45.159.97.233 dst=192.168.1.132 sport=443 dport=51176 [ASSURED] mark=524288 use=1
+tcp      6 431996 ESTABLISHED src=192.168.1.132 dst=192.200.0.103 sport=40546 dport=443 src=192.200.0.103 dst=192.168.1.132 sport=443 dport=40546 [ASSURED] mark=524288 use=1
+tcp      6 431978 ESTABLISHED src=192.168.1.132 dst=199.165.136.101 sport=46266 dport=443 src=199.165.136.101 dst=192.168.1.132 sport=443 dport=46266 [ASSURED] mark=524288 use=1
