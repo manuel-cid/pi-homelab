@@ -16,3 +16,19 @@ $ sudo conntrack -L -p tcp --dport 443 2>/dev/null | head -10
 tcp      6 431979 ESTABLISHED src=192.168.1.132 dst=45.159.97.233 sport=51176 dport=443 src=45.159.97.233 dst=192.168.1.132 sport=443 dport=51176 [ASSURED] mark=524288 use=1
 tcp      6 431996 ESTABLISHED src=192.168.1.132 dst=192.200.0.103 sport=40546 dport=443 src=192.200.0.103 dst=192.168.1.132 sport=443 dport=40546 [ASSURED] mark=524288 use=1
 tcp      6 431978 ESTABLISHED src=192.168.1.132 dst=199.165.136.101 sport=46266 dport=443 src=199.165.136.101 dst=192.168.1.132 sport=443 dport=46266 [ASSURED] mark=524288 use=1
+
+
+
+$ sudo ss -tlnp | grep -E ':80|:443'
+LISTEN 0      4096                       0.0.0.0:443        0.0.0.0:*    users:(("docker-proxy",pid=172193,fd=8))
+LISTEN 0      4096                       0.0.0.0:80         0.0.0.0:*    users:(("docker-proxy",pid=172173,fd=8))
+LISTEN 0      4096                          [::]:443           [::]:*    users:(("docker-proxy",pid=172200,fd=8))
+LISTEN 0      4096                          [::]:80            [::]:*    users:(("docker-proxy",pid=172180,fd=8))
+$ sudo iptables -t nat -S POSTROUTING
+-P POSTROUTING ACCEPT
+-A POSTROUTING -s 172.21.0.0/16 ! -o br-530f6370b891 -j MASQUERADE
+-A POSTROUTING -j ts-postrouting
+-A POSTROUTING -s 172.20.0.0/16 ! -o br-5f4195fb3fdd -j MASQUERADE
+-A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
+-A POSTROUTING -s 172.18.0.0/16 ! -o br-eddae8c7be66 -j MASQUERADE
+-A POSTROUTING -s 172.19.0.0/16 ! -o br-7d681648bd3d -j MASQUERADE
