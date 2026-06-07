@@ -19,7 +19,7 @@ En esta Raspberry Pi 5 conviene fijar un criterio simple:
 - Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
 - Haber completado [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md).
-- Tener creada la red Docker externa `homelab_proxy`, ya que este stack la usa para que Grafana pueda consultar Prometheus por nombre interno.
+- Tener disponible la red Docker externa `homelab_proxy` si quieres que Grafana consulte Prometheus por nombre interno; si todavía no existe, este mismo documento la crea más adelante.
 - Poder crear directorios persistentes en `/home/<user>/homelab/config/` y `/home/<user>/homelab/data/`.
 - Si se quiere scrapear el endpoint nativo de Docker, tener acceso administrativo al host para editar `/etc/docker/daemon.json` y reiniciar `docker`.
 - Puertos necesarios en esta fase:
@@ -202,7 +202,18 @@ curl http://172.17.0.1:9323/metrics | head
 
 Si tu gateway bridge no es `172.17.0.1`, sustituye esa IP en la prueba y mantén el mismo criterio.
 
-Después añade el bloque `job_name: docker` del apartado anterior a `prometheus.yml` y recarga la configuración.
+Después añade el bloque `job_name: docker` del apartado anterior a `prometheus.yml` y recarga la configuración:
+
+```bash
+cd /home/<user>/homelab/compose/monitoring-prometheus
+curl -X POST http://127.0.0.1:11000/-/reload
+```
+
+Si prefieres hacerlo desde dentro del contenedor:
+
+```bash
+docker compose exec prometheus wget -qO- --post-data='' http://127.0.0.1:9090/-/reload
+```
 
 ### 4. Guardar el `.env` y desplegar el stack
 
@@ -242,7 +253,7 @@ Estado esperado justo después de desplegar solo Prometheus:
 - `prometheus` en estado `UP`
 - no deberían aparecer todavía `node-exporter` ni `docker` si no has activado esos bloques en `prometheus.yml`
 
-Cuando completes [03-node-exporter.md](03-node-exporter.md), añade su bloque al fichero y recarga Prometheus. Si además habilitas las métricas nativas de Docker Engine, añade también el bloque `docker`.
+Cuando completes [03-node-exporter.md](03-node-exporter.md), añade su bloque al fichero y recarga Prometheus con `curl -X POST http://127.0.0.1:11000/-/reload`. Si además habilitas las métricas nativas de Docker Engine, añade también el bloque `docker`.
 
 ### 6. Política recomendada de retención en el SSD NVMe
 

@@ -7,7 +7,7 @@
 En esta arquitectura, Radarr sigue la misma política general del proyecto:
 
 - la configuración, la base de datos SQLite, los logs y el estado del servicio viven en `/home/<user>/homelab/data/radarr/config/` sobre el **SSD NVMe**
-- las descargas de entrada llegan desde `/media/hd2t/downloads/transmission/`
+- las descargas de entrada llegan desde `/media/hd2t/downloads/transmission/complete/`
 - la biblioteca final de películas vive en `/media/hd2t/media/movies/`
 - el acceso principal se hace desde la **LAN**
 - el acceso remoto se hace por **Tailscale**, sin abrir puertos en el router
@@ -21,6 +21,8 @@ La decisión de diseño importante aquí es que **Radarr no debe descargar direc
 4. **Jellyfin** solo consume esa biblioteca ya ordenada.
 
 Como la zona de descargas y la biblioteca final están en el mismo disco `hd2t`, más adelante podrás usar **hardlinks** para evitar copias innecesarias y reducir I/O.
+
+Cuando este documento use placeholders como `<user>`, `IP_DE_LA_PI`, `<hostname-de-tu-pi>` o `<tailnet>`, sustitúyelos por los valores reales de tu entorno antes de ejecutar comandos o guardar configuraciones.
 
 ## Requisitos Previos
 
@@ -61,7 +63,7 @@ services:
     volumes:
       - /home/<user>/homelab/data/radarr/config:/config
       - /media/hd2t/media/movies:/movies
-      - /media/hd2t/downloads/transmission/complete:/downloads
+      - /media/hd2t/downloads/transmission:/downloads
     networks:
       - default
       - proxy
@@ -81,7 +83,7 @@ Notas sobre este Compose:
 - Radarr monta la biblioteca final y la carpeta de descargas del mismo modo que las necesita para importar sin traducciones extra de rutas
 - el servicio se conecta también a `homelab_proxy` para que **Prowlarr**, **Transmission** y **Caddy** puedan alcanzarlo por nombre interno Docker
 - no se fuerza `user:` en el servicio porque la imagen de LinuxServer ya ajusta permisos mediante `PUID` y `PGID`, igual que en [01-transmission.md](01-transmission.md) y [03-sonarr.md](03-sonarr.md)
-- montar `/media/hd2t/downloads/transmission/complete` como `/downloads` evita depender de `Remote Path Mappings` en el caso base
+- montar `/media/hd2t/downloads/transmission` como `/downloads` mantiene visible dentro de Radarr la misma ruta lógica que usa Transmission (`/downloads/complete/...`) y evita depender de `Remote Path Mappings` en el caso base
 
 ## Configuración
 
@@ -158,7 +160,16 @@ curl -I http://127.0.0.1:15003
 Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en:
 
 - `http://IP_DE_LA_PI:15003`
-- `http://pi-homelab.<tailnet>.ts.net:15003` desde dispositivos unidos a Tailscale
+- `http://<hostname-de-tu-pi>.<tailnet>.ts.net:15003` desde dispositivos unidos a Tailscale con MagicDNS
+
+Si tienes `ufw` activo y mantienes este acceso directo publicado en `0.0.0.0`, añade al menos estas reglas:
+
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 15003 proto tcp comment 'Radarr desde LAN'
+sudo ufw allow in on tailscale0 to any port 15003 proto tcp comment 'Radarr desde Tailscale'
+```
+
+<!-- TODO: verificar la subred LAN real antes de aplicar la regla de `ufw`; si tu red no es `192.168.1.0/24`, sustituirla por la correcta. -->
 
 Y, si ya tienes Caddy operativo:
 
@@ -180,13 +191,14 @@ Rutas relevantes dentro del contenedor:
 
 - configuración persistente: `/config`
 - biblioteca final de películas: `/movies`
-- zona de descargas observada por Radarr: `/downloads`
+- raíz de descargas compartida con Transmission: `/downloads`
+- descargas completadas observadas por Radarr: `/downloads/complete`
 
 ### 6. Configurar rutas y gestión de medios
 
 El primer ajuste importante de Radarr es dejar claras las dos zonas del flujo:
 
-- **entrada**: `/downloads`
+- **entrada**: `/downloads/complete`
 - **salida**: `/movies`
 
 Pasos recomendados:
@@ -197,6 +209,7 @@ Pasos recomendados:
 4. Activa `Use Hardlinks instead of Copy` si aparece disponible.
 5. Activa `Import Extra Files` solo si realmente quieres conservar subtítulos u otros adjuntos de las releases.
 6. En `Movies` -> `Add New`, selecciona como root folder `/movies`.
+7. En `Settings` -> `Download Clients`, comprueba que Radarr resuelve las descargas completadas bajo `/downloads/complete`.
 
 Recomendación práctica de nombres:
 
@@ -231,7 +244,7 @@ Buenas prácticas al guardar:
 
 Punto importante de diseño:
 
-- como Transmission expone las descargas completas en `/downloads/complete` y Radarr monta esa misma ruta del host como `/downloads`, en el despliegue base **no necesitas `Remote Path Mapping`**
+- como Transmission expone las descargas completas en `/downloads/complete` y Radarr monta la raíz de descargas como `/downloads`, ambos servicios ven la misma ruta lógica para los ficheros terminados y en el despliegue base **no necesitas `Remote Path Mapping`**
 - si en el futuro cambias las rutas internas y cada contenedor ve las descargas con un path distinto, entonces sí tendrás que añadir ese mapeo manualmente
 
 ### 8. Integrar Prowlarr para los indexadores

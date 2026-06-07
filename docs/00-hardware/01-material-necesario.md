@@ -19,11 +19,11 @@ Este documento cubre solo materiales y criterios de compra. La conexión física
 
 | Elemento | Obligatorio | Especificación recomendada | Uso en el homelab | Precio orientativo |
 |----------|-------------|----------------------------|-------------------|--------------------|
-| Raspberry Pi 5 | Sí | **8 GB RAM** | Nodo principal del homelab | Según tienda |
-| Fuente de alimentación | Sí | **Oficial USB-C 27 W (5V/5A)** | Alimentación estable de la Pi 5 y periféricos | Según tienda |
-| microSD | Sí | **64 GB** | Arranque inicial e instalación base antes de migrar a NVMe | Según tienda |
+| Raspberry Pi 5 | Sí | **8 GB RAM** | Nodo principal del homelab | Variable según tienda y disponibilidad |
+| Fuente de alimentación | Sí | **Oficial USB-C 27 W (5V/5A)** | Alimentación estable de la Pi 5 y periféricos | Variable según tienda y disponibilidad |
+| microSD | Sí | **64 GB** | Arranque inicial e instalación base antes de migrar a NVMe | Variable según tienda y disponibilidad |
 | Carcasa con M.2 NVMe | Sí | **Argon ONE V3 M.2 NVME PCIe** | Montaje físico, refrigeración y conexión PCIe al SSD | **55-65 EUR** |
-| SSD NVMe M.2 | Sí | **500 GB, por ejemplo Kingston NV2** | Disco principal del sistema y datos persistentes | **35-40 EUR** |
+| SSD NVMe M.2 | Sí | **500 GB, formato 2280, por ejemplo Kingston NV2** | Disco principal del sistema y datos persistentes de los servicios | **35-40 EUR** |
 | Disco externo `hd2t` | Sí | **2 TB, USB 3.0** | Multimedia general, descargas y backups | Reutilizable o según tienda |
 | Disco externo `hd5t` | Sí | **5 TB, USB 3.0** | Biblioteca multimedia dedicada | Reutilizable o según tienda |
 | Cable de red | Sí | Ethernet Cat 5e o superior | Conexión estable al router/switch | Bajo coste |
@@ -43,12 +43,12 @@ Este documento cubre solo materiales y criterios de compra. La conexión física
 - La carcasa de referencia del proyecto es la **Argon ONE V3 M.2 NVME PCIe**, que integra refrigeración y el adaptador PCIe a NVMe en el mismo chasis.
 - Evita confundir **NVMe** con **M.2 SATA**: el formato físico puede parecer similar, pero no son equivalentes.
 - Si se evalúa una alternativa, debe ofrecer soporte explícito para **Raspberry Pi 5 + NVMe por PCIe** y no cambiar la arquitectura descrita en `SERVICES.md`.
-- Para el SSD, un **NVMe M.2 de 500 GB** es suficiente para Raspberry Pi OS, Docker, volúmenes, bases de datos, logs y crecimiento razonable de servicios.
+- Para el SSD, un **NVMe M.2 de 500 GB en formato 2280** es suficiente para Raspberry Pi OS, Docker, volúmenes, bases de datos, logs y crecimiento razonable de servicios.
 - Ejemplo válido: **Kingston NV2 500 GB**, aproximadamente **35-40 EUR**.
 
 ### Discos USB de datos
 
-- **`hd2t` (2 TB)**: destinado a bibliotecas multimedia, descargas y copias de seguridad locales.
+- **`hd2t` (2 TB)**: destinado a contenidos multimedia organizados por tipo, descargas y copias de seguridad locales.
 - **`hd5t` (5 TB)**: reservado para una biblioteca multimedia dedicada, separando ese disco del resto del contenido.
 - Si estos discos ya existen y contienen datos, no hace falta sustituirlos. Su incorporación sin formatear se documenta en [04-discos-con-datos.md](04-discos-con-datos.md).
 
@@ -61,6 +61,8 @@ Si ya se dispone de Raspberry Pi 5, discos USB y cableado, el coste incremental 
 | Argon ONE V3 M.2 NVME PCIe | **55-65 EUR** |
 | SSD NVMe M.2 500 GB | **35-40 EUR** |
 | Total upgrade NVMe | **90-105 EUR** |
+
+Los importes son orientativos y pueden variar según tienda, disponibilidad y modelo exacto del SSD.
 
 ## Criterios de Compra
 

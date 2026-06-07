@@ -15,7 +15,7 @@ Esta modalidad encaja bien con el resto del homelab porque mantiene el mismo pat
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto del servicio.
 - Puerto principal: `8123/tcp`.
 - Recomendado usar `network_mode: host` para que Home Assistant detecte correctamente dispositivos y protocolos de descubrimiento en la red local.
-- Si se publica con Caddy, el upstream debe apuntar a `host.docker.internal:8123`, porque con `network_mode: host` Home Assistant no queda accesible por nombre de contenedor en `homelab_proxy`.
+- Si se publica con Caddy, el upstream debe apuntar a `127.0.0.1:8123`, porque con `network_mode: host` Home Assistant expone el servicio directamente en la pila de red del host y no por nombre de contenedor en `homelab_proxy`.
 
 ## Docker Compose
 
@@ -54,14 +54,14 @@ docker compose logs -f
 
 Tras arrancar, la interfaz queda disponible en:
 
-- `http://IP_DE_LA_PI:8123`
-- `http://pi-homelab.<tailnet>.ts.net:8123` si accedes por la red Tailscale con MagicDNS
+- `http://<IP_LAN_DE_LA_PI>:8123`
+- `http://pi-homelab.<tailnet>.ts.net:8123` si accedes por la red Tailscale con MagicDNS y sustituyes `<tailnet>` por tu dominio real
 
 ## Configuración
 
 ### Asistente inicial
 
-1. Abre `http://IP_DE_LA_PI:8123`.
+1. Abre `http://<IP_LAN_DE_LA_PI>:8123`.
 2. Espera a que termine la preparación inicial del contenedor.
 3. Crea el usuario administrador.
 4. Define nombre de la vivienda, zona horaria y ubicación.
@@ -92,7 +92,7 @@ Cuando esté desplegado [02-mosquitto.md](02-mosquitto.md), añade la integraci�
 
 Valores típicos:
 
-- Broker: IP de la Raspberry Pi
+- Broker: IP LAN o nombre DNS interno de la Raspberry Pi, por ejemplo `192.168.1.10` o `homeassistant.lan`
 - Puerto: `1883`
 - Usuario y contraseña: los definidos en Mosquitto
 
@@ -106,7 +106,7 @@ Cuando esté desplegado [03-zigbee2mqtt.md](03-zigbee2mqtt.md), activa la integr
 
 Cuando esté desplegado [04-node-red.md](04-node-red.md), integra Node-RED con Home Assistant usando:
 
-- el servidor de Home Assistant en `http://IP_DE_LA_PI:8123`
+- el servidor de Home Assistant en `http://<IP_LAN_DE_LA_PI>:8123`
 - un **Long-Lived Access Token** generado desde el perfil del usuario administrador
 
 Esto permite crear automatizaciones complejas fuera del editor nativo de Home Assistant.
@@ -115,12 +115,12 @@ Esto permite crear automatizaciones complejas fuera del editor nativo de Home As
 
 Si vas a acceder a Home Assistant mediante [05-caddy.md](../03-red/05-caddy.md), añade en `/home/<user>/homelab/data/homeassistant/config/configuration.yaml` una sección `http` con los proxies de confianza reales de tu despliegue.
 
-En este caso, como Home Assistant usa `network_mode: host`, el bloque de Caddy debe usar `host.docker.internal:8123` como upstream, siguiendo la opción de transición documentada en [05-caddy.md](../03-red/05-caddy.md). Ejemplo mínimo dentro del `Caddyfile`:
+En este caso, como tanto Caddy como Home Assistant usan `network_mode: host`, el bloque de Caddy debe usar `127.0.0.1:8123` como upstream, siguiendo el patrón base documentado en [05-caddy.md](../03-red/05-caddy.md). Ejemplo mínimo dentro del `Caddyfile`:
 
 ```caddyfile
 http://homeassistant.lan {
 	import common_proxy
-	reverse_proxy host.docker.internal:8123
+	reverse_proxy 127.0.0.1:8123
 }
 ```
 
@@ -130,18 +130,18 @@ Ejemplo:
 http:
   use_x_forwarded_for: true
   trusted_proxies:
-    - 172.18.0.0/16
+    - 127.0.0.1/32
 ```
 
-Ajusta la subred al rango real de la red Docker desde la que llegue Caddy. Usa `172.18.0.0/16` como ejemplo inicial si aún no has verificado tu red, porque es un rango habitual en redes bridge de Docker, pero no lo trates como un valor fijo del proyecto.
+Ajusta `trusted_proxies` al origen real desde el que Home Assistant recibe la conexión del proxy. En la arquitectura de este repositorio, con Caddy y Home Assistant en `network_mode: host` y upstream a `127.0.0.1:8123`, el valor correcto de partida es `127.0.0.1/32`.
 
-Antes de darlo por bueno, comprueba la subred real de la red compartida del proxy:
+Si en el futuro cambias esta topología y colocas Caddy detrás de una red bridge de Docker, revisa este bloque antes de reutilizarlo:
 
 ```bash
-docker network inspect homelab_proxy | grep Subnet
+ss -ltnp | grep 8123
 ```
 
-Si la salida muestra otro rango, sustituye `172.18.0.0/16` por el valor real. La recomendación práctica es mantener la subred completa de esa red en formato `/16` o con la máscara que Docker haya asignado, en lugar de intentar listar IPs sueltas, para evitar roturas si cambian las direcciones internas de los contenedores al recrear la red. Si no se configura correctamente, Home Assistant rechazará la cabecera `X-Forwarded-For`.
+Si Home Assistant deja de escuchar en loopback o el proxy pasa a otra red, actualiza el `reverse_proxy` y `trusted_proxies` a la topología real. Si no se configura correctamente, Home Assistant rechazará la cabecera `X-Forwarded-For`.
 
 ### Reinicio tras cambios de configuración
 

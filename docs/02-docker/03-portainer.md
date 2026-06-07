@@ -107,11 +107,10 @@ Motivo:
 
 Por tanto, para un homelab como este la recomendación práctica es:
 
-- si **Caddy corre en Docker**, une Portainer y Caddy a la red compartida `homelab_proxy` y apunta Caddy a `http://portainer:9000`
-- si **Caddy corre en el host**, publica `9000` solo en loopback, por ejemplo `127.0.0.1:9000:9000`, y apunta Caddy a `http://127.0.0.1:9000`
+- como en este proyecto **Caddy usa `network_mode: host`** (→ ver [../03-red/05-caddy.md](../03-red/05-caddy.md)), publica `9000` solo en loopback, por ejemplo `127.0.0.1:9000:9000`, y apunta Caddy a `http://127.0.0.1:9000`
 - reserva `9443` para acceso directo administrativo o para un escenario donde realmente quieras mantener TLS extremo a extremo
 
-Ejemplo mínimo si Caddy vive en Docker y quieres hostname dedicado para Portainer:
+Ejemplo mínimo si decides prepararlo para Caddy en este proyecto:
 
 ```yaml
 services:
@@ -121,23 +120,16 @@ services:
     env_file:
       - .env
     ports:
+      - "127.0.0.1:9000:9000"
       - "${PORTAINER_BIND_IP}:${PORTAINER_HTTPS_PORT}:9443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DATA_ROOT}/portainer:/data
-    networks:
-      - default
-      - proxy
-
-networks:
-  proxy:
-    external: true
-    name: homelab_proxy
 ```
 
 ```caddyfile
-portainer.example.lan {
-    reverse_proxy portainer:9000
+portainer.lan {
+    reverse_proxy 127.0.0.1:9000
 }
 ```
 
@@ -150,8 +142,8 @@ Sobre `transport http { tls_insecure_skip_verify }`:
 Ejemplo de la variante menos aconsejable, pero funcional en una red interna controlada:
 
 ```caddyfile
-portainer.example.lan {
-    reverse_proxy https://portainer:9443 {
+portainer.lan {
+    reverse_proxy https://127.0.0.1:9443 {
         transport http {
             tls_insecure_skip_verify
         }
@@ -176,9 +168,9 @@ services:
 ```
 
 ```caddyfile
-example.lan {
+pi.homelab.lan {
     handle_path /portainer/* {
-        reverse_proxy portainer:9000
+        reverse_proxy 127.0.0.1:9000
     }
 }
 ```

@@ -14,7 +14,7 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 
 | Doc | Contenido |
 |-----|-----------|
-| `docs/00-hardware/01-material-necesario.md` | Lista de materiales: Raspberry Pi 5 8 GB, fuente oficial USB-C 27 W (5V/5A — imprescindible con NVMe), microSD 64 GB (solo arranque inicial), **carcasa Argon ONE V3 M.2 NVME PCIe** (~55–65 €), **SSD NVMe M.2 500 GB** (ej. Kingston NV2 ~35–40 €), disco duro externo **hd2t** (2 TB, USB 3.0), disco duro externo **hd5t** (5 TB, USB 3.0), cable Ethernet, adaptador Zigbee (opcional). Presupuesto upgrade NVMe: ~70–105 € |
+| `docs/00-hardware/01-material-necesario.md` | Lista de materiales: Raspberry Pi 5 8 GB, fuente oficial USB-C 27 W (5V/5A — imprescindible con NVMe), microSD 64 GB (solo arranque inicial), **carcasa Argon ONE V3 M.2 NVME PCIe** (~55–65 €), **SSD NVMe M.2 500 GB** (ej. Kingston NV2 ~35–40 €), disco duro externo **hd2t** (2 TB, USB 3.0), disco duro externo **hd5t** (5 TB, USB 3.0), cable Ethernet, adaptador Zigbee (opcional). Presupuesto upgrade NVMe: ~90–105 € |
 | `docs/00-hardware/02-esquema-conexiones.md` | Diagrama físico de conexiones: Pi → SSD NVMe (M.2 en carcasa vía PCIe), Pi → discos duros USB, Pi → router (Ethernet Gigabit), Pi → adaptador Zigbee |
 | `docs/00-hardware/03-preparacion-discos.md` | Particionado, formato (ext4), montaje automático (`fstab`), etiquetas (`hd5t`, `hd2t`), pruebas SMART, estrategia de uso (SSD NVMe: SO + Docker + datos de servicios, hd2t: multimedia + backups, hd5t: biblioteca multimedia dedicada) |
 | `docs/00-hardware/04-discos-con-datos.md` | Instalación de discos externos **sin formatear** (con datos existentes): identificación, SMART, comprobación de integridad, montaje automático (`fstab`), soporte para ext4/NTFS/exFAT, ajuste de permisos |
@@ -38,7 +38,7 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | Doc | Contenido |
 |-----|-----------|
 | `docs/02-docker/01-instalacion-docker.md` | Instalación de Docker Engine y Docker Compose en ARM64, post-install (grupo docker, autoarranque), verificación |
-| `docs/02-docker/02-estructura-compose.md` | Estrategia de organización: un `docker-compose.yml` por stack vs monolito, red Docker compartida, convenciones de nombres, variables de entorno (`.env`) |
+| `docs/02-docker/02-estructura-compose.md` | Estrategia de organización: un `docker-compose.yml` por stack vs monolito, convenciones de nombres, variables de entorno (`.env`). Caddy usa `network_mode: host` y alcanza los servicios en `127.0.0.1:<puerto>`; cada stack downstream publica su puerto en loopback (`127.0.0.1:<puerto>:<puerto_interno>`) |
 | `docs/02-docker/03-portainer.md` | Despliegue de Portainer CE, configuración inicial, gestión de stacks |
 | `docs/02-docker/04-wud.md` | Despliegue de WUD (What's Up Docker), monitorización de actualizaciones, exclusiones, triggers, notificaciones |
 
@@ -54,7 +54,7 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | `docs/03-red/02-pihole.md` | Despliegue de Pi-hole en red macvlan con IP dedicada (→ ver `docs/03-red/01-macvlan.md`), configuración del router para usar esa IP como DNS, listas de bloqueo recomendadas, DNS local para servicios internos (ej. `jellyfin.lan`), DNS fallback en el host (`/etc/resolv.conf`) para evitar pérdida de resolución si Pi-hole cae. Resolver recursivo → ver `docs/03-red/03-unbound.md` |
 | `docs/03-red/03-unbound.md` | Despliegue de Unbound como resolver recursivo en la misma red macvlan (→ ver `docs/03-red/01-macvlan.md`), integración con Pi-hole como upstream DNS (→ ver `docs/03-red/02-pihole.md`) |
 | `docs/03-red/04-tailscale.md` | Instalación de Tailscale (host o contenedor), MagicDNS, acceso remoto a servicios vía VPN sin abrir puertos |
-| `docs/03-red/05-caddy.md` | Despliegue de Caddy como reverse proxy interno, `Caddyfile` con bloques por servicio, HTTP plano en LAN (red confiable, sin necesidad de CA interna) y HTTPS automático solo para acceso remoto vía Tailscale (`tailscale cert`, ej. `pi.tailnet.ts.net`), configuración versionable en git |
+| `docs/03-red/05-caddy.md` | Despliegue de Caddy como reverse proxy interno con `network_mode: host`, `Caddyfile` con bloques por servicio, HTTP plano en LAN (red confiable, sin necesidad de CA interna) y HTTPS automático solo para acceso remoto vía Tailscale (`tailscale cert`, ej. `pi.tailnet.ts.net`), configuración versionable en git. Usa `network_mode: host` para preservar la IP real de los clientes (necesario para Fail2ban y Authelia); los upstreams apuntan a `127.0.0.1:<puerto>` y cada servicio downstream publica su puerto en loopback |
 | `docs/03-red/06-puertos-y-firewall.md` | Convención de asignación de puertos (rangos por tipo de servicio), reglas base de firewall (`ufw`/`nftables`), configuración del router (IP estática para la Pi, sin port forwarding). **Documento vivo**: se actualiza cada vez que se despliega un servicio nuevo. Referencia centralizada durante toda la instalación |
 
 ---
@@ -73,9 +73,9 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 | Doc | Contenido |
 |-----|-----------|
 | `docs/05-monitorizacion/01-prometheus.md` | Despliegue de Prometheus, `prometheus.yml`, targets, retención de datos en SSD NVMe |
-| `docs/05-monitorizacion/02-grafana.md` | Despliegue de Grafana, datasource Prometheus (→ ver `docs/05-monitorizacion/01-prometheus.md`), dashboards recomendados (Node Exporter Full — → ver `docs/05-monitorizacion/03-node-exporter.md`, métricas Docker vía endpoint nativo de Docker Engine `/metrics`, temperatura Pi) |
+| `docs/05-monitorizacion/02-grafana.md` | Despliegue de Grafana, datasource Prometheus (→ ver `docs/05-monitorizacion/01-prometheus.md`), dashboards recomendados (Node Exporter Full — → ver `docs/05-monitorizacion/03-node-exporter.md`, métricas Docker vía endpoint nativo de Docker Engine `/metrics`, temperatura Pi). **Pendiente**: documentar publicación en subruta HTTPS (`/grafana/`) detrás de Caddy + Tailscale, con `GF_SERVER_ROOT_URL` y `GF_SERVER_SERVE_FROM_SUB_PATH=true`, bloque Caddy `handle_path /grafana/*` con `import authelia_forward_auth`, y regla `two_factor` en `access_control` de Authelia (→ ver `docs/04-seguridad/01-authelia.md`) |
 | `docs/05-monitorizacion/03-node-exporter.md` | Despliegue de Node Exporter, métricas de sistema |
-| `docs/05-monitorizacion/04-uptime-kuma.md` | Despliegue de Uptime Kuma, monitores por servicio, notificaciones (Telegram, email) |
+| `docs/05-monitorizacion/04-uptime-kuma.md` | Despliegue de Uptime Kuma, monitores por servicio, notificaciones (Telegram, email). **Pendiente**: documentar publicación en subruta HTTPS (`/uptime/`) detrás de Caddy + Tailscale, con configuración de `webpath` o variable equivalente, bloque Caddy `handle_path /uptime/*` con `import authelia_forward_auth`, y regla `two_factor` en `access_control` de Authelia (→ ver `docs/04-seguridad/01-authelia.md`) |
 
 ---
 

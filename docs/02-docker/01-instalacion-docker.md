@@ -136,7 +136,7 @@ El resultado esperado para ambos servicios es `active` y `enabled`.
 
 ### 6. Permitir uso de Docker sin `sudo`
 
-Para operar con comodidad desde el usuario administrador del homelab, añade ese usuario al grupo `docker`:
+Para operar con comodidad desde el usuario administrador del homelab, añade **tu usuario normal de administración** al grupo `docker`. Ejecuta este paso desde tu sesión habitual, no desde una shell abierta con `sudo -s` o `su`, para evitar añadir por error a `root`:
 
 ```bash
 getent group docker || sudo groupadd docker
@@ -167,7 +167,7 @@ Si ese directorio no existe todavía, puedes ignorar este paso.
 
 ### 8. Verificación operativa
 
-Valida que todo el stack base responde correctamente:
+Valida que todo el stack base responde correctamente **desde una sesión nueva** en la que ya se haya aplicado la pertenencia al grupo `docker`:
 
 ```bash
 docker version

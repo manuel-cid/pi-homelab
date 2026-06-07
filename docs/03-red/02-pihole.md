@@ -31,7 +31,6 @@ En este diseño, **Pi-hole no actúa como servidor DHCP**. El DHCP sigue en el r
   - `53/tcp`
   - `53/udp`
   - `80/tcp`
-  - `443/tcp`
 
 Las IPs usadas en este documento siguen el ejemplo definido en [01-macvlan.md](01-macvlan.md). Si en tu red real cambiaste ese bloque, sustituye aquí `192.168.1.194`, `192.168.1.222`, `192.168.1.1` y `192.168.1.10` por tus valores reales antes de desplegar el stack.
 
@@ -235,7 +234,7 @@ La Raspberry Pi **no debe depender exclusivamente de Pi-hole** para su propia re
 - descargar imágenes o actualizaciones
 - ejecutar tareas de mantenimiento
 
-Objetivo operativo: el archivo `/etc/resolv.conf` del host debe apuntar a un resolvedor alternativo, por ejemplo el router y un DNS externo de respaldo.
+Objetivo operativo: el archivo `/etc/resolv.conf` del host debe apuntar a un resolvedor alternativo, por ejemplo el router y un DNS externo de respaldo. No lo dejes apuntando solo a `192.168.1.194`, porque eso introduciría una dependencia circular con el propio Pi-hole.
 
 Ejemplo mínimo:
 
@@ -256,9 +255,19 @@ options timeout:1 attempts:1
 EOF
 ```
 
-Si `/etc/resolv.conf` se regenera al reiniciar:
+Si `/etc/resolv.conf` se regenera al reiniciar, persiste esos DNS en el gestor de red real del host. En **Raspberry Pi OS Lite** lo habitual es `dhcpcd`; por tanto, usa primero esa vía y recurre a otras solo si tu instalación la cambió.
 
-- persiste los mismos DNS en `dhcpcd`, NetworkManager o el gestor de red que uses
+Ejemplo en `dhcpcd`:
+
+```conf
+static domain_name_servers=192.168.1.1 1.1.1.1
+```
+
+Archivo habitual: `/etc/dhcpcd.conf`
+
+Si tu sistema usa otro gestor de red:
+
+- aplica la configuración equivalente en NetworkManager o en el gestor que corresponda
 - verifica después que `/etc/resolv.conf` no haya quedado apuntando solo a `192.168.1.194`
 
 La idea no es que el host ignore Pi-hole, sino que **no dependa de él para sobrevivir a una caída del propio stack DNS**.

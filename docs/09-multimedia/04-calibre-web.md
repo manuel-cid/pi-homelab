@@ -8,10 +8,10 @@ La política de este proyecto se mantiene igual que en el resto de servicios mul
 
 - la configuración, la base de datos interna de la aplicación y el estado del servicio viven en `/home/<user>/homelab/data/calibre-web/` sobre el **SSD NVMe**
 - la biblioteca de ebooks vive en `/media/hd2t/media/books/calibre-library/`
-- el acceso principal se hace desde la **LAN** preferentemente a través de **Caddy**
-- el acceso remoto se hace por **Tailscale**, preferentemente a través de **Caddy**, sin abrir puertos en el router
-- el puerto directo en host queda como opción operativa para bootstrap, diagnóstico o clientes que prefieras configurar sin proxy
-- **Caddy** puede usarse como reverse proxy interno siguiendo el patrón general descrito en [05-caddy.md](../03-red/05-caddy.md), pero el bloque específico de `calibre-web.lan` debe añadirse en el `Caddyfile` del despliegue
+- el acceso principal se hace desde la **LAN** a través de **Caddy**
+- el acceso remoto se hace por **Tailscale** a través de **Caddy**, sin abrir puertos en el router
+- el puerto directo en el host queda publicado solo en `127.0.0.1:14003` como upstream local para **Caddy** y como opción de bootstrap o diagnóstico desde la propia Raspberry Pi
+- **Caddy** debe usar `127.0.0.1:14003` como upstream, siguiendo el patrón general descrito en [05-caddy.md](../03-red/05-caddy.md)
 
 Calibre-Web no sustituye a **Calibre** como gestor completo de biblioteca. En este homelab conviene entenderlo como una capa web sobre una biblioteca que ya existe y cuyo índice principal es el fichero `metadata.db`.
 
@@ -25,10 +25,9 @@ Calibre-Web no sustituye a **Calibre** como gestor completo de biblioteca. En es
 - Añadir en tu `Caddyfile` un bloque dedicado para `http://calibre-web.lan` si vas a seguir el patrón de hostname interno del homelab.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
 - Tener montado `hd2t` en `/media/hd2t`.
-- Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Tener preparada una biblioteca Calibre válida en `hd2t`, con `metadata.db` en la raíz de la carpeta que vayas a montar.
 - Puertos necesarios:
-  - `14003/tcp` en el host solo si quieres mantener acceso directo además del proxy
+  - `14003/tcp` publicado solo en `127.0.0.1` en el host para que **Caddy** alcance el servicio
   - `8083/tcp` como puerto interno del contenedor
 
 ## Docker Compose
@@ -52,16 +51,8 @@ services:
     volumes:
       - /home/<user>/homelab/data/calibre-web/config:/config
       - /media/hd2t/media/books/calibre-library:/books:ro
-    networks:
-      - default
-      - proxy
     labels:
       - wud.watch=true
-
-networks:
-  proxy:
-    external: true
-    name: ${PROXY_NETWORK}
 ```
 
 Notas sobre este Compose:
@@ -70,9 +61,9 @@ Notas sobre este Compose:
 - `config/` persiste en el **SSD NVMe**
 - la biblioteca Calibre vive en `hd2t`
 - la biblioteca se monta en modo lectura para reducir el riesgo de corromper `metadata.db` o mezclar escrituras concurrentes con otras herramientas
-- el servicio se conecta también a `homelab_proxy` para que **Caddy** pueda alcanzarlo por nombre interno Docker
+- el servicio publica `14003/tcp` solo en `127.0.0.1` para que **Caddy**, al usar `network_mode: host`, lo alcance por loopback
 - este despliegue base no habilita conversión avanzada de ebooks dentro del contenedor; en una Raspberry Pi 5 conviene asumir un rol de catálogo y lectura web, no de pipeline pesado de conversión
-- si estandarizas el acceso exclusivamente detrás de **Caddy**, puedes eliminar por completo el bloque `ports:`; **Caddy** no necesita que el contenedor publique `8083` en la IP del host
+- si eliminas el bloque `ports:`, **Caddy** ya no podrá alcanzar el servicio en la arquitectura actual del repositorio
 
 ## Configuración
 
@@ -145,16 +136,15 @@ Archivo: `/home/<user>/homelab/compose/media-calibre-web/.env`
 TZ=Europe/Madrid
 PUID=1000
 PGID=1000
-CALIBRE_WEB_BIND_IP=0.0.0.0
+CALIBRE_WEB_BIND_IP=127.0.0.1
 CALIBRE_WEB_HTTP_PORT=14003
-PROXY_NETWORK=homelab_proxy
 ```
 
 Notas prácticas:
 
 - `PUID` y `PGID` deben coincidir con el usuario real del host
-- `CALIBRE_WEB_BIND_IP=0.0.0.0` deja el servicio accesible desde la LAN y también desde la IP Tailscale del host como acceso directo opcional
-- si prefieres acceso solo detrás de Caddy, elimina el bloque `ports:` del Compose en lugar de publicarlo en `127.0.0.1`
+- `CALIBRE_WEB_BIND_IP=127.0.0.1` sigue la política general del proyecto para servicios web detrás de **Caddy**
+- si cambias temporalmente a `0.0.0.0`, el servicio quedará accesible directamente desde la LAN y desde la IP Tailscale del host; registra esa excepción en [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
 
 ### 5. Desplegar el stack
 
@@ -171,25 +161,13 @@ Validaciones útiles:
 ```bash
 ss -ltnp | grep 14003
 curl -I http://127.0.0.1:14003
-```
-
-Si eliminas `ports:` y dejas solo el acceso por **Caddy**, sustituye esas comprobaciones por:
-
-```bash
-docker inspect media-calibre-web-calibre-web-1 --format '{{json .NetworkSettings.Networks}}'
 curl -I -H 'Host: calibre-web.lan' http://127.0.0.1
 ```
 
-Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en:
-
-- `http://IP_DE_LA_PI:14003`
-- `http://pi-homelab.<tailnet>.ts.net:14003` desde dispositivos unidos a Tailscale
-
-Y, si ya tienes Caddy operativo:
+Si todo ha arrancado bien, la interfaz quedará disponible en:
 
 - `http://calibre-web.lan`
-
-<!-- TODO: verificar y documentar en [05-caddy.md](../03-red/05-caddy.md) el bloque definitivo de Caddy para Calibre-Web antes de tratar `calibre-web.lan` como referencia ya consolidada del repositorio. -->
+- `http://127.0.0.1:14003` desde la propia Raspberry Pi, un túnel SSH o como upstream local para **Caddy**
 
 ### 6. Primer arranque e importación desde Calibre
 
@@ -224,16 +202,16 @@ Puntos prácticos a revisar después del primer acceso:
 Recomendación operativa:
 
 - para la **LAN**, usa preferentemente `http://calibre-web.lan`
-- reserva el acceso directo a `:14003` para bootstrap, pruebas o clientes que no quieras pasar por proxy
-- para acceso remoto sencillo, Tailscale directo a `:14003` sigue siendo válido mientras no dependas de un nombre unificado detrás de Caddy
-- usa Caddy delante de Calibre-Web cuando quieras centralizar nombres internos del homelab y mantener una entrada coherente con el resto de servicios web
+- reserva el acceso directo a `127.0.0.1:14003` para bootstrap, pruebas desde la propia Raspberry Pi o diagnóstico local
+- para acceso remoto, usa la publicación que definas en **Caddy** sobre Tailscale en lugar de exponer `:14003` directamente
+- usa **Caddy** delante de Calibre-Web para mantener una entrada coherente con el resto de servicios web del homelab
 
 Si vas a exponerlo por hostname interno en **Caddy**, el bloque esperado sigue el mismo patrón que otros servicios multimedia ya documentados:
 
 ```caddy
 http://calibre-web.lan {
     import common_proxy
-    reverse_proxy calibre-web:8083
+    reverse_proxy 127.0.0.1:14003
 }
 ```
 

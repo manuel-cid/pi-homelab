@@ -17,6 +17,8 @@ En este homelab, la opción preferida para datos persistentes es usar **bind mou
 
 - Haber completado [01-estrategia-backup.md](01-estrategia-backup.md).
 - Haber completado [02-borgmatic.md](02-borgmatic.md).
+- Tener definida la estructura base del homelab según [../01-sistema/04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
+- Tener claros los nombres de stack y la organización de Compose según [../02-docker/02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Tener desplegados los servicios que se van a respaldar.
 - Tener identificados los contenedores de bases de datos y las rutas persistentes de cada servicio.
 - Tener disponible `/media/hd2t/backups/exports/` para dumps lógicos y `/media/hd2t/backups/restore-test/` para pruebas de restauración.
@@ -32,6 +34,12 @@ Puertos necesarios en esta fase:
 No aplica en este documento. Aquí se define el procedimiento operativo de backup y restore sobre los datos persistentes ya desplegados. La automatización del stack está en [02-borgmatic.md](02-borgmatic.md).
 
 ## Configuración
+
+Convención usada en los ejemplos de este documento:
+
+- sustituye siempre los placeholders entre `<>` como `<user>`, `<stack>`, `<servicio>`, `<contenedor_mariadb>` o `<contenedor_postgres>` por los valores reales de tu homelab
+- `STACK_DIR` apunta al directorio del stack Compose, por ejemplo `/home/<user>/homelab/compose/productivity-vaultwarden`
+- `SERVICE` es el nombre del servicio dentro de `docker-compose.yml`, que no tiene por qué coincidir exactamente con el nombre del documento o con el directorio de datos
 
 ### 1. Clasificar correctamente el almacenamiento de cada servicio
 
@@ -100,7 +108,7 @@ Si un servicio usa bind mounts en el NVMe, el flujo correcto es:
 
 1. generar primero los dumps de base de datos que correspondan
 2. dejar esos dumps en una ruta que Borgmatic sí respalde
-3. ejecutar el backup del árbol `compose/`, `config/`, `scripts/`, `.env` y `data/`
+3. ejecutar el backup del árbol `compose/`, `config/`, `scripts/`, `.env` y `data/`, que en este proyecto reside en el SSD NVMe bajo `/home/<user>/homelab/`
 
 Rutas recomendadas para dumps previos:
 
@@ -115,6 +123,7 @@ Rutas recomendadas para dumps previos:
 Importante:
 
 - `exports/` no sustituye al repositorio Borg; es un área de trabajo para generar artefactos lógicos
+- el repositorio local de Borgmatic sigue estando en `/media/hd2t/backups/borg/`, tal como se define en [02-borgmatic.md](02-borgmatic.md)
 - el dump debe completarse **antes** de que Borg empiece a leer los datos
 - si el servicio solo usa SQLite u otros ficheros locales, el propio directorio persistente suele ser suficiente, pero conviene detener la aplicación para restauraciones críticas
 
@@ -377,9 +386,10 @@ El restore correcto no consiste en extraer directamente encima del directorio ac
 Ejemplo de sincronización final:
 
 ```bash
+STACK_DIR=/home/<user>/homelab/compose/productivity-vaultwarden
 SERVICE=vaultwarden
 
-cd /home/<user>/homelab/compose/productivity-vaultwarden
+cd "${STACK_DIR}"
 docker compose stop "${SERVICE}"
 
 sudo rsync -aHAX --delete \

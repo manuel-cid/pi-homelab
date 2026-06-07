@@ -14,6 +14,8 @@ En este proyecto se despliega en Docker sobre la **Raspberry Pi 5**, con persist
 
 Cuando en este documento aparezca `IP_DE_LA_PI`, sustitúyelo por la IP LAN real del host. Si accedes por la VPN, usa la IP o el nombre MagicDNS de Tailscale del host, pero sin abrir puertos en el router.
 
+Este documento asume que el broker escucha en el host en `1883/tcp` para simplificar la integración con contenedores y clientes externos a Docker. La restricción real del alcance se hace con el firewall del host, no con port forwarding ni exposición pública.
+
 ## Requisitos Previos
 
 - Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
@@ -60,6 +62,15 @@ Este stack sigue la convención general del proyecto:
 - persistencia en `data/`
 - sin secretos embebidos en el Compose
 - servicio accesible por el puerto del host para que clientes dentro y fuera de Docker puedan conectarse igual
+
+Si usas `ufw`, una base razonable para este puerto es permitir únicamente la subred LAN y, si procede, la interfaz Tailscale:
+
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 1883 proto tcp
+sudo ufw allow in on tailscale0 to any port 1883 proto tcp
+```
+
+Sustituye `192.168.1.0/24` por la subred real de tu red local. Si no necesitas clientes MQTT a través de Tailscale, omite la segunda regla.
 
 ## Configuración
 
@@ -262,7 +273,7 @@ Contenido esperado:
 - `config/mosquitto/passwd`
 - `config/mosquitto/acl`
 - `data/mosquitto/data/mosquitto.db`
-- `log/mosquitto.log`
+- `data/mosquitto/log/mosquitto.log`
 
 No uses `hd2t` ni `hd5t` para estos datos. Esos discos quedan reservados para multimedia y copias de seguridad.
 

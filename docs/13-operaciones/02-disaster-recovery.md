@@ -29,7 +29,7 @@ Este procedimiento cubre el escenario principal definido por el proyecto:
 - Haber completado [02-borgmatic.md](../07-backups/02-borgmatic.md).
 - Haber completado [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md).
 - Tener acceso físico a la **Raspberry Pi 5**, al **SSD NVMe**, a **`hd2t`** y a **`hd5t`**.
-- Disponer de un medio de instalación válido de **Raspberry Pi OS Lite 64-bit** o equivalente.
+- Disponer de un medio de instalación válido de **Raspberry Pi OS Lite 64-bit**.
 - Poder acceder por terminal con un usuario con permisos de `sudo`.
 - Tener disponible el disco **`hd2t`** con el repositorio Borg y los exports de restore:
   - `/media/hd2t/backups/borg/`
@@ -40,6 +40,11 @@ Este procedimiento cubre el escenario principal definido por el proyecto:
   - `.env` globales y por stack
   - credenciales de bases de datos
   - credenciales de **Tailscale**
+
+Importante:
+
+- este runbook restaura el árbol operativo del homelab bajo `/home/<user>/homelab/` y los datos auxiliares guardados en `hd2t`
+- la configuración del sistema base fuera de ese árbol, como `/etc/fstab`, hostname, reglas del firewall del host o el estado local de **Tailscale**, debe reponerse siguiendo los documentos de sistema y red del proyecto
 
 Puertos necesarios en esta fase:
 
@@ -55,8 +60,8 @@ Antes de ejecutar los comandos de este documento:
 
 - sustituye **`<user>`** por el usuario administrativo real del host que posee `/home/<user>/homelab/`
 - sustituye **`<stack>`** por el nombre real del stack dentro de `compose/`
-- sustituye **`<hostname-original>`** y **`<repo-candidato>`** por el nombre real del repositorio Borg que exista bajo `/media/hd2t/backups/borg/`
-- sustituye **`<fecha>`** por el nombre exacto del archivo de backup que vayas a extraer
+- sustituye **`<repo-candidato>`** por el nombre real del repositorio Borg que exista bajo `/media/hd2t/backups/borg/`
+- sustituye **`<archivo>`** por el nombre exacto del archivo Borg que vayas a extraer
 
 ### 1. Cuándo activar este procedimiento
 
@@ -115,6 +120,14 @@ Si `hd2t` no es legible, detén el procedimiento y prioriza preservar ese disco,
 ### 4. Escenario A: restaurar el sistema en el SSD NVMe
 
 Si el **NVMe** sigue siendo reutilizable, o si lo sustituyes por uno nuevo, reconstruye primero el sistema base siguiendo [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md).
+
+En una reinstalación limpia, reaplica también antes de seguir:
+
+- montaje permanente de `hd2t` y `hd5t` en `/etc/fstab`
+- hostname, zona horaria y locale del host
+- acceso SSH administrativo
+- firewall base del host
+- alta o reautenticación de **Tailscale** si el estado previo no se conserva
 
 El resultado mínimo que debes obtener antes de seguir es este:
 
@@ -212,10 +225,10 @@ find /media/hd2t/backups/borg -mindepth 1 -maxdepth 1 -type d | sort
 docker run --rm \
   -v /media/hd2t/backups/borg:/mnt/borg-repository \
   -it modem7/borgmatic-docker:latest \
-  borg list /mnt/borg-repository/<hostname-original>
+  borg list /mnt/borg-repository/<repo-candidato>
 ```
 
-Referencia práctica para `<hostname-original>`:
+Referencia práctica para `<repo-candidato>`:
 
 - antes de un desastre, anota la salida de `hostname`; en este proyecto ese valor sirve como referencia más probable para el directorio del repositorio Borg
 - si tras reinstalar el host arranca con un nombre distinto, no des por hecho que el repositorio local usa el hostname nuevo
@@ -236,10 +249,10 @@ docker run --rm \
 Qué debes buscar:
 
 - un directorio cuyo nombre coincida con el hostname antiguo anotado previamente, si lo conservas
-- o, si no lo recuerdas, un repositorio que contenga archivos con el patrón `<hostname-original>-homelab-<fecha>`
+- o, si no lo recuerdas, un repositorio que contenga archivos con el patrón `*-homelab-*`
 - si varios repositorios existen, usa el que contenga los archivos más recientes y coherentes con tu árbol `source/homelab/`
 
-El criterio correcto es identificar primero el repositorio real bajo `/media/hd2t/backups/borg/<hostname-original>/` y listar después sus archivos. Si prefieres restaurar con Borg/Borgmatic instalado temporalmente en el host, puedes hacerlo, pero mantén la restauración inicial fuera de producción.
+El criterio correcto es identificar primero el repositorio real bajo `/media/hd2t/backups/borg/<repo-candidato>/` y listar después sus archivos. Si prefieres restaurar con Borg/Borgmatic instalado temporalmente en el host, puedes hacerlo, pero mantén la restauración inicial fuera de producción.
 
 Ruta de trabajo recomendada:
 
@@ -254,7 +267,7 @@ docker run --rm \
   -v /media/hd2t/backups/borg:/mnt/borg-repository \
   -v /media/hd2t/backups/restore-test/full-host:/mnt/restore \
   -it modem7/borgmatic-docker:latest \
-  sh -c 'cd /mnt/restore && borg extract /mnt/borg-repository/<hostname-original>::<hostname-original>-homelab-<fecha> \
+  sh -c 'cd /mnt/restore && borg extract /mnt/borg-repository/<repo-candidato>::<archivo> \
     source/homelab/compose \
     source/homelab/config \
     source/homelab/scripts \
@@ -418,6 +431,7 @@ Este documento depende directamente de que la estrategia de backup sea restaurab
 - dumps lógicos de **MariaDB** y **PostgreSQL** en `/media/hd2t/backups/exports/`
 - exports de **named volumes** si existen
 - passphrases, claves y secretos necesarios para abrir el repositorio y reconfigurar acceso
+- documentación suficiente para reconstruir el host fuera del árbol `homelab`, especialmente `/etc/fstab`, red base, firewall y acceso SSH/Tailscale
 
 Prueba operativa recomendada:
 

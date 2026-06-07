@@ -24,10 +24,9 @@ Audiobookshelf encaja bien en este homelab porque separa bien el **contenido mul
 - Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Audiobookshelf detrás del reverse proxy interno.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
 - Tener montado `hd2t` en `/media/hd2t`.
-- Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:
   - `80/tcp` como puerto interno del contenedor
-  - `13378/tcp` en `127.0.0.1` solo si quieres mantener acceso temporal directo para bootstrap o diagnóstico
+  - `13378/tcp` publicado en `127.0.0.1` para que **Caddy** pueda alcanzar el servicio y para bootstrap o diagnóstico local
 
 ## Docker Compose
 
@@ -45,23 +44,15 @@ services:
       - .env
     environment:
       TZ: ${TZ}
-    expose:
-      - "80"
+    ports:
+      - "127.0.0.1:${AUDIOBOOKSHELF_PORT}:80"
     volumes:
       - /media/hd2t/media/audiobooks:/audiobooks:ro
       - /media/hd2t/media/podcasts:/podcasts
       - /home/<user>/homelab/data/audiobookshelf/metadata:/metadata
       - /home/<user>/homelab/data/audiobookshelf/config:/config
-    networks:
-      - default
-      - proxy
     labels:
       - wud.watch=true
-
-networks:
-  proxy:
-    external: true
-    name: ${PROXY_NETWORK}
 ```
 
 Notas sobre este Compose:
@@ -71,8 +62,8 @@ Notas sobre este Compose:
 - las bibliotecas multimedia viven en `hd2t` siguiendo la estructura global `/media/hd2t/media/audiobooks/` y `/media/hd2t/media/podcasts/`
 - los audiolibros se montan en modo lectura para reducir riesgo de borrados o cambios accidentales
 - la carpeta de podcasts se deja con escritura para permitir descargas o gestión desde Audiobookshelf si decides usar esa función
-- el servicio se conecta también a `homelab_proxy` para que **Caddy** pueda alcanzarlo por nombre interno Docker
-- con `expose:` basta para publicarlo detrás de **Caddy**; no hace falta publicar `80` en la IP del host
+- el servicio publica `127.0.0.1:13378` para seguir la política del repositorio: **Caddy** corre con `network_mode: host` y alcanza los servicios downstream por loopback, no por nombre interno Docker
+- al quedar ligado a `127.0.0.1`, el puerto no queda expuesto directamente en la LAN; el acceso normal sigue entrando por **Caddy**
 
 ## Configuración
 
@@ -128,14 +119,14 @@ Archivo: `/home/<user>/homelab/compose/media-audiobookshelf/.env`
 TZ=Europe/Madrid
 PUID=1000
 PGID=1000
-PROXY_NETWORK=homelab_proxy
+AUDIOBOOKSHELF_PORT=13378
 ```
 
 Notas prácticas:
 
 - `PUID` y `PGID` deben coincidir con el usuario real del host
-- con este patrón el acceso normal entra por Caddy a través de `homelab_proxy`
-- si necesitas bootstrap o diagnóstico directo, añade temporalmente `ports: - "127.0.0.1:13378:80"` y retíralo al terminar
+- `AUDIOBOOKSHELF_PORT` debe mantenerse alineado con [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) y con el upstream configurado en [05-caddy.md](../03-red/05-caddy.md)
+- con este patrón el acceso normal entra por **Caddy** usando `127.0.0.1:13378` como upstream local
 
 ### 4. Desplegar el stack
 
@@ -150,7 +141,7 @@ docker compose logs --tail=50 audiobookshelf
 Validaciones útiles:
 
 ```bash
-docker inspect media-audiobookshelf-audiobookshelf-1 --format '{{json .NetworkSettings.Networks}}'
+curl -I http://127.0.0.1:13378/
 curl -I -H 'Host: audiobookshelf.lan' http://127.0.0.1
 ```
 
@@ -158,6 +149,7 @@ Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en
 
 - `http://audiobookshelf.lan`
 - `https://pi-homelab.<tailnet>.ts.net/...` únicamente cuando añadas en Caddy la ruta o el hostname remoto que decidas usar y lo valides de extremo a extremo
+- `http://127.0.0.1:13378` solo desde la propia Raspberry Pi, un túnel SSH o para diagnóstico local
 
 ### 5. Primer arranque y creación de bibliotecas
 
@@ -190,7 +182,7 @@ Puntos prácticos a revisar después del primer acceso:
 Recomendación operativa:
 
 - para la **LAN**, usa preferentemente `http://audiobookshelf.lan`
-- reserva un puerto directo en `127.0.0.1` solo para bootstrap o pruebas puntuales
+- mantén `127.0.0.1:13378` como upstream local estable para **Caddy** y como punto de bootstrap o diagnóstico desde la propia Raspberry Pi
 - para acceso remoto, publícalo a través de Tailscale y Caddy sin abrir puertos adicionales en el host
 - usa Caddy delante de Audiobookshelf cuando quieras centralizar nombres internos del homelab y mantener una entrada coherente con el resto de servicios web
 
@@ -204,7 +196,7 @@ Ejemplo recomendado con hostname dedicado en LAN:
 
 ```caddyfile
 http://audiobookshelf.lan {
-    reverse_proxy audiobookshelf:80
+    reverse_proxy 127.0.0.1:13378
 }
 ```
 
@@ -214,7 +206,7 @@ Ejemplo orientativo para acceso remoto sobre el hostname HTTPS común:
 https://pi-homelab.<tailnet>.ts.net {
     @audiobookshelf path /audiobookshelf /audiobookshelf/*
     handle @audiobookshelf {
-        reverse_proxy audiobookshelf:80
+        reverse_proxy 127.0.0.1:13378
     }
 }
 ```

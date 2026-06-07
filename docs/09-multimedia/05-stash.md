@@ -25,9 +25,8 @@ Stash encaja bien en este homelab porque separa claramente la **biblioteca real*
 - Haber desplegado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Stash detrás del reverse proxy interno del homelab.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto publicado por el servicio.
 - Tener montado `hd5t` en `/media/hd5t`.
-- Tener creada la red Docker externa `homelab_proxy` si vas a seguir el patrón de publicación detrás de Caddy.
 - Puertos necesarios:
-  - `14004/tcp` en el host para acceso web directo desde LAN o Tailscale
+  - `14004/tcp` publicado en el host; úsalo en `127.0.0.1` si Stash va detrás de Caddy o en `0.0.0.0` solo si quieres acceso directo desde LAN o Tailscale
   - `9999/tcp` como puerto interno del contenedor
 
 ## Docker Compose
@@ -65,16 +64,8 @@ services:
       options:
         max-file: "10"
         max-size: "2m"
-    networks:
-      - default
-      - proxy
     labels:
       - wud.watch=true
-
-networks:
-  proxy:
-    external: true
-    name: ${PROXY_NETWORK}
 ```
 
 Notas sobre este Compose:
@@ -83,7 +74,7 @@ Notas sobre este Compose:
 - la biblioteca vive en `hd5t`
 - la configuración, la base de datos, blobs, caché, scrapers, plugins y contenido generado viven en el **SSD NVMe**
 - la biblioteca se monta en modo lectura para un despliegue base más seguro
-- el servicio se conecta también a `homelab_proxy` para que **Caddy** pueda alcanzarlo por nombre interno Docker
+- el servicio publica `14004/tcp` en el host y **Caddy**, al usar `network_mode: host`, debe alcanzarlo por `127.0.0.1:14004`
 - el Compose sigue el esquema oficial de Stash para `config`, `metadata`, `cache`, `blobs` y `generated`
 
 Si más adelante quieres usar funciones de **organización, renombrado o movimiento de archivos desde Stash**, tendrás que quitar `:ro` del bind mount `/media/hd5t/media:/data:ro` y validar muy bien esa política antes de activarla en producción.
@@ -138,13 +129,12 @@ TZ=Europe/Madrid
 STASH_BIND_IP=0.0.0.0
 STASH_HTTP_PORT=14004
 STASH_PORT=9999
-PROXY_NETWORK=homelab_proxy
 ```
 
 Notas prácticas:
 
-- `STASH_BIND_IP=0.0.0.0` deja el servicio accesible por acceso directo desde la LAN y también desde la IP Tailscale del host
-- si prefieres seguir el patrón recomendado del homelab y entrar siempre por Caddy, elimina el bloque `ports:` del Compose en lugar de publicarlo en `127.0.0.1`
+- si quieres seguir el patrón recomendado del homelab con **Caddy** como entrada principal, usa `STASH_BIND_IP=127.0.0.1`
+- `STASH_BIND_IP=0.0.0.0` deja el servicio accesible por acceso directo desde la LAN y también desde la IP Tailscale del host; úsalo solo si esa excepción te interesa de forma consciente
 - `STASH_PORT` debe coincidir con el puerto interno del contenedor y con el mapeo del Compose
 
 ### 4. Desplegar el stack
@@ -164,17 +154,18 @@ ss -ltnp | grep 14004
 curl -I http://127.0.0.1:14004
 ```
 
-Si eliminas `ports:` y dejas solo el acceso por **Caddy**, sustituye esas comprobaciones por:
+Si además quieres validar el acceso detrás de **Caddy**, añade esta comprobación:
 
 ```bash
-docker inspect media-stash-stash-1 --format '{{json .NetworkSettings.Networks}}'
 curl -I -H 'Host: stash.lan' http://127.0.0.1
 ```
 
+No elimines `ports:` si vas a publicar Stash detrás de **Caddy** con la arquitectura actual del repositorio. Como **Caddy** usa `network_mode: host`, necesita un upstream estable en el host, normalmente `127.0.0.1:14004`.
+
 Si todo ha arrancado bien, la interfaz quedará disponible por acceso directo en:
 
-- `http://IP_DE_LA_PI:14004`
-- `http://pi-homelab.<tailnet>.ts.net:14004` desde dispositivos unidos a Tailscale
+- `http://127.0.0.1:14004` desde la propia Raspberry Pi si usas `STASH_BIND_IP=127.0.0.1`
+- `http://IP_DE_LA_PI:14004` y `http://pi-homelab.<tailnet>.ts.net:14004` solo si usas `STASH_BIND_IP=0.0.0.0`
 
 Si prefieres el patrón recomendado del homelab, con Caddy por delante:
 
@@ -191,8 +182,8 @@ Recomendación de publicación detrás de **Caddy**:
 Ejemplo recomendado con hostname dedicado:
 
 ```caddyfile
-stash.lan {
-    reverse_proxy stash:9999 {
+http://stash.lan {
+    reverse_proxy 127.0.0.1:14004 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-Port {server_port}
@@ -203,9 +194,9 @@ stash.lan {
 Ejemplo alternativo con subruta compartida:
 
 ```caddyfile
-pi-homelab.<tailnet>.ts.net {
+https://pi-homelab.<tailnet>.ts.net {
     handle_path /stash/* {
-        reverse_proxy stash:9999 {
+        reverse_proxy 127.0.0.1:14004 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-Port {server_port}

@@ -14,12 +14,14 @@ En esta Raspberry Pi 5 la topología más simple y coherente es esta:
 
 Para este homelab esa combinación es suficiente: instalación sencilla, backup fácil y soporte cómodo para importar recetas desde navegador o desde listas de URLs.
 
+Cuando en este documento aparezcan `<user>`, `<ip-lan-de-la-pi>`, `<tailnet>` o `<group-slug>`, sustitúyelos por los valores reales de tu entorno antes de ejecutar comandos, fijar `BASE_URL` o guardar bookmarklets.
+
 ## Requisitos Previos
 
 - Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres acceder también desde fuera de casa a través de la tailnet.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto asignado al servicio.
-- Revisar [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount de Mealie en la estrategia de copias.
+- Revisar [01-estrategia-backup.md](../07-backups/01-estrategia-backup.md) para la política general y [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md) si vas a incluir el bind mount de Mealie en la estrategia de copias.
 - Disponer de `/home/<user>/homelab/` en el **SSD NVMe** con permisos normales para el usuario administrador.
 - Tener decidida la **URL canónica** que usarás como `BASE_URL` y sustituir cualquier placeholder antes de desplegar. Para acceso directo sin reverse proxy suele bastar `http://pi-homelab.<tailnet>.ts.net:16003` o `http://<ip-lan-de-la-pi>:16003`, pero conviene escoger **una sola** como referencia operativa y mantenerla en clientes, bookmarklets y pruebas.
 - Permitir salida a internet para el contenedor si vas a usar la importación de recetas desde URL; Mealie la necesita para recuperar contenido remoto, aunque el homelab siga sin exponer puertos entrantes.
@@ -259,6 +261,8 @@ Estrategia recomendada en este homelab:
 - complementar con los backups integrados de la UI para exportaciones puntuales
 - evitar copiar la base SQLite en caliente como único método de protección
 - no tratar los backups generados dentro de `/app/data` como copia independiente hasta haberlos copiado también fuera del **SSD NVMe**
+
+Para la implementación recurrente de estas copias, usa como referencia [02-borgmatic.md](../07-backups/02-borgmatic.md) junto con [03-backup-docker-volumes.md](../07-backups/03-backup-docker-volumes.md).
 
 Procedimiento manual consistente para copia de filesystem:
 

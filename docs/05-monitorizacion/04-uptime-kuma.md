@@ -9,6 +9,7 @@ En este homelab conviene mantener un criterio simple:
 - la UI de Uptime Kuma debe publicarse solo en `127.0.0.1`
 - sus datos persistentes deben vivir en el **SSD NVMe**
 - para monitorizar servicios Docker, conviene usar nombres internos en la red compartida `homelab_proxy`
+- si más adelante quieres acceso remoto, la ruta coherente del proyecto es `https://pi-homelab.<tailnet>.ts.net/uptime/` detrás de **Caddy** y protegida con **Authelia**
 - no hace falta montar el socket Docker si el objetivo es vigilar servicios HTTP, TCP o Ping con el menor privilegio posible
 - las alertas principales deben salir por **Telegram** y, como canal adicional, por **email SMTP**
 
@@ -250,6 +251,48 @@ docker compose restart uptime-kuma
 docker compose ps
 du -sh /home/<user>/homelab/data/uptime-kuma
 ```
+
+### 9. Publicación remota opcional detrás de Caddy y Authelia
+
+El acceso base recomendado sigue siendo local en `127.0.0.1:11002`. Si además quieres acceso remoto por Tailscale, la ruta coherente con la arquitectura del repositorio es publicar Uptime Kuma bajo la subruta:
+
+- `https://pi-homelab.<tailnet>.ts.net/uptime/`
+
+Esto debe mantenerse alineado con [05-caddy.md](../03-red/05-caddy.md) y [01-authelia.md](../04-seguridad/01-authelia.md):
+
+- **Caddy** termina HTTPS sobre el hostname MagicDNS del nodo
+- **Authelia** protege la ruta remota con política `two_factor`
+- Uptime Kuma sigue escuchando en `127.0.0.1:11002` en el host; Caddy hace de proxy hacia ese upstream
+
+Bloque orientativo para `Caddyfile`:
+
+```caddyfile
+https://{$TAILSCALE_DOMAIN} {
+	import common_proxy
+	tls /certs/{$TAILSCALE_DOMAIN}.crt /certs/{$TAILSCALE_DOMAIN}.key
+
+	handle_path /uptime/* {
+		import authelia_forward_auth
+		reverse_proxy 127.0.0.1:11002
+	}
+}
+```
+
+Regla orientativa en `access_control` de Authelia:
+
+```yaml
+access_control:
+  rules:
+    - domain: 'pi-homelab.<tailnet>.ts.net'
+      resources:
+        - '^/uptime(/.*)?$'
+      policy: two_factor
+```
+
+<!-- TODO: verificar el ajuste exacto de Uptime Kuma para servir correctamente bajo la subruta `/uptime/` antes de dar por cerrada la publicación remota; confirmar si basta con `UPTIME_KUMA_WS_ORIGIN`, `UPTIME_KUMA_HOST`, una opción de `webpath` en la UI o una variable equivalente soportada por la versión fijada. -->
+<!-- TODO: verificar en una prueba real si `handle_path /uptime/*` recorta el prefijo de forma compatible con la versión desplegada o si hace falta conservar `/uptime` completo con otro bloque de Caddy. -->
+
+Hasta verificar esos dos puntos, trata esta publicación remota como **opcional** y deja la operación normal del servicio en `127.0.0.1:11002` o detrás de un túnel SSH local.
 
 ## Almacenamiento
 

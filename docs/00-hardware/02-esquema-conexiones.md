@@ -4,11 +4,11 @@
 
 Mapa físico de conexiones para montar la **Raspberry Pi 5 (8 GB)** con **operación sobre SSD NVMe**, dos discos USB de datos, red por Ethernet y adaptador Zigbee opcional. El objetivo es dejar claro qué se conecta a cada interfaz antes de pasar al particionado de discos y a la migración de arranque desde microSD a NVMe.
 
-Este documento asume el material descrito en → ver [01-material-necesario.md](01-material-necesario.md). La preparación de discos se documenta en → ver [03-preparacion-discos.md](03-preparacion-discos.md), la incorporación de discos con datos previos en → ver [04-discos-con-datos.md](04-discos-con-datos.md) y el arranque desde NVMe en → ver [05-arranque-nvme.md](05-arranque-nvme.md).
+Este documento asume el material descrito en → ver [docs/00-hardware/01-material-necesario.md](01-material-necesario.md). La preparación de discos se documenta en → ver [docs/00-hardware/03-preparacion-discos.md](03-preparacion-discos.md), la incorporación de discos con datos previos en → ver [docs/00-hardware/04-discos-con-datos.md](04-discos-con-datos.md) y el arranque desde NVMe en → ver [docs/00-hardware/05-arranque-nvme.md](05-arranque-nvme.md).
 
 ## Requisitos Previos
 
-- Disponer de todo el hardware validado en → ver [01-material-necesario.md](01-material-necesario.md).
+- Disponer de todo el hardware validado en → ver [docs/00-hardware/01-material-necesario.md](01-material-necesario.md).
 - Tener claro el reparto de almacenamiento:
   - **SSD NVMe**: sistema operativo, Docker, configuraciones y datos persistentes de servicios.
   - **`hd2t`**: multimedia general, descargas y backups.
@@ -86,42 +86,11 @@ Este documento asume el material descrito en → ver [01-material-necesario.md](
 5. Conectar el adaptador Zigbee solo si se va a usar en esta fase.
 6. Conectar la **fuente oficial USB-C de 27 W** al final.
 
-### Scripts de la carcasa
+### Nota sobre la carcasa
 
-Si la carcasa es la **Argon ONE V3 M.2 NVME PCIe** definida para este proyecto, sigue el manual del fabricante para instalar los scripts oficiales durante la preparación inicial del sistema. Estos scripts suelen habilitar:
+Si la carcasa es la **Argon ONE V3 M.2 NVME PCIe** definida para este proyecto, sigue el manual del fabricante para el montaje físico del SSD y de la placa PCIe. La instalación de scripts del fabricante, la validación del NVMe y cualquier ajuste de arranque se documentan más adelante en → ver [docs/00-hardware/05-arranque-nvme.md](05-arranque-nvme.md).
 
-- **Control del ventilador por temperatura**: sin ellos, el ventilador puede quedarse apagado o funcionar a máxima velocidad permanentemente.
-- **Botón de power inteligente**: doble pulsación para reiniciar, pulsación larga para apagado limpio.
-- Ajustes específicos del fabricante para la carcasa y su placa PCIe.
-
-### Recomendación específica para Argon ONE V3 en Raspberry Pi 5
-
-En la **Argon ONE V3**, sí conviene asumir que hay ajustes adicionales para **alimentación USB** y **detección/arranque del NVMe** en Raspberry Pi 5. La recomendación práctica para este homelab es:
-
-- En **Raspberry Pi OS Lite 64-bit**, instalar los scripts oficiales de Argon40 y reiniciar cuando lo pidan.
-- Tomar esos scripts como **fuente de verdad** para la carcasa en vez de reutilizar ajustes heredados de otras Pi o de otros modelos Argon.
-- Mantener como base la **fuente oficial USB-C de 27 W**.
-
-La instalación oficial puede ajustar parámetros de ventilación, botón de encendido y soporte de la placa de expansión PCIe/NVMe. En este documento no se fijan valores concretos porque deben verificarse contra la versión vigente del fabricante en el momento de la instalación.
-
-<!-- TODO: verificar en la instalación real qué parámetros aplica actualmente Argon40 para Raspberry Pi 5 y documentarlos, si sigue siendo útil, en [05-arranque-nvme.md](05-arranque-nvme.md) -->
-
-Para este proyecto, la recomendación es **no añadir manualmente opciones distintas o redundantes** si ya se ejecutaron los scripts de Argon40. En particular, no asumas que bastan ajustes antiguos de Raspberry Pi 4 o de carcasas NVMe distintas.
-
-### Interpretación recomendada para alimentación USB y NVMe
-
-- Si usas la **fuente oficial de 27 W** y los **scripts oficiales de Argon40**, no hace falta documentar un ajuste manual adicional separado para la alimentación USB en esta fase.
-- Para la gestión del **NVMe**, da por buenos los cambios del fabricante y continúa luego con → ver [05-arranque-nvme.md](05-arranque-nvme.md), donde se valida el arranque real desde el SSD.
-
-### Alternativas razonables si la información te genera dudas
-
-Hay un punto algo ambiguo: el fabricante activa `dtparam=pcie1_gen=3`, pero Raspberry Pi prioriza **Gen 2** como opción conservadora de estabilidad y advierte de que **Gen 3** puede no ser estable con todos los dispositivos PCIe.
-
-Por tanto, para un homelab la recomendación práctica es:
-
-- **Opción recomendada**: usar los scripts oficiales de Argon40 y mantener sus ajustes si el NVMe funciona estable.
-- **Opción conservadora**: si configuras a mano o detectas errores de enlace PCIe, reinicios, fallos de I/O o comportamiento extraño del SSD, dejar el enlace en **Gen 2** y no forzar `dtparam=pcie1_gen=3`.
-- **Opción manual mínima**: si no puedes usar los scripts, replica al menos los ajustes de **detección PCIe/NVMe** y **orden de arranque** que documente Argon40 para la **Argon ONE V3**, y verifica después con `rpi-eeprom-config`, `grep` sobre `/boot/firmware/config.txt` y `lsblk`.
+<!-- TODO: verificar durante la instalación real si la Argon ONE V3 para Raspberry Pi 5 sigue requiriendo scripts del fabricante para ventilador, botón de encendido o soporte PCIe/NVMe, y documentarlo en [05-arranque-nvme.md](05-arranque-nvme.md) -->
 
 ## Orden Lógico de Uso de Discos
 
@@ -157,9 +126,9 @@ Esta separación evita cargar los discos USB con I/O operativo del sistema y red
 
 ## Siguiente Paso
 
-Con el esquema físico ya definido, el siguiente documento a completar o seguir es → ver [03-preparacion-discos.md](03-preparacion-discos.md), donde se documentan particionado, formato, etiquetas, montaje automático y estrategia de uso de cada disco.
+Con el esquema físico ya definido, el siguiente documento a completar o seguir es → ver [docs/00-hardware/03-preparacion-discos.md](03-preparacion-discos.md), donde se documentan particionado, formato, etiquetas, montaje automático y estrategia de uso de cada disco.
 
-Si los discos USB ya contienen datos y no deben formatearse, salta a → ver [04-discos-con-datos.md](04-discos-con-datos.md).
+Si los discos USB ya contienen datos y no deben formatearse, salta a → ver [docs/00-hardware/04-discos-con-datos.md](04-discos-con-datos.md).
 
 ## Referencias
 

@@ -130,14 +130,16 @@ En este punto, la Raspberry Pi debería obtener IP por DHCP en la red local y ac
 
 ### 7. Descubrir la IP del equipo
 
-Puedes localizar la Raspberry Pi por hostname o por DHCP desde el router. Si el nombre se resuelve por mDNS o DNS local, prueba:
+Puedes localizar la Raspberry Pi por hostname o revisando la concesión DHCP del router. Si el nombre se resuelve por mDNS o DNS local desde tu equipo cliente, prueba:
 
 ```bash
 ping <hostname>.local
 ssh <user>@<hostname>.local
 ```
 
-Si no resuelve por nombre, localiza la IP asignada y conecta por dirección:
+Si tu equipo no resuelve `.local` o prefieres evitar dependencias de mDNS, entra al router y busca la concesión DHCP asociada al `hostname` configurado en Imager. Prioriza la IP obtenida por **Ethernet**. Si también se ha levantado el WiFi de respaldo, podrían aparecer dos direcciones y la referencia válida para el homelab debe ser la del enlace cableado siempre que exista.
+
+Con la IP correcta identificada, conecta por dirección:
 
 ```bash
 ssh <user>@<ip-del-equipo>
@@ -152,14 +154,15 @@ Una vez dentro por SSH, valida lo básico:
 ```bash
 hostnamectl
 ip a
+findmnt /
 lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE,LABEL
 ```
 
 Comprueba especialmente:
 
 - que el `hostname` sea el esperado
-- que la interfaz de red principal tenga conectividad
-- que la microSD sea el medio desde el que ha arrancado el sistema
+- que la interfaz de red principal con conectividad sea **Ethernet**
+- que `/` esté montado sobre la **microSD** y no sobre el NVMe
 - que el **SSD NVMe** aparezca detectado por el sistema
 
 En esta fase todavía no hace falta migrar al NVMe ni preparar montajes definitivos. Eso se cubre más adelante.

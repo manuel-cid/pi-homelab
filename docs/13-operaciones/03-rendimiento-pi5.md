@@ -29,7 +29,7 @@ Regla principal:
 - Haber completado [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md).
 - Haber completado [03-node-exporter.md](../05-monitorizacion/03-node-exporter.md).
 - Haber completado [01-mantenimiento-periodico.md](01-mantenimiento-periodico.md).
-- Tener una refrigeración adecuada y funcional en la carcasa de la Pi 5, ya sea pasiva bien dimensionada o activa.
+- Tener operativa la refrigeración de la **Argon ONE V3 M.2 NVME PCIe** seleccionada para este proyecto. Si se ha sustituido por otra carcasa, verificar que ofrece una capacidad térmica equivalente antes de aplicar tuning.
 - Usar una fuente de alimentación estable y adecuada para la Pi 5 con **NVMe** y discos USB conectados.
 - Tener acceso administrativo por **SSH** o consola local.
 - Tener instaladas estas herramientas en el host:
@@ -364,25 +364,25 @@ Ejemplo práctico en un `docker-compose.yml`:
 ```yaml
 services:
   caddy:
-    image: caddy:2.10
+    image: caddy:<tag-definida-en-su-doc>
     restart: unless-stopped
     mem_limit: 256m
     cpus: 0.50
 
   mealie:
-    image: ghcr.io/mealie-recipes/mealie:v3.1.2
+    image: ghcr.io/mealie-recipes/mealie:<tag-definida-en-su-doc>
     restart: unless-stopped
     mem_limit: 1g
     cpus: 1.00
 
   jellyfin:
-    image: jellyfin/jellyfin:10.10.7
+    image: jellyfin/jellyfin:<tag-definida-en-su-doc>
     restart: unless-stopped
     mem_limit: 1500m
     cpus: 2.50
 ```
 
-Usa siempre etiquetas fijadas y coherentes con la documentación específica de cada servicio; evita `latest` en este homelab para no introducir cambios inesperados durante el mantenimiento.
+Los límites de `mem_limit` y `cpus` son el ejemplo importante aquí. La etiqueta exacta de cada imagen debe tomarse del documento específico del servicio correspondiente para no duplicar ni desalinear versiones en este documento operativo.
 
 Si un stack ya está publicado detrás de **Caddy**, limita primero CPU y memoria antes de añadir más réplicas o más procesos: este homelab está pensado para **un único host Raspberry Pi 5**, no para escalar horizontalmente.
 
@@ -518,6 +518,8 @@ Buenas prácticas:
 - [03-node-exporter.md](../05-monitorizacion/03-node-exporter.md)
 - [01-mantenimiento-periodico.md](01-mantenimiento-periodico.md)
 - [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
+- [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md)
+- [SERVICES.md](../../SERVICES.md)
 - Raspberry Pi Docs: [config.txt](https://www.raspberrypi.com/documentation/computers/config_txt.html)
 - Raspberry Pi Docs: [Raspberry Pi OS utilities (`vcgencmd`)](https://www.raspberrypi.com/documentation/computers/os.html#vcgencmd)
 - Raspberry Pi Docs: [Frequency management and thermal control](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#frequency-management-and-thermal-control)

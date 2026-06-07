@@ -21,8 +21,8 @@ Como norma general, los servicios web del homelab deberían entrar por [05-caddy
 - Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres usar Stirling PDF también fuera de casa a través de la tailnet.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto del servicio.
-- Tener claro que este despliegue queda **sin login persistente** y solo tiene sentido porque el alcance de red del homelab es **LAN + Tailscale**, sin exposición pública a internet.
-- Sustituir antes de desplegar los placeholders de esta guía, especialmente `<user>`, `<ip-lan-de-la-pi>` y `<tailnet>`.
+- Tener claro que este despliegue queda **sin autenticación local persistente** y solo tiene sentido porque el alcance de red del homelab es **LAN + Tailscale**, sin exposición pública a internet.
+- Sustituir antes de desplegar los placeholders de esta guía, especialmente `<user>`, `<ip-lan-de-la-pi>`, `<hostname-de-tu-pi>`, `<tailnet>` y `<subred-lan-cidr>`.
 - Puertos necesarios en esta fase:
   - **`16004/tcp` publicado en el host** para acceso web desde LAN y Tailscale
   - **`8080/tcp`** es el puerto interno del contenedor
@@ -71,7 +71,7 @@ Notas sobre este Compose:
 
 - `Stirling PDF` escucha internamente en `8080/tcp`, pero en este homelab se publica en `16004/tcp`
 - este acceso directo por `16004/tcp` debe entenderse como una excepción deliberada al patrón preferente con Caddy; si más adelante quieres homogeneizar la exposición web del homelab, publícalo solo en `127.0.0.1` o intégralo detrás del reverse proxy
-- `SECURITY_ENABLELOGIN=false` deja la interfaz sin autenticación local, algo aceptable aquí solo porque el servicio queda limitado a **LAN + Tailscale**
+- `SECURITY_ENABLELOGIN=false` deja la interfaz sin autenticación local ni usuarios persistentes, algo aceptable aquí solo porque el servicio queda limitado a **LAN + Tailscale**
 - `DISABLE_ADDITIONAL_FEATURES=false` mantiene disponibles las funciones extra de la imagen estándar aunque el login esté desactivado
 - `tmpfs` en `/tmp`, `/configs`, `/logs` y `/pipeline` fuerza el carácter **stateless** del servicio: nada de lo que se genere ahí sobrevive a una recreación o reinicio del contenedor
 - no se usan bind mounts sobre el **SSD NVMe** porque este servicio no necesita persistencia
@@ -112,13 +112,13 @@ Validaciones rápidas:
 
 ```bash
 curl -I http://127.0.0.1:16004/
-docker compose exec stirling-pdf sh -c 'mount | grep -E "/configs|/logs|/tmp"'
+docker compose exec stirling-pdf sh -c 'mount | grep -E "/configs|/logs|/tmp|/pipeline"'
 ```
 
 Si todo ha arrancado bien, la UI quedará accesible en una de estas URLs:
 
 - `http://<ip-lan-de-la-pi>:16004`
-- `http://pi-homelab.<tailnet>.ts.net:16004`
+- `http://<hostname-de-tu-pi>.<tailnet>.ts.net:16004`
 
 ### 3. Alinear el firewall con esta excepción
 
@@ -127,7 +127,7 @@ Si mantienes el puerto publicado en `0.0.0.0`, el servicio **no** quedará realm
 Con `ufw`, la apertura mínima coherente con este documento es:
 
 ```bash
-sudo ufw allow in on eth0 proto tcp from 192.168.1.0/24 to any port 16004 comment 'Stirling PDF desde LAN'
+sudo ufw allow in on eth0 proto tcp from <subred-lan-cidr> to any port 16004 comment 'Stirling PDF desde LAN'
 sudo ufw allow in on tailscale0 to any port 16004 proto tcp comment 'Stirling PDF desde Tailscale'
 sudo ufw status numbered
 ```
@@ -153,7 +153,7 @@ Pruebas rápidas recomendadas:
 Este documento describe un despliegue deliberadamente simple. Conviene asumir estas consecuencias desde el principio:
 
 - cualquier ajuste hecho dentro del contenedor se perderá al recrearlo
-- no hay cuentas locales persistentes ni gestión de usuarios
+- no hay autenticación local ni gestión de usuarios persistente en este modo
 - no se conservan logs de aplicación ni pipelines personalizados
 - si más adelante quieres SSO, usuarios, settings persistentes o automatizaciones, tendrás que pasar a un despliegue con volumen en `/configs`
 

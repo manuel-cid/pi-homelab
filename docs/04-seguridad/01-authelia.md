@@ -35,14 +35,12 @@ Ejemplos que conviene evaluar con cuidado antes de poner detrás de Authelia:
 - Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Haber completado [04-tailscale.md](../03-red/04-tailscale.md).
 - Haber completado [05-caddy.md](../03-red/05-caddy.md).
-- Tener creada la red Docker externa `homelab_proxy`.
 - Tener operativo el hostname MagicDNS del nodo, por ejemplo `pi-homelab.<tailnet>.ts.net`.
 - Tener ya funcional el certificado de Tailscale usado por Caddy según [05-caddy.md](../03-red/05-caddy.md).
 - Poder crear directorios persistentes en `/home/<user>/homelab/config/` y `/home/<user>/homelab/data/`.
 - Tener decidido al menos un usuario inicial de Authelia y su grupo lógico, por ejemplo `admins`.
 - Puertos necesarios en esta fase:
-  - **ninguno publicado en el host** para Authelia
-  - **`9091/tcp` solo interno entre Caddy y Authelia** dentro de Docker
+  - **`9091/tcp` publicado solo en `127.0.0.1` del host** para que Caddy, al usar `network_mode: host`, pueda alcanzar Authelia sin exponerlo en la LAN
 
 ## Docker Compose
 
@@ -155,7 +153,7 @@ Archivo: `/home/<user>/homelab/config/authelia/configuration.yml`
 theme: auto
 
 server:
-  address: 'tcp://:9091/authelia'
+  address: 'tcp://:9091/authelia/'
   endpoints:
     authz:
       forward-auth:
@@ -196,7 +194,7 @@ session:
   remember_me: 30d
   cookies:
     - domain: 'pi-homelab.<tailnet>.ts.net'
-      authelia_url: 'https://pi-homelab.<tailnet>.ts.net/authelia'
+      authelia_url: 'https://pi-homelab.<tailnet>.ts.net/authelia/'
       default_redirection_url: 'https://pi-homelab.<tailnet>.ts.net/'
 
 regulation:
@@ -226,7 +224,7 @@ Qué fija esta configuración:
 - el portal de Authelia se sirve bajo la subruta `/authelia`
 - el backend de usuarios es local por fichero
 - la política por defecto es `deny`
-- `Homepage` queda con `two_factor` para que Authelia ofrezca el registro TOTP desde el primer momento; si solo existiesen reglas `one_factor`, el portal no mostraría la opción de registrar segundo factor
+- la ruta `/homepage` queda como ejemplo de primera aplicación protegida con `two_factor`, alineada con [01-homepage.md](../12-dashboards/01-homepage.md); si aún no has desplegado Homepage, puedes mantener la regla como referencia o sustituirla más adelante por otra ruta real compatible con subruta
 - las rutas `two_factor` adicionales deben añadirse solo cuando su documento confirme compatibilidad real con subruta y con `forward_auth`
 - las notificaciones se guardan en fichero local, útil para bootstrap y pruebas sin depender todavía de SMTP
 - se genera además un log persistente en `/home/<user>/homelab/data/authelia/authelia.log`, necesario para la integración posterior con [02-fail2ban.md](02-fail2ban.md)
@@ -248,14 +246,12 @@ Validaciones iniciales:
 
 ```bash
 docker compose logs --tail 100 authelia
-docker inspect "$(docker compose ps -q authelia)" --format '{{json .NetworkSettings.Networks}}'
 ls -lh /home/<user>/homelab/data/authelia
 ```
 
 El resultado esperado es este:
 
 - el contenedor queda en estado `Up`
-- aparece unido a la red `homelab_proxy`
 - se crea `db.sqlite3` en `/home/<user>/homelab/data/authelia/`
 - se crea o rota `authelia.log` en `/home/<user>/homelab/data/authelia/`
 - no aparecen errores de parseo en `configuration.yml`
@@ -312,6 +308,7 @@ Notas importantes sobre este patrón:
 - `Portainer` no se incluye en este ejemplo porque su documento actual lo deja publicado en `:9443` y aquí no queda demostrada una adaptación correcta a `/portainer/`
 - si un servicio no soporta bien subrutas, no lo metas aquí sin revisar primero su configuración
 - con `network_mode: host` en Caddy, la cabecera `X-Forwarded-For` que Caddy envía a Authelia contiene la IP real del cliente (LAN o Tailscale), necesario para que [02-fail2ban.md](02-fail2ban.md) funcione correctamente; ya no se necesita `header_up X-Real-IP` porque Caddy ve directamente al cliente
+- este patrón no necesita unir Authelia a `homelab_proxy`, porque la comunicación con Caddy se hace por `127.0.0.1:9091` en el host
 
 Tras modificar el `Caddyfile`:
 
@@ -378,7 +375,7 @@ curl -I https://pi-homelab.<tailnet>.ts.net/healthz
 Y operativamente:
 
 - `/authelia` carga el portal de login
-- una ruta con política `one_factor` pide login pero no TOTP
+- si más adelante defines una ruta con política `one_factor`, esa ruta pide login pero no TOTP
 - una ruta con política `two_factor` pide login y TOTP
 - una ruta fuera de las reglas no queda accidentalmente abierta
 - el fichero `notification.txt` se actualiza cuando Authelia emite un aviso
@@ -422,7 +419,7 @@ Además, conserva fuera del host:
 
 Orden de restauración recomendado:
 
-- restaurar primero el `Caddyfile` y la red `homelab_proxy`
+- restaurar primero el `Caddyfile`; la red `homelab_proxy` solo hace falta si las aplicaciones protegidas posteriores la usan
 - restaurar después `configuration.yml`, `users.yml`, `.env` y `db.sqlite3`
 - levantar `auth-authelia`
 - validar `/authelia`

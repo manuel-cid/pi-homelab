@@ -14,6 +14,8 @@ En esta arquitectura, Prowlarr sigue la misma política general del proyecto:
 
 La decisión importante aquí es que **Prowlarr no descarga contenido**. Solo centraliza indexadores, categorías y sincronización hacia las aplicaciones consumidoras. Las descargas reales seguirán recayendo en **Transmission** y en los clientes que configuren **Sonarr** y **Radarr**.
 
+Cuando este documento use placeholders como `<user>`, `IP_DE_LA_PI`, `<hostname-de-tu-pi>` o `<tailnet>`, sustitúyelos por los valores reales de tu entorno antes de ejecutar comandos o guardar configuraciones.
+
 ## Requisitos Previos
 
 - Haber completado [04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md).
@@ -117,7 +119,8 @@ Notas prácticas:
 - `PUID` y `PGID` deben coincidir con el usuario real del host
 - `PROWLARR_BIND_IP=0.0.0.0` deja la interfaz accesible desde la LAN y desde la IP Tailscale del host
 - si prefieres dejar la UI detrás de Caddy o limitarla a administración local del host, publica `127.0.0.1:15001`
-- si el acceso va a ser exclusivamente a través de `homelab_proxy`, puedes eliminar el bloque `ports:` completo y dejar Prowlarr solo accesible por nombre interno Docker
+- si no vas a exponer la interfaz web por LAN, Tailscale ni Caddy y solo quieres que Sonarr y Radarr hablen con Prowlarr por la red Docker compartida, puedes eliminar el bloque `ports:` completo y dejar Prowlarr accesible solo por nombre interno Docker
+- `homelab_proxy` sirve para comunicación entre contenedores; no sustituye por sí sola la publicación web de la interfaz para usuarios
 
 ### 4. Desplegar el stack
 
@@ -150,11 +153,11 @@ sudo ufw allow in on tailscale0 to any port 15001 proto tcp comment 'Prowlarr de
 
 <!-- TODO: verificar la subred LAN real antes de aplicar la regla de `ufw`; si tu red no es `192.168.1.0/24`, sustituirla por la correcta. -->
 
-Y, si además amplías el `Caddyfile` de [05-caddy.md](../03-red/05-caddy.md) con publicación interna para este servicio:
+Y, si además amplías el `Caddyfile` de [05-caddy.md](../03-red/05-caddy.md) con publicación interna para este servicio, recuerda que en esta arquitectura **Caddy llega a Prowlarr por `127.0.0.1:15001` en el host**, no por nombre de contenedor en `homelab_proxy`:
 
 - `http://prowlarr.lan`
 
-<!-- TODO: verificar si el acceso remoto por Caddy se publicará como subruta (por ejemplo `/prowlarr`) o mediante un hostname dedicado; ajustar `URL Base` en Prowlarr y el `Caddyfile` de forma coherente antes de dar ese acceso por válido. -->
+<!-- TODO: verificar si el acceso por Caddy se publicará como subruta (por ejemplo `/prowlarr`) o mediante un hostname dedicado; si se usa subruta, ajustar `URL Base` en Prowlarr y el `Caddyfile` de forma coherente antes de dar ese acceso por válido. -->
 
 ### 5. Primer arranque y endurecimiento básico
 

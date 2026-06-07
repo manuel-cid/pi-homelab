@@ -14,6 +14,7 @@ Ese mismo criterio aplica a **WUD como servicio de infraestructura**: no convien
 - Haber completado [02-estructura-compose.md](02-estructura-compose.md).
 - Haber completado [03-portainer.md](03-portainer.md) si se quiere inspeccionar el estado desde la UI, aunque no es obligatorio para desplegar WUD.
 - Disponer del directorio operativo del homelab en `/home/<user>/homelab/`.
+- Sustituir `<user>` por el usuario real del sistema antes de copiar rutas o ejecutar comandos.
 - Poder crear el stack en `/home/<user>/homelab/compose/infra-wud/`.
 - Tener claro que WUD necesita acceso al socket Docker del host (`/var/run/docker.sock`), lo que implica capacidad de administración real sobre los contenedores.
 - Disponer de conectividad saliente desde la Raspberry hacia los registros de imágenes Docker que usen los stacks del homelab.
@@ -109,7 +110,7 @@ Notas de esta configuración:
 - `0 4 * * *` significa comprobación diaria a las **04:00**.
 - La zona horaria de referencia será `Europe/Madrid`, tanto para logs como para la planificación.
 - `WUD_WATCHER_WATCHBYDEFAULT=true` indica que WUD monitoriza todos los contenedores del host salvo los excluidos expresamente con la etiqueta `wud.watch=false`.
-- `WUD_BIND_IP=0.0.0.0` permite acceso desde la **LAN** y desde la IP de **Tailscale** del host. En este proyecto sigue siendo aceptable porque el alcance es solo **LAN + Tailscale** y no se abren puertos en el router.
+- `WUD_BIND_IP=0.0.0.0` deja la UI accesible en todas las interfaces del host. En este proyecto sigue siendo aceptable como excepción documentada para **LAN + Tailscale**, porque no hay `port forwarding` en el router. Si más adelante publicas WUD detrás de Caddy, mueve esta exposición directa a `127.0.0.1`.
 - `WUD_PORT=10001` mantiene la UI dentro del rango reservado a infraestructura y orquestación en este repositorio.
 - El tag de imagen de WUD no se parametriza en el `.env`, porque interesa que el cambio de versión quede visible en el `docker-compose.yml` y se revise conscientemente.
 
@@ -147,6 +148,8 @@ Abre WUD desde un navegador en:
 - `http://<ip-lan-de-la-raspberry>:10001`
 - o `http://<ip-tailscale-de-la-raspberry>:10001`
 
+Sustituye ambos placeholders por las IPs reales del host. No uses aquí la IP de `Pi-hole` o `Unbound`, porque WUD se publica en la IP principal de la Raspberry, no en la red `macvlan`.
+
 La interfaz web muestra:
 
 - un resumen general de watchers, registros y triggers configurados
@@ -170,7 +173,7 @@ openssl passwd -apr1
 
 El hash resultante debe escapar cada `$` duplicándolo (`$$`) cuando se usa en ficheros de Compose o `.env` con interpolación de variables.
 
-Y añade estas variables al bloque `environment:` del servicio:
+Y añade estas variables al bloque `environment:` del servicio, sin eliminar las variables ya definidas para `TZ` y `WUD_WATCHER_*`:
 
 ```yaml
       WUD_AUTH_BASIC_MYUSER_USER: ${WUD_AUTH_BASIC_MYUSER_USER}
@@ -301,6 +304,7 @@ Notas importantes:
 - WUD no necesita un volumen persistente en `/home/<user>/homelab/data/`
 - la definición del stack sí debe vivir en el **SSD NVMe**, junto al resto de `compose` y `.env`
 - el acceso a `/var/run/docker.sock` concede a WUD capacidad administrativa real sobre los contenedores del host
+- el puerto `10001/tcp` debe tratarse como una excepción explícita en el registro vivo de [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md)
 
 ## Backup
 

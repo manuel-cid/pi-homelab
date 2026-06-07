@@ -11,7 +11,7 @@ Este documento cubre los casos habituales de reutilización de discos en **ext4*
 - Haber completado o validado [01-material-necesario.md](01-material-necesario.md).
 - Tener conectados físicamente el **SSD NVMe**, **`hd2t`** y **`hd5t`** según [02-esquema-conexiones.md](02-esquema-conexiones.md).
 - Arrancar con **Raspberry Pi OS Lite 64-bit** y disponer de acceso por terminal con un usuario con permisos de `sudo`.
-- Si la carcasa es una **Argon ONE V3**, haber instalado los scripts de control del ventilador y botón de power según se indica en [02-esquema-conexiones.md](02-esquema-conexiones.md#scripts-de-la-carcasa).
+- Si la carcasa es una **Argon ONE V3**, haber instalado o validado los scripts de control del ventilador y botón de power según [02-esquema-conexiones.md](02-esquema-conexiones.md).
 - Confirmar qué disco reutilizado será **`hd2t`** y cuál será **`hd5t`** según su contenido real.
 - Asumir que en esta fase **no se reformatea nada**.
 
@@ -169,7 +169,7 @@ La recomendación es:
 
 No hace falta que la etiqueta original del volumen coincida con `hd2t` o `hd5t` si usas **UUID** en `fstab`.
 
-Si el disco ya contiene datos con otra estructura, no hace falta reorganizarlo en esta fase. Aun así, para que los servicios del homelab puedan reutilizar rutas coherentes más adelante, conviene validar si el contenido ya encaja con la estructura objetivo definida en `plan/plan.md` y `SERVICES.md`:
+Si el disco ya contiene datos con otra estructura, no hace falta reorganizarlo en esta fase. Aun así, para que los servicios del homelab puedan reutilizar rutas coherentes más adelante, conviene validar si el contenido ya encaja con la estructura objetivo definida en `plan/plan.md`, `SERVICES.md` y [../01-sistema/04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md):
 
 - **`hd2t`**: `/media/hd2t/media/movies`, `/media/hd2t/media/tv`, `/media/hd2t/media/music`, `/media/hd2t/media/books`, `/media/hd2t/media/audiobooks`, `/media/hd2t/media/podcasts`, `/media/hd2t/downloads`, `/media/hd2t/backups`
 - **`hd5t`**: `/media/hd5t/media/`
@@ -225,22 +225,22 @@ id -g
 Si el kernel soporta `ntfs3`, usa esta opción:
 
 ```bash
-sudo mount -t ntfs3 /dev/sda1 /media/hd2t
-sudo mount -t ntfs3 /dev/sdb1 /media/hd5t
+sudo mount -t ntfs3 -o uid="$(id -u)",gid="$(id -g)",umask=002 /dev/sda1 /media/hd2t
+sudo mount -t ntfs3 -o uid="$(id -u)",gid="$(id -g)",umask=002 /dev/sdb1 /media/hd5t
 ```
 
 Si `ntfs3` no está disponible, usa el fallback:
 
 ```bash
-sudo mount -t ntfs-3g /dev/sda1 /media/hd2t
-sudo mount -t ntfs-3g /dev/sdb1 /media/hd5t
+sudo mount -t ntfs-3g -o uid="$(id -u)",gid="$(id -g)",umask=002 /dev/sda1 /media/hd2t
+sudo mount -t ntfs-3g -o uid="$(id -u)",gid="$(id -g)",umask=002 /dev/sdb1 /media/hd5t
 ```
 
 ### Ejemplo para `exFAT`
 
 ```bash
-sudo mount -t exfat /dev/sda1 /media/hd2t
-sudo mount -t exfat /dev/sdb1 /media/hd5t
+sudo mount -t exfat -o uid="$(id -u)",gid="$(id -g)",umask=002 /dev/sda1 /media/hd2t
+sudo mount -t exfat -o uid="$(id -u)",gid="$(id -g)",umask=002 /dev/sdb1 /media/hd5t
 ```
 
 ### Verificación
@@ -324,7 +324,7 @@ findmnt /media/hd2t
 findmnt /media/hd5t
 ```
 
-Si `mount -a` no devuelve errores, el montaje persistente está listo.
+Si `mount -a` no devuelve errores, el montaje persistente está listo. Si estás reutilizando un disco con **NTFS** o **exFAT**, confirma además que el usuario operativo realmente puede escribir en el punto de montaje antes de seguir con servicios que necesiten importar, mover o renombrar archivos.
 
 ## Permisos y Propiedad
 
@@ -432,7 +432,10 @@ lsblk -o NAME,SIZE,TYPE,FSTYPE,LABEL,UUID,MOUNTPOINT,MODEL
 
 ## Siguiente Paso
 
-Con los discos reutilizados ya validados y montados, el siguiente documento a completar o seguir es [05-arranque-nvme.md](05-arranque-nvme.md), donde se documenta el arranque definitivo desde el SSD NVMe.
+Con los discos reutilizados ya validados y montados, el siguiente documento a completar o seguir depende del estado real del host:
+
+- Si la Raspberry Pi todavía no arranca desde el **SSD NVMe**, continúa con [05-arranque-nvme.md](05-arranque-nvme.md).
+- Si el sistema ya arranca desde el **SSD NVMe**, pasa a [../01-sistema/04-estructura-directorios.md](../01-sistema/04-estructura-directorios.md) para normalizar la estructura final de rutas del proyecto.
 
 ## Referencias
 

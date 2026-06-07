@@ -6,7 +6,7 @@ Procedimiento para completar la **configuración base del sistema operativo** en
 
 La política de memoria de este proyecto usa **`zram` como swap primario** y un **swapfile de 2 GB en el SSD NVMe** como red de seguridad. No se debe usar swap en los discos USB `hd2t` o `hd5t`: añaden latencia, pueden sufrir desconexiones y compiten con el I/O de multimedia y backups.
 
-Este documento asume que la Raspberry Pi **ya arranca desde el NVMe** siguiendo [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md). La estructura final de discos y su función dentro del homelab se apoya en [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md).
+Este documento asume que la Raspberry Pi **ya arranca desde el NVMe** siguiendo [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md). La estructura final de discos y su función dentro del homelab se apoya en [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md) y en la política general descrita en [SERVICES.md](../../SERVICES.md).
 
 ## Requisitos Previos
 
@@ -246,6 +246,8 @@ Añade esta línea al final:
 
 La prioridad `10` deja claro que este swapfile debe usarse solo después de `zram`.
 
+Si ya existía una línea para `/swapfile`, edítala en lugar de duplicarla. En `fstab` debe quedar **una sola entrada** para ese swapfile.
+
 ### 10. Ajustar `swappiness`
 
 Para evitar que el sistema empiece a intercambiar memoria de forma agresiva, fija `swappiness` a `10`:
@@ -340,7 +342,7 @@ En esta fase todavía no hay servicios con datos persistentes, pero sí conviene
 - la política de swap aplicada
 - cualquier cambio manual adicional hecho en `/etc/hosts`, `/etc/fstab`, `/etc/sysctl.d/` y `/etc/systemd/zram-generator.conf`
 
-Estos ficheros son pequeños, pero forman parte del estado base del host y conviene poder reconstruirlos sin improvisar.
+Estos ficheros son pequeños, pero forman parte del estado base del host y conviene poder reconstruirlos sin improvisar. Cuando se documente la estrategia de copias, este conjunto debe tratarse como parte de la configuración crítica del sistema base.
 
 ## Referencias
 
@@ -349,6 +351,9 @@ Estos ficheros son pequeños, pero forman parte del estado base del host y convi
 - `man timedatectl`
 - `man locale`
 - `man swapon`
+- [03-seguridad-base.md](03-seguridad-base.md)
+- [04-estructura-directorios.md](04-estructura-directorios.md)
 - [01-instalacion-os.md](01-instalacion-os.md)
 - [03-preparacion-discos.md](../00-hardware/03-preparacion-discos.md)
 - [05-arranque-nvme.md](../00-hardware/05-arranque-nvme.md)
+- [SERVICES.md](../../SERVICES.md)

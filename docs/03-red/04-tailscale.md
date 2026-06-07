@@ -192,7 +192,7 @@ ping pi-homelab
 
 Si el nombre corto no resuelve en tu cliente, prueba con el nombre completo `pi-homelab.<tailnet>.ts.net`.
 
-En esta guía, `<tailnet>` es un placeholder: sustitúyelo por el nombre real que Tailscale asigna a tu red, por ejemplo `pi-homelab.midominio.ts.net`.
+En esta guía, `<tailnet>` es un placeholder: sustitúyelo por el nombre real de tu tailnet dentro del dominio `ts.net`, por ejemplo `midominio` si el FQDN final del nodo queda como `pi-homelab.midominio.ts.net`.
 
 ### 5. Cómo encaja Tailscale con el DNS local del homelab
 
@@ -219,7 +219,7 @@ Regla operativa:
 
 Con Tailscale activo, el acceso remoto no pasa por la IP pública del router ni requiere NAT manual.
 
-Antes de desplegar **Caddy**, puedes acceder a servicios publicados en la Raspberry Pi usando el nombre MagicDNS del nodo y el puerto correspondiente, por ejemplo:
+Antes de desplegar **Caddy**, puedes acceder por Tailscale a los servicios que estén publicados directamente en la red del host o en `0.0.0.0`, usando el nombre MagicDNS del nodo y el puerto correspondiente, por ejemplo:
 
 ```text
 http://pi-homelab.<tailnet>.ts.net:<puerto>
@@ -227,7 +227,9 @@ http://pi-homelab.<tailnet>.ts.net:<puerto>
 
 Sustituye `<puerto>` por el puerto real publicado por cada servicio según el mapa central de [06-puertos-y-firewall.md](06-puertos-y-firewall.md).
 
-Cuando completes [05-caddy.md](05-caddy.md), el patrón recomendado cambiará a un único punto de entrada remoto sobre el hostname Tailscale del host, con HTTPS automático sobre `*.ts.net`.
+No asumas que esto sirve para servicios publicados solo en `127.0.0.1`: esos quedan accesibles únicamente desde la propia Raspberry Pi o a través del reverse proxy documentado en [05-caddy.md](05-caddy.md).
+
+Cuando completes [05-caddy.md](05-caddy.md), el patrón recomendado cambiará a un único punto de entrada remoto sobre el hostname Tailscale del host, con HTTPS automático sobre el FQDN concreto del nodo en `ts.net`, por ejemplo `pi-homelab.<tailnet>.ts.net`.
 
 Ventajas operativas de este enfoque:
 

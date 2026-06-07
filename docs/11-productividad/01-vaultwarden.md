@@ -13,7 +13,7 @@ En este servicio conviene fijar dos decisiones de diseño desde el principio:
 - el acceso LAN `http://vaultwarden.lan` puede seguir existiendo en Caddy como vía auxiliar o de diagnóstico, pero **no** debe usarse como URL principal en clientes Bitwarden
 - **Vaultwarden no debe ponerse detrás de Authelia**; los clientes Bitwarden, las extensiones de navegador y algunas apps móviles esperan hablar directamente con el servidor del vault. En este repositorio esa exclusión ya queda alineada con [01-authelia.md](../04-seguridad/01-authelia.md), aunque el diagrama resumido de `SERVICES.md` simplifique el paso por Caddy y Authelia
 - los datos persistentes, la base SQLite, adjuntos, `sends/` y logs viven en `/home/<user>/homelab/data/vaultwarden/` sobre el **SSD NVMe**
-- el servicio no necesita publicar puertos en la IP del host; **Caddy** lo alcanza por red Docker interna
+- el servicio debe publicar solo `127.0.0.1:16006:80`; así **Caddy** lo alcanza por loopback sin exponerlo a la LAN ni usar nombres de contenedor
 
 Esta guía asume precisamente esa topología: **LAN + Tailscale**, sin puertos abiertos en el router, sin exposición pública a internet y sin depender de Let's Encrypt.
 
@@ -23,14 +23,13 @@ Esta guía asume precisamente esa topología: **LAN + Tailscale**, sin puertos a
 - Haber completado [04-tailscale.md](../03-red/04-tailscale.md).
 - Haber completado [05-caddy.md](../03-red/05-caddy.md).
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto lógico del servicio aunque aquí no se publique directamente.
-- Tener creada la red Docker externa `homelab_proxy`.
 - Tener operativo el hostname MagicDNS del nodo, por ejemplo `pi-homelab.<tailnet>.ts.net`.
 - Tener ya emitido en Caddy el certificado de Tailscale para ese hostname.
 - Haber revisado [02-fail2ban.md](../04-seguridad/02-fail2ban.md) si quieres endurecer protección frente a fuerza bruta.
 - Haber revisado [02-borgmatic.md](../07-backups/02-borgmatic.md) si vas a incluir la base SQLite en copias automáticas.
 - Puertos necesarios en esta fase:
-  - **ninguno publicado en el host** para el contenedor de Vaultwarden
-  - **`80/tcp` solo interno entre Caddy y Vaultwarden** dentro de Docker
+  - **`127.0.0.1:16006/tcp`** publicado solo en loopback para que Caddy alcance Vaultwarden sin exponerlo a la LAN
+  - **`80/tcp`** como puerto interno del contenedor Vaultwarden
   - **`443/tcp` en el host** lo publica Caddy, no Vaultwarden
 
 ## Docker Compose
@@ -58,15 +57,10 @@ services:
       SHOW_PASSWORD_HINT: "false"
     volumes:
       - /home/<user>/homelab/data/vaultwarden:/data
-    networks:
-      - homelab_proxy
+    ports:
+      - "127.0.0.1:16006:80"
     labels:
       - wud.watch=false
-
-networks:
-  homelab_proxy:
-    external: true
-    name: homelab_proxy
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/productivity-vaultwarden/.env`
@@ -81,8 +75,8 @@ VAULTWARDEN_ADMIN_TOKEN=REEMPLAZAR_CON_HASH_ARGON2_O_DEJAR_VACIO
 
 Notas sobre este Compose:
 
-- **Vaultwarden** no publica puertos en el host
-- **Caddy** resuelve el acceso web y TLS mediante la red `homelab_proxy`
+- **Vaultwarden** publica solo `127.0.0.1:16006:80`, así que el puerto no queda expuesto a la LAN
+- **Caddy** resuelve el acceso web y TLS apuntando a `127.0.0.1:16006`, en línea con la arquitectura base del proyecto
 - `DOMAIN` debe coincidir con la URL base real que usarán los clientes, incluyendo la subruta si publicas Vaultwarden bajo `/vaultwarden`
 - el `ADMIN_TOKEN` puede guardarse en texto plano, pero es preferible almacenarlo como **hash Argon2**
 - el log persistente en `/data/vaultwarden.log` deja preparado el servicio para [02-fail2ban.md](../04-seguridad/02-fail2ban.md)
@@ -146,7 +140,8 @@ docker compose logs --tail=50 vaultwarden
 Validaciones útiles:
 
 ```bash
-docker network inspect homelab_proxy | grep vaultwarden
+ss -ltnp | grep 16006
+curl -I http://127.0.0.1:16006
 ls -lh /home/<user>/homelab/data/vaultwarden
 ls -lh /home/<user>/homelab/data/vaultwarden/vaultwarden.log
 ```
@@ -167,7 +162,7 @@ https://{$TAILSCALE_DOMAIN} {
 	redir /vaultwarden /vaultwarden/ 308
 
 	handle /vaultwarden/* {
-		reverse_proxy vaultwarden:80 {
+		reverse_proxy 127.0.0.1:16006 {
 			header_up X-Real-IP {remote_host}
 			header_up X-Forwarded-Proto {scheme}
 		}
@@ -188,6 +183,7 @@ Notas importantes para este servicio:
 - no uses `http://vaultwarden.lan` como URL principal del vault; para Vaultwarden interesa priorizar el contexto seguro
 - `header_up X-Real-IP {remote_host}` ayuda a que [02-fail2ban.md](../04-seguridad/02-fail2ban.md) vea la IP real del cliente en el log
 - **no** uses `handle_path` para Vaultwarden: ese matcher recorta `/vaultwarden` antes de llegar al upstream y contradice justo lo que exige la guía oficial de *alternate base dir*
+- el upstream debe seguir siendo `127.0.0.1:16006`; no uses `vaultwarden:80` ni dependas de `homelab_proxy` para este servicio porque [05-caddy.md](../03-red/05-caddy.md) fija `network_mode: host` como topología base
 - la alternativa razonable es un **hostname dedicado** si en el futuro das a Vaultwarden su propio DNS y su propio certificado; operativamente es algo más simple, pero en este proyecto no compensa frente a la subruta ya soportada
 - si detectas problemas descargando adjuntos en Firefox, revisa si tu bloque común de Caddy añade `encode zstd gzip`; la wiki oficial de ejemplos de proxy avisa de incompatibilidades puntuales con esa compresión
 - si ya tienes otros `handle` en el bloque HTTPS, integra el matcher de Vaultwarden sin romper el orden existente

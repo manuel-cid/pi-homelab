@@ -4,7 +4,7 @@
 
 Este documento despliega **Borgmatic** como servicio Docker para automatizar las copias de seguridad del homelab hacia un repositorio local en **`/media/hd2t/backups/borg/`**. La idea es centralizar en un único stack:
 
-- ejecución programada
+- lógica de backup, retención y validación
 - política de retención
 - hooks antes y después del backup
 - notificaciones
@@ -109,8 +109,12 @@ La estructura recomendada para este servicio es:
 ├── config/
 │   └── borgmatic/
 │       ├── config.yaml
+│       ├── config-offsite.yaml.disabled
 │       ├── keys/
-│       │   └── repository-passphrase
+│       │   ├── repository-passphrase
+│       │   ├── postgres-backup-password
+│       │   ├── mariadb-backup-password
+│       │   └── telegram-apprise-url
 │       ├── hooks/
 │       │   ├── pre-backup.sh
 │       │   ├── post-backup.sh
@@ -251,8 +255,9 @@ Notas operativas sobre este ejemplo:
 
 - el repositorio local se crea bajo **`/media/hd2t/backups/borg/<hostname>/`**
 - dentro del contenedor, los dumps previos se escriben en **`/mnt/borg-exports/`**, que corresponde a **`/media/hd2t/backups/exports/`** en el host
-- el bloque `postgresql_databases`, `mariadb_databases` y `sqlite_databases` es una plantilla base; elimina lo que no uses
+- los bloques `postgresql_databases`, `mariadb_databases` y `sqlite_databases` son una plantilla base; elimina lo que no uses
 - los nombres de `container:` deben coincidir con los nombres reales que ve Docker en tu despliegue; en este proyecto eso significa normalmente el nombre generado por Compose, no un alias genérico como `postgres` o `mariadb`
+- `paperless-ngx-db-1` y `productivity-app-mariadb-1` son ejemplos coherentes con la convención de nombres del repositorio, no valores universales
 - el ejemplo base ya presupone secretos Docker para PostgreSQL, MariaDB y Telegram; si no vas a usar alguno de esos bloques, elimina también el secreto correspondiente del Compose
 - los dumps detallados por servicio y el criterio exacto de restore se desarrollan en [03-backup-docker-volumes.md](03-backup-docker-volumes.md)
 - la sección `apprise` de este ejemplo queda fijada para **Telegram**; si en algún momento desactivas notificaciones, elimina el bloque completo hasta definir otro backend
@@ -596,7 +601,11 @@ La estrategia offsite pertenece al criterio 3-2-1 descrito en [01-estrategia-bac
 - añadir después un segundo fichero de configuración para el destino remoto
 - aplicar una retención más corta en offsite si el coste o el ancho de banda lo exigen
 
-Ejemplo mínimo de segundo repositorio remoto dentro de otro fichero `config-offsite.yaml`:
+Archivo recomendado cuando actives la réplica remota: `/home/<user>/homelab/config/borgmatic/config-offsite.yaml`
+
+Mientras solo estés validando el backup local, deja ese fichero fuera de `/home/<user>/homelab/config/borgmatic/` o con un sufijo como `.disabled` para que Borgmatic no lo cargue por error.
+
+Ejemplo mínimo de segundo fichero de configuración para el destino remoto:
 
 ```yaml
 repositories:
@@ -608,6 +617,14 @@ keep_daily: 7
 keep_weekly: 4
 keep_monthly: 6
 ```
+
+Regla operativa importante:
+
+- Borgmatic interpreta cada fichero de configuración por separado; no asumas que `config.yaml` y `config-offsite.yaml` se fusionan automáticamente
+- si quieres reutilizar la configuración base para local y offsite, crea `config-offsite.yaml` usando `include:` hacia `config.yaml` y redefine solo `repositories` y la retención remota
+- si prefieres mantener ambas configuraciones totalmente separadas, duplica explícitamente en `config-offsite.yaml` las rutas de origen, hooks y credenciales necesarias
+
+<!-- TODO: verificar un ejemplo cerrado de `include:` compatible con la versión concreta de Borgmatic que se fije finalmente en el stack. -->
 
 ### 7. Verificar que la automatización funciona
 

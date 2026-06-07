@@ -6,6 +6,8 @@ Procedimiento para migrar una **Raspberry Pi 5** desde un arranque inicial en **
 
 Este documento cubre la actualización del firmware EEPROM, el cambio del orden de arranque, varias estrategias de migración al NVMe y la verificación final sin microSD insertada. La conexión física previa se describe en → ver [02-esquema-conexiones.md](02-esquema-conexiones.md), la preparación de discos en → ver [03-preparacion-discos.md](03-preparacion-discos.md) y la incorporación de discos USB con datos en → ver [04-discos-con-datos.md](04-discos-con-datos.md).
 
+Los valores escritos entre `<...>` en comandos y ejemplos son **placeholders** y deben sustituirse por los datos reales del sistema.
+
 ## Requisitos Previos
 
 - Haber validado el hardware descrito en → ver [01-material-necesario.md](01-material-necesario.md).
@@ -152,7 +154,8 @@ Este método no es una clonación bit a bit. En la práctica es una **reinstalac
 
 - Requiere rehacer en el NVMe cualquier ajuste que solo exista en la microSD.
 - No conserva automáticamente toda la instalación previa.
-- Si la carcasa es una **Argon ONE V3** y ya se instalaron los scripts de control del ventilador y botón de power, habrá que **reinstalarlos** tras el primer arranque desde NVMe (→ ver [02-esquema-conexiones.md#scripts-de-la-carcasa](02-esquema-conexiones.md#scripts-de-la-carcasa)).
+- Si la carcasa es una **Argon ONE V3** y ya se instalaron scripts del fabricante para ventilador o botón de encendido, revisa tras el primer arranque desde NVMe si siguen siendo necesarios o si deben reinstalarse (→ ver [02-esquema-conexiones.md](02-esquema-conexiones.md)).
+  <!-- TODO: verificar durante la instalación real si la Argon ONE V3 para Raspberry Pi 5 sigue requiriendo reinstalar scripts del fabricante tras migrar o reinstalar Raspberry Pi OS en el NVMe -->
 
 ## Método 2: Clonación con `dd`
 
@@ -461,7 +464,7 @@ Antes de seguir con la fase de sistema base, comprueba:
 - `sudo rpi-eeprom-update` no reporta problemas de firmware pendientes por el cambio.
 - La red por Ethernet funciona con normalidad.
 - El SSD NVMe permanece visible y estable en `lsblk`.
-- Si la carcasa es una **Argon ONE V3** y se usó Raspberry Pi Imager, los scripts de control del ventilador y botón de power están reinstalados y funcionando.
+- Si la carcasa es una **Argon ONE V3** y se usó Raspberry Pi Imager, revisa si los scripts del fabricante para ventilador o botón de encendido deben reinstalarse y verifica su funcionamiento si aplican.
 
 Si además ya conectaste `hd2t` y `hd5t`, verifica que siguen montando correctamente según → ver [03-preparacion-discos.md](03-preparacion-discos.md) o → ver [04-discos-con-datos.md](04-discos-con-datos.md).
 
