@@ -47,17 +47,11 @@ services:
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
+    network_mode: host
     env_file:
       - .env
     environment:
       TZ: ${TZ}
-    ports:
-      - "${CADDY_HTTP_PORT}:80"
-      - "${CADDY_HTTPS_PORT}:443"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - homelab_proxy
     volumes:
       - /home/<user>/homelab/config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - /home/<user>/homelab/data/caddy/data:/data
@@ -65,48 +59,28 @@ services:
       - /home/<user>/homelab/data/caddy/certs:/certs:ro
     labels:
       - wud.watch=true
-
-networks:
-  homelab_proxy:
-    external: true
-    name: homelab_proxy
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/infra-caddy/.env`
 
 ```dotenv
 TZ=Europe/Madrid
-CADDY_HTTP_PORT=80
-CADDY_HTTPS_PORT=443
 TAILSCALE_DOMAIN=pi-homelab.<tailnet>.ts.net
 ```
 
 Notas sobre este Compose:
 
-- **Caddy** publica solo `80` y `443` en la IP del host
+- **Caddy** usa `network_mode: host` para compartir la pila de red del host y recibir la IP real de todos los clientes (LAN, Tailscale)
+- sin `network_mode: host`, Docker reenvía las conexiones al contenedor mediante `docker-proxy`, que abre una nueva conexión TCP desde la IP del gateway Docker (`172.x.x.1`); la IP real del cliente se pierde irreversiblemente y servicios como [02-fail2ban.md](../04-seguridad/02-fail2ban.md) no pueden funcionar
+- como consecuencia, Caddy **no está en ninguna red Docker** y no puede resolver nombres de contenedor como `jellyfin:8096`; los upstreams deben apuntar a `127.0.0.1:<puerto>`
+- cada servicio downstream que deba publicarse por Caddy necesita exponer su puerto en `127.0.0.1` mediante `ports:` en su stack
+- no se necesitan `ports:` en el bloque de Caddy porque el contenedor comparte directamente los puertos del host
 - la configuración editable queda fuera del contenedor y puede versionarse en git
-- `homelab_proxy` permite que distintos stacks se conecten al proxy sin mezclar todas sus redes
-- `host.docker.internal` queda disponible como ruta de compatibilidad para servicios que todavía no se hayan unido a `homelab_proxy`
 - los certificados emitidos con `tailscale cert` se montan en modo lectura desde `/home/<user>/homelab/data/caddy/certs/`
 
 ## Configuración
 
-### 1. Crear la red Docker compartida del proxy
-
-Si aún no existe, créala una sola vez:
-
-```bash
-docker network create homelab_proxy
-docker network ls | grep homelab_proxy
-```
-
-La política recomendada es esta:
-
-- cada stack mantiene su red `default`
-- solo los servicios que deban ser publicados por Caddy se unen además a `homelab_proxy`
-- no metas en `homelab_proxy` servicios que no necesiten reverse proxy
-
-### 2. Preparar directorios del stack
+### 1. Preparar directorios del stack
 
 ```bash
 mkdir -p /home/<user>/homelab/compose/infra-caddy
@@ -118,7 +92,7 @@ mkdir -p /home/<user>/homelab/data/caddy/certs
 
 Guarda el `docker-compose.yml` y el `.env` del apartado anterior.
 
-### 3. Crear el `Caddyfile` versionable
+### 2. Crear el `Caddyfile` versionable
 
 Archivo: `/home/<user>/homelab/config/caddy/Caddyfile`
 
@@ -143,22 +117,22 @@ Archivo: `/home/<user>/homelab/config/caddy/Caddyfile`
 
 http://jellyfin.lan {
 	import common_proxy
-	reverse_proxy jellyfin:8096
+	reverse_proxy 127.0.0.1:8096
 }
 
 http://navidrome.lan {
 	import common_proxy
-	reverse_proxy navidrome:4533
+	reverse_proxy 127.0.0.1:4533
 }
 
 http://audiobookshelf.lan {
 	import common_proxy
-	reverse_proxy audiobookshelf:80
+	reverse_proxy 127.0.0.1:13378
 }
 
 http://vaultwarden.lan {
 	import common_proxy
-	reverse_proxy vaultwarden:80
+	reverse_proxy 127.0.0.1:16006
 }
 
 https://{$TAILSCALE_DOMAIN} {
@@ -199,7 +173,7 @@ Notas importantes sobre este diseño:
 - si un servicio no tolera bien subrutas, mantenlo en `.lan` para la LAN hasta documentar un patrón remoto correcto
 - `Portainer` queda fuera de este `Caddyfile` base porque su documento actual lo mantiene con acceso directo en `:9443` y no queda validado aquí su comportamiento correcto detrás del proxy
 
-### 4. Generar el certificado HTTPS de Tailscale
+### 3. Generar el certificado HTTPS de Tailscale
 
 Con **Tailscale instalado en el host**, genera el certificado para el nombre MagicDNS del nodo.
 
@@ -228,7 +202,7 @@ Reglas prácticas:
 - el nombre debe coincidir exactamente con el MagicDNS del nodo
 - si renuevas el certificado, reinicia o recrea Caddy para que recargue los nuevos ficheros
 
-### 5. Desplegar el stack
+### 4. Desplegar el stack
 
 ```bash
 cd /home/<user>/homelab/compose/infra-caddy
@@ -251,34 +225,29 @@ El resultado esperado es:
 - el host escucha en `80/tcp` y `443/tcp`
 - Caddy carga el `Caddyfile` sin errores
 
-### 6. Conectar servicios downstream a `homelab_proxy`
+### 5. Publicar servicios downstream en `127.0.0.1`
 
-La forma recomendada de integrarlos es añadir la red externa `homelab_proxy` en cada stack que deba publicarse por Caddy.
+Como Caddy usa `network_mode: host`, no está en ninguna red Docker y no puede resolver nombres de contenedor. Los upstreams del `Caddyfile` apuntan a `127.0.0.1:<puerto>`, por lo que cada servicio debe publicar su puerto en loopback.
 
-Patrón mínimo:
+Patrón mínimo en el stack del servicio:
 
 ```yaml
 services:
   jellyfin:
-    networks:
-      - default
-      - homelab_proxy
-
-networks:
-  homelab_proxy:
-    external: true
+    ports:
+      - "127.0.0.1:8096:8096"
 ```
 
-Con eso, Caddy podrá alcanzar el servicio por nombre de contenedor o de servicio, por ejemplo `jellyfin:8096`.
+Con eso, Caddy alcanza el servicio en `127.0.0.1:8096`. El puerto **no** queda expuesto a la LAN porque se publica solo en loopback; el acceso externo sigue entrando únicamente a través de Caddy.
 
-Ruta de transición si todavía no quieres tocar el stack del servicio:
+Reglas prácticas:
 
-- publica el servicio en `127.0.0.1:<puerto>` en el host
-- usa `host.docker.internal:<puerto>` como upstream en el `Caddyfile`
+- usa siempre `127.0.0.1:<puerto>:<puerto_interno>` en los stacks downstream
+- no publiques el mismo puerto en `0.0.0.0` si el acceso directo no es necesario
+- si un servicio usa `network_mode: host` (como Home Assistant), Caddy ya lo alcanza directamente por su puerto en el host
+- el acceso por nombre de contenedor a través de `homelab_proxy` ya no es necesario para Caddy, pero otros servicios pueden seguir usando esa red entre sí si la necesitan para comunicación interna (por ejemplo, Prometheus → Grafana)
 
-La primera opción es más limpia y escala mejor cuando el homelab crezca.
-
-### 7. Ajustar DNS local en Pi-hole
+### 6. Ajustar DNS local en Pi-hole
 
 Para que el proxy funcione en la LAN, los nombres locales deben resolver a la IP del host Raspberry Pi, por ejemplo `192.168.1.10`.
 
@@ -293,7 +262,7 @@ Registros típicos:
 
 Esto encaja con lo definido en [02-pihole.md](02-pihole.md): Pi-hole resuelve los nombres internos y Caddy decide a qué upstream enviarlos.
 
-### 8. Validaciones que conviene dejar hechas
+### 7. Validaciones que conviene dejar hechas
 
 Desde la Raspberry Pi:
 
@@ -320,7 +289,7 @@ Errores frecuentes que conviene evitar:
 - publicar también `53` o `80` en la IP del host para Pi-hole
 - usar `https://<servicio>.lan` sin haber montado una PKI interna para LAN
 - asumir que todos los servicios soportan bien subrutas remotas bajo `https://pi-homelab.<tailnet>.ts.net/<servicio>/`
-- dejar servicios fuera de `homelab_proxy` y después olvidar por qué Caddy no puede alcanzarlos
+- olvidar publicar un servicio en `127.0.0.1:<puerto>` y después no entender por qué Caddy devuelve `502`
 - abrir `80` o `443` en la WAN del router "por comodidad"
 
 ## Almacenamiento
