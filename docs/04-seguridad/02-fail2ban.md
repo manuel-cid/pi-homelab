@@ -103,7 +103,167 @@ docker compose logs --tail 100 authelia
 ls -lh /home/<user>/homelab/data/authelia/authelia.log
 ```
 
-Haz un intento fallido de login y valida después que el log contiene la IP real del cliente, no una IP interna de Docker. Si en el log solo ves una IP del proxy o de la red `172.x`, corrige primero el tratamiento de cabeceras y proxies antes de activar el jail.
+Haz un intento fallido de login y valida después que el log contiene la IP real del cliente, no una IP interna de Docker. Si en el log solo ves una IP del proxy o de la red `172.x`, corrige primero el tratamiento de cabeceras y proxies antes de activar el jail. La sección siguiente explica cómo diagnosticar y resolver ese problema.
+
+### 3b. Diagnóstico y corrección si el log muestra IP `172.x`
+
+Cuando un cliente accede a Authelia a través de Caddy, la petición recorre esta cadena:
+
+```
+Cliente (IP real) → Host :80/:443 → Docker (DNAT) → Caddy (contenedor) → Authelia (contenedor)
+```
+
+Si el log de Authelia muestra una IP del rango `172.x.x.x` en el campo `remote_ip`, el problema tiene **dos capas posibles** que hay que verificar en orden.
+
+#### Capa 1: ¿Caddy recibe la IP real del cliente?
+
+El primer punto de fallo está en cómo Docker reenvía el tráfico al contenedor de Caddy. Docker combina dos mecanismos para los puertos publicados:
+
+- **`docker-proxy`** (userland proxy): un proceso que escucha en el puerto del host, acepta la conexión TCP y la reenvía al contenedor. **Preserva la IP de origen**.
+- **Reglas iptables DNAT**: reescriben el destino del paquete para dirigirlo al contenedor. Si además se aplica MASQUERADE en la cadena POSTROUTING, **la IP de origen se reescribe** a la del gateway Docker (`172.x.x.1`).
+
+Para tráfico que llega por interfaces no estándar como `tailscale0`, el kernel puede enrutar los paquetes por iptables DNAT+MASQUERADE en vez de por `docker-proxy`, perdiendo la IP real.
+
+Diagnóstico desde el host:
+
+```bash
+# Verificar que docker-proxy escucha en los puertos de Caddy
+sudo ss -tlnp | grep -E ':80|:443'
+# Deberías ver procesos docker-proxy en ambos puertos
+
+# Ver reglas MASQUERADE que Docker añade
+sudo iptables -t nat -L POSTROUTING -n -v
+
+# Comprobar que userland-proxy no está desactivado
+cat /etc/docker/daemon.json 2>/dev/null || echo "No existe (userland-proxy activo por defecto)"
+
+# Hacer un login fallido en Authelia y ver qué IP registra Caddy
+docker compose -f /home/<user>/homelab/compose/infra-caddy/docker-compose.yml \
+  exec caddy caddy log --format console 2>&1 | tail -20
+# Alternativa: revisar logs de acceso de Caddy
+docker compose -f /home/<user>/homelab/compose/infra-caddy/docker-compose.yml \
+  logs --tail 50 caddy
+```
+
+Si Caddy ya recibe `172.x.x.x` como IP de la conexión TCP, la corrección debe hacerse **antes** de Caddy, en la capa de red de Docker. Si Caddy recibe la IP real pero Authelia sigue mostrando `172.x`, el problema está en la capa 2.
+
+#### Capa 2: ¿Caddy envía la IP real a Authelia?
+
+Caddy envía automáticamente la cabecera `X-Forwarded-For` con la IP del cliente cuando usa `reverse_proxy`. Además, el bloque global `trusted_proxies static private_ranges` del `Caddyfile` asegura que Caddy confía en `X-Forwarded-For` de rangos privados al calcular la IP real del cliente. Authelia lee esas cabeceras para determinar la `remote_ip` que registra en su log.
+
+El diagnóstico más directo es inspeccionar desde dentro del contenedor de Authelia qué cabeceras recibe:
+
+```bash
+# Subir temporalmente el log de Authelia a debug para ver las cabeceras
+# En /home/<user>/homelab/config/authelia/configuration.yml, cambia:
+#   log:
+#     level: debug
+# Reinicia Authelia y haz un intento fallido:
+docker compose -f /home/<user>/homelab/compose/auth-authelia/docker-compose.yml restart
+# Intenta un login fallido y revisa:
+tail -100 /home/<user>/homelab/data/authelia/authelia.log | grep -i "remote\|forward\|x-forwarded"
+```
+
+Cuando termines el diagnóstico, vuelve a poner `level: info`.
+
+#### Corrección según el caso
+
+**Caso A: Caddy recibe `172.x.x.x` como IP TCP del cliente**
+
+El tráfico del cliente pasa por las reglas iptables DNAT+MASQUERADE de Docker antes de llegar a `docker-proxy`. Esto es frecuente con tráfico de **Tailscale** porque llega por la interfaz `tailscale0` y el kernel lo enruta por iptables.
+
+Solución: añadir una regla iptables en el host que evite el MASQUERADE para tráfico de Tailscale dirigido a los puertos de Caddy. Ejecuta estos comandos en la Raspberry Pi:
+
+```bash
+# Identificar la red Docker del bridge donde vive Caddy
+docker network inspect homelab_proxy --format '{{range .IPAM.Config}}{{.Subnet}}{{end}}'
+# Ejemplo de salida: 172.18.0.0/16
+
+# Añadir regla que evite MASQUERADE para tráfico de Tailscale
+# Sustituye 172.18.0.0/16 por la subred real de tu red homelab_proxy
+sudo iptables -t nat -I POSTROUTING 1 -s 100.64.0.0/10 -d 172.18.0.0/16 -j RETURN
+```
+
+Explicación: la regla dice "para paquetes que vienen de Tailscale (`100.64.0.0/10`) y van a la red Docker, **no** apliques MASQUERADE; deja la IP de origen intacta". Al insertarla antes de la regla MASQUERADE de Docker, el contenedor de Caddy recibe la IP real de Tailscale.
+
+Para hacer la regla persistente, añádela en un script que se ejecute después de Docker:
+
+```bash
+sudo nano /etc/network/if-up.d/preserve-tailscale-ip
+```
+
+```bash
+#!/bin/sh
+# Preservar IP real de Tailscale para tráfico Docker
+# Sustituir la subred por la real de homelab_proxy
+iptables -t nat -C POSTROUTING -s 100.64.0.0/10 -d 172.18.0.0/16 -j RETURN 2>/dev/null \
+  || iptables -t nat -I POSTROUTING 1 -s 100.64.0.0/10 -d 172.18.0.0/16 -j RETURN
+```
+
+```bash
+sudo chmod +x /etc/network/if-up.d/preserve-tailscale-ip
+```
+
+También puedes añadir esa misma lógica a un servicio systemd que arranque después de Docker, o en un cron `@reboot`.
+
+**Importante**: después de añadir la regla, verifica que el tráfico de retorno funciona correctamente. Si Caddy puede responder al cliente de Tailscale sin problemas, la regla es correcta. Si no, es posible que necesites además una ruta estática en el host para que el tráfico de retorno hacia `100.64.0.0/10` salga por `tailscale0`:
+
+```bash
+# Normalmente Tailscale ya configura esta ruta. Verifica:
+ip route show | grep 100.64
+```
+
+**Caso B: Caddy recibe la IP real pero Authelia muestra `172.x`**
+
+Este caso indica que el problema está solo en las cabeceras HTTP. Caddy envía `X-Forwarded-For` por defecto, pero conviene asegurar que el `reverse_proxy` hacia Authelia incluya explícitamente `X-Real-IP`. En el `Caddyfile`, dentro del bloque HTTPS donde se publica Authelia, actualiza el `reverse_proxy`:
+
+```caddyfile
+@authelia path /authelia /authelia/*
+handle @authelia {
+	reverse_proxy authelia:9091 {
+		header_up X-Real-IP {remote_host}
+	}
+}
+```
+
+Y en el snippet `authelia_forward_auth`, añade la misma cabecera:
+
+```caddyfile
+(authelia_forward_auth) {
+	forward_auth authelia:9091 {
+		uri /api/authz/forward-auth?authelia_url=https://{$TAILSCALE_DOMAIN}/authelia
+		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+		header_up X-Real-IP {remote_host}
+	}
+}
+```
+
+El placeholder `{remote_host}` en Caddy resuelve a la IP real del cliente **solo si** `trusted_proxies` está correctamente configurado en el bloque global del `Caddyfile`. El bloque ya existente en [05-caddy.md](../03-red/05-caddy.md) lo incluye:
+
+```caddyfile
+servers {
+	trusted_proxies static private_ranges
+}
+```
+
+Tras aplicar los cambios en el `Caddyfile`:
+
+```bash
+cd /home/<user>/homelab/compose/infra-caddy
+docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile
+docker compose restart caddy
+```
+
+#### Validación final
+
+Después de aplicar la corrección que corresponda, repite la prueba:
+
+```bash
+# Haz un intento fallido de login en Authelia y revisa el log
+tail -20 /home/<user>/homelab/data/authelia/authelia.log | grep -i "remote_ip"
+```
+
+Si ahora ves la IP real del cliente (por ejemplo `100.x.x.x` para Tailscale o `192.168.x.x` para LAN), el tratamiento es correcto y puedes continuar con la activación del jail.
 
 ### 4. Preparar Vaultwarden para logging persistente
 

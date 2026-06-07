@@ -276,6 +276,7 @@ La base de Caddy ya se definió en [05-caddy.md](../03-red/05-caddy.md). Para in
 	forward_auth authelia:9091 {
 		uri /api/authz/forward-auth?authelia_url=https://{$TAILSCALE_DOMAIN}/authelia
 		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+		header_up X-Real-IP {remote_host}
 	}
 }
 ```
@@ -294,7 +295,9 @@ https://{$TAILSCALE_DOMAIN} {
 
 	@authelia path /authelia /authelia/*
 	handle @authelia {
-		reverse_proxy authelia:9091
+		reverse_proxy authelia:9091 {
+			header_up X-Real-IP {remote_host}
+		}
 	}
 
 	handle_path /homepage/* {
@@ -316,6 +319,7 @@ Notas importantes sobre este patrón:
 - el ejemplo se limita a `Homepage` porque su publicación remota por subruta ya queda alineada con la documentación del repositorio; añade otros servicios solo cuando su documento confirme ese patrón
 - `Portainer` no se incluye en este ejemplo porque su documento actual lo deja publicado en `:9443` y aquí no queda demostrada una adaptación correcta a `/portainer/`
 - si un servicio no soporta bien subrutas, no lo metas aquí sin revisar primero su configuración
+- `header_up X-Real-IP {remote_host}` en los bloques de Authelia asegura que el backend reciba la IP real del cliente, necesario para que [02-fail2ban.md](02-fail2ban.md) funcione correctamente; el placeholder `{remote_host}` se resuelve correctamente gracias a `trusted_proxies static private_ranges` en el bloque global del `Caddyfile`
 
 Tras modificar el `Caddyfile`:
 
