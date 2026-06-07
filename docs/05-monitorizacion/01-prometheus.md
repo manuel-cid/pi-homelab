@@ -169,38 +169,50 @@ Con este enfoque, el primer arranque de Prometheus queda limpio: solo aparece `U
 
 Si quieres que Prometheus recoja métricas del daemon Docker sin usar exporters adicionales, habilita el endpoint `/metrics` del propio motor.
 
-Primero obtén la IP gateway de la red bridge del host:
-
-```bash
-docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'
-```
-
-En la mayoría de hosts Docker devolverá algo como `172.17.0.1`. Usa ese valor en `/etc/docker/daemon.json`.
-
 Archivo: `/etc/docker/daemon.json`
 
 ```json
 {
-  "metrics-addr": "172.17.0.1:9323",
+  "metrics-addr": "0.0.0.0:9323",
   "experimental": true
 }
 ```
 
+Se usa `0.0.0.0` porque Prometheus corre en redes custom de Docker (`homelab_proxy`, red default del compose) cuyas subredes no pueden alcanzar la IP de la red bridge por defecto (`172.17.0.1`). Escuchando en todas las interfaces el daemon acepta conexiones desde cualquier red interna de Docker.
+
 Notas importantes:
 
-- no uses `0.0.0.0:9323`, porque expondrías métricas del daemon más allá de lo necesario
-- no uses `127.0.0.1:9323` si el objetivo es que Prometheus lo scrapee desde el contenedor
+- no uses `172.17.0.1:9323` — solo sería accesible desde la red bridge por defecto y Prometheus no está en ella
+- no uses `127.0.0.1:9323` — ningún contenedor podría alcanzar el endpoint
 - si `/etc/docker/daemon.json` ya existe, integra estas claves sin borrar el resto de tu configuración
 
-Aplica el cambio:
+Como `0.0.0.0` escucha en todas las interfaces, hay que permitir el tráfico desde las redes internas de Docker y a la vez evitar que el puerto quede expuesto a la LAN. Añade esta regla en `/etc/ufw/before.rules`, justo antes del `COMMIT` final del bloque `*filter`:
+
+```
+# Allow Docker containers to reach Docker Engine metrics
+-A ufw-before-input -s 172.16.0.0/12 -p tcp --dport 9323 -j ACCEPT
+```
+
+Después recarga ufw:
+
+```bash
+sudo ufw reload
+```
+
+Aplica el cambio del daemon y levanta el stack:
 
 ```bash
 sudo systemctl restart docker
 sudo systemctl status docker --no-pager
-curl http://172.17.0.1:9323/metrics | head
+cd /home/<user>/homelab/compose/monitoring-prometheus
+docker compose up -d
 ```
 
-Si tu gateway bridge no es `172.17.0.1`, sustituye esa IP en la prueba y mantén el mismo criterio.
+Verifica que Prometheus puede alcanzar el endpoint desde dentro del contenedor:
+
+```bash
+docker exec $(docker ps -qf name=prometheus) wget -qO- --timeout=5 http://host.docker.internal:9323/metrics | head -5
+```
 
 Después añade el bloque `job_name: docker` del apartado anterior a `prometheus.yml` y recarga la configuración:
 
