@@ -27,7 +27,6 @@ En este homelab conviene mantener un criterio simple:
 - Sustituir antes de ejecutar comandos o guardar rutas los placeholders de ejemplo, especialmente `<user>` y `<IP-LAN-RASPBERRY>`.
 - Puertos necesarios en esta fase:
   - **`11002/tcp`** publicado solo en `127.0.0.1` para la UI de Uptime Kuma
-  - **`3001/tcp`** interno del contenedor
 
 ## Docker Compose
 
@@ -47,7 +46,7 @@ services:
     environment:
       TZ: ${TZ}
     ports:
-      - "${UPTIME_KUMA_BIND_IP}:${UPTIME_KUMA_PORT}:3001"
+      - "${UPTIME_KUMA_BIND_IP}:${UPTIME_KUMA_PORT}:${UPTIME_KUMA_PORT}"
     volumes:
       - ${DATA_ROOT}/uptime-kuma:/app/data
     extra_hosts:

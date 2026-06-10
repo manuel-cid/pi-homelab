@@ -1,4 +1,0 @@
-$ docker exec monitoring-uptime-kuma-uptime-kuma-1 ss -tlnp
-State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess
-LISTEN 0      4096      127.0.0.11:43877      0.0.0.0:*
-LISTEN 0      511                *:11002            *:*    users:(("uptime-kuma",pid=7,fd=18))
