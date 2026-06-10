@@ -214,7 +214,14 @@ Pasos recomendados nada más entrar:
 1. Iniciar sesión con `GRAFANA_ADMIN_USER` y `GRAFANA_ADMIN_PASSWORD`.
 2. Cambiar la contraseña inicial si has usado un valor temporal en el `.env`.
 3. Revisar `Connections` → `Data sources` y verificar que `Prometheus` aparece como datasource por defecto.
-4. Entrar en `Administration` → `Users and access` y confirmar que el registro público está deshabilitado.
+4. Confirmar que el registro público está deshabilitado. La pantalla `Administration` → `Settings` puede mostrar el valor por defecto del `grafana.ini` embebido en la imagen, no el valor efectivo inyectado por variable de entorno. La forma fiable de verificarlo es consultar la API:
+
+```bash
+curl -u admin:<password> http://127.0.0.1:11100/api/admin/settings 2>/dev/null \
+  | grep -o '"users":{[^}]*}'
+```
+
+En la respuesta, `allow_sign_up` debe aparecer como `"false"`. Ese valor lo controla `GF_USERS_ALLOW_SIGN_UP=false` en el `.env`. Como comprobación visual complementaria, al cerrar sesión la pantalla de login **no** debe mostrar un enlace *Sign up*.
 
 Si Grafana no puede conectar con Prometheus, las causas habituales son estas:
 
@@ -251,7 +258,7 @@ docker compose ps
 Luego, en el `Caddyfile` definido en [05-caddy.md](../03-red/05-caddy.md), añade dentro del bloque `https://{$TAILSCALE_DOMAIN}` este bloque:
 
 ```caddyfile
-handle_path /grafana/* {
+handle /grafana/* {
 	import authelia_forward_auth
 	reverse_proxy 127.0.0.1:11100
 }
@@ -270,7 +277,7 @@ access_control:
 
 Puntos importantes para no romper el acceso remoto:
 
-- usa `handle_path /grafana/*` en Caddy, no `handle /grafana*`, para que Grafana reciba las peticiones sin el prefijo duplicado
+- usa `handle /grafana/*` en Caddy (no `handle_path`), porque con `SERVE_FROM_SUB_PATH=true` Grafana espera recibir el prefijo `/grafana` en cada petición; `handle_path` lo recortaría y Grafana no reconocería la ruta
 - mantén la barra final en `GRAFANA_ROOT_URL`, porque Grafana genera enlaces y assets en función de esa URL exacta
 - no publiques Grafana directamente en la LAN; el patrón de este repositorio es `127.0.0.1:11100` más proxy inverso si hace falta acceso web
 - si no has validado todavía Authelia o Caddy, mantén temporalmente `GRAFANA_ROOT_URL=http://127.0.0.1:11100/` y pospone la subruta HTTPS
