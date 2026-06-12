@@ -251,47 +251,35 @@ docker compose ps
 du -sh /home/<user>/homelab/data/uptime-kuma
 ```
 
-### 9. Publicación remota opcional detrás de Caddy y Authelia
+### 9. Acceso remoto por Tailscale
 
-El acceso base recomendado sigue siendo local en `127.0.0.1:11002`. Si además quieres acceso remoto por Tailscale, la ruta coherente con la arquitectura del repositorio es publicar Uptime Kuma bajo la subruta:
+El acceso base recomendado sigue siendo local en `127.0.0.1:11002`.
 
-- `https://pi-homelab.<tailnet>.ts.net/uptime/`
+Uptime Kuma **no soporta subrutas** (subdirectory). Está documentado en su [wiki oficial](https://github.com/louislam/uptime-kuma/wiki/Reverse-Proxy):
 
-Esto debe mantenerse alineado con [05-caddy.md](../03-red/05-caddy.md) y [01-authelia.md](../04-seguridad/01-authelia.md):
+> *"Uptime Kuma does not support a subdirectory such as `http://example.com/uptimekuma`. Please prepare a domain or sub-domain to do that."*
 
-- **Caddy** termina HTTPS sobre el hostname MagicDNS del nodo
-- **Authelia** protege la ruta remota con política `two_factor`
-- Uptime Kuma sigue escuchando en `127.0.0.1:11002` en el host; Caddy hace de proxy hacia ese upstream
+Esto significa que publicarlo en `https://pi-homelab.<tailnet>.ts.net/uptime/` no funciona: Uptime Kuma genera redirecciones internas a `/dashboard` sin el prefijo, los assets se cargan desde rutas absolutas en la raíz y el WebSocket tampoco respeta la subruta. No hay variable de entorno ni opción de configuración que cambie este comportamiento en la versión fijada.
 
-Bloque orientativo para `Caddyfile`:
+Para acceso remoto, las opciones operativas son estas:
 
-```caddyfile
-https://{$TAILSCALE_DOMAIN} {
-	import common_proxy
-	tls /certs/{$TAILSCALE_DOMAIN}.crt /certs/{$TAILSCALE_DOMAIN}.key
+- **Túnel SSH local** (recomendado para este homelab): redirige el puerto 11002 del host a tu máquina local y accede como si estuvieras en la Raspberry Pi.
 
-	handle_path /uptime/* {
-		import authelia_forward_auth
-		reverse_proxy 127.0.0.1:11002
-	}
-}
-```
+  ```bash
+  ssh -L 11002:127.0.0.1:11002 <user>@<IP-LAN-RASPBERRY>
+  ```
 
-Regla orientativa en `access_control` de Authelia:
+  Después abre `http://127.0.0.1:11002` en el navegador local.
 
-```yaml
-access_control:
-  rules:
-    - domain: 'pi-homelab.<tailnet>.ts.net'
-      resources:
-        - '^/uptime(/.*)?$'
-      policy: two_factor
-```
+- **Tailscale SSH + túnel**: si tienes habilitado Tailscale SSH en el nodo, el mismo patrón funciona sustituyendo la IP LAN por la IP o nombre MagicDNS del tailnet.
 
-<!-- TODO: verificar el ajuste exacto de Uptime Kuma para servir correctamente bajo la subruta `/uptime/` antes de dar por cerrada la publicación remota; confirmar si basta con `UPTIME_KUMA_WS_ORIGIN`, `UPTIME_KUMA_HOST`, una opción de `webpath` en la UI o una variable equivalente soportada por la versión fijada. -->
-<!-- TODO: verificar en una prueba real si `handle_path /uptime/*` recorta el prefijo de forma compatible con la versión desplegada o si hace falta conservar `/uptime` completo con otro bloque de Caddy. -->
+  ```bash
+  ssh -L 11002:127.0.0.1:11002 <user>@pi-homelab
+  ```
 
-Hasta verificar esos dos puntos, trata esta publicación remota como **opcional** y deja la operación normal del servicio en `127.0.0.1:11002` o detrás de un túnel SSH local.
+- **Funnel o Serve de Tailscale**: si en algún momento necesitas exponer la UI sin túnel SSH, `tailscale serve` puede publicar el puerto 11002 en la raíz de un hostname dedicado, pero eso queda fuera del alcance actual de este documento y de la arquitectura Caddy + Authelia.
+
+No añadas bloques de Caddy ni reglas de Authelia para Uptime Kuma en subruta. Si ves documentación de terceros sugiriendo `handle_path /uptime/*`, no funcionará: `handle_path` recorta el prefijo y Uptime Kuma redirige a `/dashboard` sin él; `handle` conserva el prefijo pero Uptime Kuma no lo espera y los assets no cargan.
 
 ## Almacenamiento
 

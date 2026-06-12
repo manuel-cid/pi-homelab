@@ -20,12 +20,12 @@ Traducción práctica de esta decisión:
 Ejemplos razonables para proteger con Authelia:
 
 - `Grafana`
-- `Uptime Kuma`
 - `Portainer`, validado en subruta `/portainer/` con `--base-url /portainer` y `forward_auth` (→ ver [../02-docker/03-portainer.md](../02-docker/03-portainer.md))
 - dashboards y paneles administrativos similares
 
 Ejemplos que conviene evaluar con cuidado antes de poner detrás de Authelia:
 
+- `Uptime Kuma`, porque no soporta subrutas (→ ver [../05-monitorizacion/04-uptime-kuma.md](../05-monitorizacion/04-uptime-kuma.md)); el acceso remoto se resuelve por túnel SSH
 - `Vaultwarden`, porque los clientes Bitwarden y extensiones no esperan una pantalla SSO intermedia
 - servicios con aplicaciones móviles o clientes nativos que no funcionen bien en subruta o tras `forward_auth`
 
