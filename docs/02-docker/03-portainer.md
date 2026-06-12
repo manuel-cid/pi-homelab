@@ -92,88 +92,119 @@ Notas de esta configuración:
 - Si prefieres que Portainer solo sea accesible desde el propio host o prepararlo para una publicación posterior más controlada, cambia a `127.0.0.1`.
 - El fichero `.env` no contiene credenciales iniciales, así que no requiere nada especial aparte de la disciplina habitual del proyecto.
 
-### 2.1 Publicación opcional detrás de Caddy
+### 2.1 Publicación detrás de Caddy y Authelia
 
-En esta guía, la opción base sigue siendo el acceso directo a `https://<ip-del-host>:9443`. Si más adelante quieres poner Portainer detrás de **Caddy**, el patrón recomendado es este:
+Esta sección documenta la configuración validada para publicar Portainer detrás de **Caddy** como reverse proxy y **Authelia** como capa de autenticación, accesible por subruta en `https://pi-homelab.<tailnet>.ts.net/portainer/`.
 
-- **recomendado**: dejar que **Caddy termine TLS** hacia el cliente y que Portainer quede como upstream **HTTP interno en `:9000`**
-- **no recomendado como primera opción**: encadenar **Caddy -> HTTPS `:9443`** contra el certificado autofirmado que genera Portainer por defecto
+#### Decisiones de diseño
 
-Motivo:
+- **Caddy termina TLS** hacia el cliente y Portainer queda como upstream **HTTP interno en `:9000`**
+- Portainer se publica en **subruta** `/portainer/` bajo el hostname HTTPS de Tailscale, no como hostname dedicado
+- Portainer se arranca con `--base-url /portainer` para que la SPA genere las URLs internas con ese prefijo
+- el acceso remoto queda protegido por **Authelia** con `forward_auth`
+- el acceso directo por `:9443` puede mantenerse opcionalmente para administración de emergencia
 
-- Portainer publica la UI por `9443` con un certificado propio generado por el contenedor.
-- En su documentación de reverse proxy, Portainer ejemplifica la publicación detrás de proxy usando el puerto interno `9000`.
-- Caddy soporta upstreams HTTPS, pero si Portainer sigue usando su certificado autofirmado, la validación TLS del upstream fallará salvo que Caddy confíe explícitamente en ese certificado o se desactive la verificación.
+#### Comportamiento de `--base-url /portainer`
 
-Por tanto, para un homelab como este la recomendación práctica es:
+`--base-url /portainer` **no** cambia las rutas internas del servidor HTTP de Portainer. El backend sigue escuchando en `/`. Lo que hace el flag es modificar las URLs que genera la SPA en el navegador (links, assets, rutas del router JavaScript) para que usen el prefijo `/portainer/`.
 
-- como en este proyecto **Caddy usa `network_mode: host`** (→ ver [../03-red/05-caddy.md](../03-red/05-caddy.md)), publica `9000` solo en loopback, por ejemplo `127.0.0.1:9000:9000`, y apunta Caddy a `http://127.0.0.1:9000`
-- reserva `9443` para acceso directo administrativo o para un escenario donde realmente quieras mantener TLS extremo a extremo
+Esto significa que:
 
-Ejemplo mínimo si decides prepararlo para Caddy en este proyecto:
+- `http://127.0.0.1:9000/` devuelve el `index.html` con código 200
+- `http://127.0.0.1:9000/portainer/` devuelve 404
+- `http://127.0.0.1:9000/runtime.xxx.js` devuelve el asset con código 200
+- el reverse proxy **debe eliminar** el prefijo `/portainer` antes de reenviar al upstream
+
+#### Compose adaptado para Caddy
 
 ```yaml
+name: infra-portainer
+
 services:
   portainer:
     image: portainer/portainer-ce:lts
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - --base-url
+      - /portainer
     env_file:
       - .env
+    environment:
+      TZ: ${TZ}
     ports:
       - "127.0.0.1:9000:9000"
       - "${PORTAINER_BIND_IP}:${PORTAINER_HTTPS_PORT}:9443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DATA_ROOT}/portainer:/data
+    labels:
+      - wud.watch=false
 ```
 
-```caddyfile
-portainer.lan {
-    reverse_proxy 127.0.0.1:9000
-}
-```
+Notas:
 
-Sobre `transport http { tls_insecure_skip_verify }`:
+- `127.0.0.1:9000:9000` expone el puerto HTTP solo en loopback para que Caddy lo alcance
+- `9443` se mantiene opcional para acceso directo administrativo; puede eliminarse si no se necesita
+- `--base-url /portainer` se pasa como `command` en el Compose
 
-- **solo hace falta** si decides que Caddy hable con Portainer por **HTTPS `:9443`** y no instalas en Portainer un certificado que Caddy pueda validar
-- **funciona**, pero Caddy lo documenta como **no recomendado**, porque desactiva las comprobaciones de seguridad del TLS del upstream
-- si quieres mantener `9443` detrás de Caddy sin saltarte la validación, la alternativa correcta es cargar en Portainer un certificado propio y hacer que Caddy confíe en esa CA o en ese certificado
+#### Regla de acceso en Authelia
 
-Ejemplo de la variante menos aconsejable, pero funcional en una red interna controlada:
-
-```caddyfile
-portainer.lan {
-    reverse_proxy https://127.0.0.1:9443 {
-        transport http {
-            tls_insecure_skip_verify
-        }
-    }
-}
-```
-
-Si quieres publicar Portainer en **subruta** en vez de hostname dedicado:
-
-- Portainer lo soporta con `--base-url /portainer`
-- el reverse proxy debe **eliminar ese prefijo** antes de reenviar la petición
-- en la práctica, sigue siendo más simple y robusto usar **hostname dedicado** para evitar problemas de redirecciones, cookies y rutas
-
-Ejemplo mínimo para subruta con Caddy:
+En `/home/<user>/homelab/config/authelia/configuration.yml`, añade una regla para la subruta de Portainer:
 
 ```yaml
-services:
-  portainer:
-    command:
-      - --base-url
-      - /portainer
+access_control:
+  default_policy: deny
+  rules:
+    - domain: 'pi-homelab.<tailnet>.ts.net'
+      resources:
+        - '^/portainer(/.*)?$'
+      policy: two_factor
 ```
 
+Esta regla exige autenticación con segundo factor para cualquier petición cuya URI original empiece por `/portainer`.
+
+#### Bloque en el Caddyfile
+
+Dentro del bloque `https://{$TAILSCALE_DOMAIN}` de [../03-red/05-caddy.md](../03-red/05-caddy.md):
+
 ```caddyfile
-pi.homelab.lan {
-    handle_path /portainer/* {
+@portainer path /portainer /portainer/*
+handle @portainer {
+    route {
+        import authelia_forward_auth
+        uri strip_prefix /portainer
         reverse_proxy 127.0.0.1:9000
     }
 }
 ```
+
+Por qué se usa `handle` + `route` en vez de `handle_path`:
+
+- **`handle @portainer`** entra en el sistema de handles mutuamente excluyentes de Caddy, evitando que el bloque catch-all responda en su lugar
+- **`route { ... }`** dentro del `handle` fuerza la ejecución en el orden exacto en que se escriben las directivas; sin `route`, Caddy reordena las directivas según su [orden estándar](https://caddyserver.com/docs/caddyfile/directives#directive-order) y `uri` se ejecutaría **antes** que `forward_auth`
+- con este orden, `forward_auth` envía a Authelia la URI original `/portainer/...`, que matchea la regla `'^/portainer(/.*)?$'`; **después** `uri strip_prefix` recorta el prefijo y `reverse_proxy` envía `/...` al upstream
+- si se usara `handle_path`, el prefijo se recortaría antes de llegar a `forward_auth`, Authelia vería una URI como `/runtime.xxx.js` sin prefijo, no matchearía ninguna regla y `default_policy: deny` bloquearía la petición con 403
+
+#### Acceso LAN por hostname dedicado (opcional)
+
+Si además quieres acceso por la LAN sin Authelia, puedes mantener un bloque HTTP simple:
+
+```caddyfile
+http://portainer.lan {
+    reverse_proxy 127.0.0.1:9000
+}
+```
+
+En este caso, el acceso LAN no pasa por `--base-url` ni por autenticación; Portainer sirve su UI directamente en `/`.
+
+#### Sobre `transport http { tls_insecure_skip_verify }`
+
+- **solo hace falta** si decides que Caddy hable con Portainer por **HTTPS `:9443`** y no instalas en Portainer un certificado que Caddy pueda validar
+- **funciona**, pero Caddy lo documenta como **no recomendado**, porque desactiva las comprobaciones de seguridad del TLS del upstream
+- si quieres mantener `9443` detrás de Caddy sin saltarte la validación, la alternativa correcta es cargar en Portainer un certificado propio y hacer que Caddy confíe en esa CA o en ese certificado
+- en la configuración validada de este proyecto se usa el puerto HTTP `9000`, por lo que esta opción no es necesaria
 
 ### 3. Desplegar el stack
 

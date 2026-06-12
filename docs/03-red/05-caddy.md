@@ -172,7 +172,7 @@ Notas importantes sobre este diseño:
 - los nombres `*.lan` deben resolver a la **IP LAN del host**, no a IPs de contenedores normales
 - no todos los servicios toleran igual las **subrutas**; antes de activar una ruta HTTPS remota, valida en el documento del servicio si necesita conservar el prefijo, una `base URL` explícita o incluso un hostname dedicado
 - si un servicio no tolera bien subrutas, mantenlo en `.lan` para la LAN hasta documentar un patrón remoto correcto
-- `Portainer` queda fuera de este `Caddyfile` base porque su documento actual lo mantiene con acceso directo en `:9443` y no queda validado aquí su comportamiento correcto detrás del proxy
+- `Portainer` se publica en subruta `/portainer/` con un patrón `handle` + `route` que combina `forward_auth` y `uri strip_prefix`; la configuración validada se documenta en [../02-docker/03-portainer.md](../02-docker/03-portainer.md)
 
 ### 3. Generar el certificado HTTPS de Tailscale
 
