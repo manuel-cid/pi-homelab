@@ -1,0 +1,30 @@
+$ curl -v http://127.0.0.1:9000/public/env.js 2>&1 | head -30
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying 127.0.0.1:9000...
+* Connected to 127.0.0.1 (127.0.0.1) port 9000
+* using HTTP/1.x
+> GET /public/env.js HTTP/1.1
+> Host: 127.0.0.1:9000
+> User-Agent: curl/8.14.1
+> Accept: */*
+>
+* Request completely sent off
+< HTTP/1.1 404 Not Found
+< Content-Security-Policy: script-src 'self' https://js.hsforms.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; object-src 'none'; frame-ancestors 'none'; frame-src https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/
+< Content-Type: text/plain; charset=utf-8
+< Vary: Accept-Encoding
+< X-Content-Type-Options: nosniff
+< Date: Fri, 12 Jun 2026 14:05:19 GMT
+< Content-Length: 19
+<
+{ [19 bytes data]
+100    19  100    19    0     0  18500      0 --:--:-- --:--:-- --:--:-- 19000
+* Connection #0 to host 127.0.0.1 left intact
+404 page not found
+$  curl -v http://pi-homelab.tail6b8f01.ts.net/portainer/public/env.js 2>&1 | head -40
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* Could not resolve host: pi-homelab.tail6b8f01.ts.net
+* shutting down connection #0
+curl: (6) Could not resolve host: pi-homelab.tail6b8f01.ts.net
