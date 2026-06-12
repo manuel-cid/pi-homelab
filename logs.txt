@@ -1,22 +1,17 @@
-$ dig @192.168.1.194 portainer.lan
+$ curl -I -H 'Host: portainer.lan' http://127.0.0.1
+HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Cache-Control: max-age=31536000
+Content-Length: 14202
+Content-Security-Policy: script-src 'self' https://js.hsforms.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; object-src 'none'; frame-ancestors 'none'; frame-src https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/
+Content-Type: text/html; charset=utf-8
+Date: Fri, 12 Jun 2026 17:34:46 GMT
+Last-Modified: Wed, 03 Jun 2026 22:13:33 GMT
+Permissions-Policy: accelerometer=(),ambient-light-sensor=(),attribution-reporting=(),autoplay=(),battery=(),browsing-topics=(),camera=(),captured-surface-control=(),ch-device-memory=(),ch-downlink=(),ch-dpr=(),ch-ect=(),ch-prefers-color-scheme=(),ch-prefers-reduced-motion=(),ch-prefers-reduced-transparency=(),ch-rtt=(),ch-save-data=(),ch-ua=(),ch-ua-arch=(),ch-ua-bitness=(),ch-ua-form-factors=(),ch-ua-full-version=(),ch-ua-full-version-list=(),ch-ua-mobile=(),ch-ua-model=(),ch-ua-platform=(),ch-ua-platform-version=(),ch-ua-wow64=(),ch-viewport-height=(),ch-viewport-width=(),ch-width=(),compute-pressure=(),conversion-measurement=(),cross-origin-isolated=(),deferred-fetch=(),deferred-fetch-minimal=(),display-capture=(),document-domain=(),encrypted-media=(),execution-while-not-rendered=(),execution-while-out-of-viewport=(),focus-without-user-activation=(),fullscreen=(),gamepad=(),geolocation=(),gyroscope=(),hid=(),identity-credentials-get=(),idle-detection=(),interest-cohort=(),join-ad-interest-group=(),keyboard-map=(),language-detector=(),local-fonts=(),magnetometer=(),microphone=(),midi=(),navigation-override=(),otp-credentials=(),payment=(),picture-in-picture=(),private-aggregation=(),private-state-token-issuance=(),private-state-token-redemption=(),publickey-credentials-create=(),publickey-credentials-get=(),rewriter=(),run-ad-auction=(),screen-wake-lock=(),serial=(),shared-storage=(),shared-storage-select-url=(),speaker-selection=(),storage-access=(),summarizer=(),sync-script=(),sync-xhr=(),translator=(),trust-token-redemption=(),unload=(),usb=(),vertical-scroll=(),web-share=(),window-management=(),window-placement=(),writer=(),xr-spatial-tracking=()
+Vary: Accept-Encoding
+Via: 1.1 Caddy
+X-Content-Type-Options: nosniff
+X-Csrf-Token:
 
-; <<>> DiG 9.20.23-1~deb13u1-Debian <<>> @192.168.1.194 portainer.lan
-; (1 server found)
-;; global options: +cmd
-;; Got answer:
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 52507
-;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
-
-;; OPT PSEUDOSECTION:
-; EDNS: version: 0, flags:; udp: 1232
-;; QUESTION SECTION:
-;portainer.lan.                 IN      A
-
-;; ANSWER SECTION:
-portainer.lan.          0       IN      A       192.168.1.132
-
-;; Query time: 0 msec
-;; SERVER: 192.168.1.194#53(192.168.1.194) (UDP)
-;; WHEN: Fri Jun 12 19:30:58 CEST 2026
-;; MSG SIZE  rcvd: 58
-
+homelab@homelab:~/homelab/compose/infra-caddy $ ss -ltnp | grep 9000
+LISTEN 0      4096                     127.0.0.1:9000       0.0.0.0:*
