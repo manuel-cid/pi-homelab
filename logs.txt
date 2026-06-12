@@ -1,6 +1,96 @@
- $ curl -I -k https://100.103.230.72/portainer/runtime.2be226186de831a07eac.js
-curl: (35) TLS connect error: error:0A000438:SSL routines::tlsv1 alert internal error
-homelab@homelab:~/homelab/compose/infra-caddy $ curl -I -k https://100.103.230.72/portainer/runtime.2be226186de831a07eac.js -H "Host: pi-homelab.tail6b8f01.ts.net"
-curl: (35) TLS connect error: error:0A000438:SSL routines::tlsv1 alert internal error
-homelab@homelab:~/homelab/compose/infra-caddy $ tailscale ip -4
-100.103.230.72
+$ cat /home/homelab/homelab/config/caddy/Caddyfile
+{
+        admin off
+
+        servers {
+                trusted_proxies static private_ranges
+        }
+}
+
+(common_proxy) {
+        encode zstd gzip
+
+        header {
+                -Server
+                X-Content-Type-Options nosniff
+                Referrer-Policy strict-origin-when-cross-origin
+        }
+}
+
+(authelia_forward_auth) {
+        forward_auth 127.0.0.1:9091 {
+                uri /api/authz/forward-auth?authelia_url=https://{$TAILSCALE_DOMAIN}/authelia
+                copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+        }
+}
+
+http://portainer.lan {
+    reverse_proxy 127.0.0.1:9000
+}
+
+http://jellyfin.lan {
+        import common_proxy
+        reverse_proxy 127.0.0.1:8096
+}
+
+http://navidrome.lan {
+        import common_proxy
+        reverse_proxy 127.0.0.1:4533
+}
+
+http://audiobookshelf.lan {
+        import common_proxy
+        reverse_proxy 127.0.0.1:80
+}
+
+http://vaultwarden.lan {
+        import common_proxy
+        reverse_proxy 127.0.0.1:80
+}
+
+https://{$TAILSCALE_DOMAIN} {
+        import common_proxy
+        tls /certs/{$TAILSCALE_DOMAIN}.crt /certs/{$TAILSCALE_DOMAIN}.key
+
+        @health path /healthz
+        handle @health {
+                respond "ok" 200
+        }
+
+        @authelia path /authelia /authelia/*
+        handle @authelia {
+                reverse_proxy 127.0.0.1:9091
+        }
+
+        handle_path /portainer/* {
+                import authelia_forward_auth
+                header -X-Content-Type-Options
+                reverse_proxy 127.0.0.1:9000
+        }
+
+        @grafana path /grafana /grafana/*
+        handle @grafana {
+                import authelia_forward_auth
+                reverse_proxy 127.0.0.1:11100
+        }
+
+        handle_path /homepage/* {
+                import authelia_forward_auth
+                reverse_proxy 127.0.0.1:3000
+        }
+
+        # Las rutas o hostnames HTTPS de cada servicio se añaden de forma
+        # incremental desde sus documentos específicos.
+        #
+        # No uses aqui ejemplos genericos con `handle_path` para servicios que
+        # necesiten conservar el prefijo completo o una base URL explicita.
+        # Ejemplos ya documentados en este repositorio:
+        # - Vaultwarden: conservar `/vaultwarden` completo, sin `handle_path`
+        # - Audiobookshelf: conservar `/audiobookshelf` completo, sin recortar prefijo
+        # - Authelia: publicar antes `/authelia` y aplicar despues `forward_auth`
+        # TODO: verificar cada ruta HTTPS remota contra el documento del servicio antes de activarla en produccion.
+
+        handle {
+                respond "Caddy activo. Revisa los documentos de cada servicio antes de anadir rutas HTTPS remotas." 200
+        }
+}
