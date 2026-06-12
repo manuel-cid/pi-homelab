@@ -1,54 +1,52 @@
-$ docker compose -f /home/homelab/homelab/compose/auth-authelia/docker-compose.yml logs --tail 30 authelia | grep -i "portainer/|403\|denied\|access"
-authelia-1  | time="2026-06-12T18:36:40+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/main.1a8779f936ef144f7430.css' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:36:41+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/b1f2baef7b5736909c25.png' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:36:41+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/d35773788f0de379e3d2.png' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:22+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/runtime.2be226186de831a07eac.js' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:22+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/vendor.2a86bee6aff3cb2aaef4.js' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:22+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/main.830f1718bd59282fd608.js' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:22+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/vendor.5912aaf498ef1cf92d1e.css' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:22+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/main.1a8779f936ef144f7430.css' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:22+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/b1f2baef7b5736909c25.png' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:22+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/d35773788f0de379e3d2.png' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:32+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/runtime.2be226186de831a07eac.js' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:32+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/vendor.2a86bee6aff3cb2aaef4.js' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:32+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/main.830f1718bd59282fd608.js' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:32+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/vendor.5912aaf498ef1cf92d1e.css' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:32+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/main.1a8779f936ef144f7430.css' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:33+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/b1f2baef7b5736909c25.png' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:37:33+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/d35773788f0de379e3d2.png' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:38:23+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/runtime.2be226186de831a07eac.js' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:38:23+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/vendor.2a86bee6aff3cb2aaef4.js' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:38:23+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/main.830f1718bd59282fd608.js' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:38:23+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/vendor.5912aaf498ef1cf92d1e.css' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:38:23+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/main.1a8779f936ef144f7430.css' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:38:32+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/runtime.2be226186de831a07eac.js' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:38:32+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/vendor.2a86bee6aff3cb2aaef4.js' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:38:32+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/main.830f1718bd59282fd608.js' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:38:32+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/vendor.5912aaf498ef1cf92d1e.css' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:38:32+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/main.1a8779f936ef144f7430.css' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:38:32+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/b1f2baef7b5736909c25.png' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
-authelia-1  | time="2026-06-12T18:38:32+02:00" level=info msg="Access to 'https://pi-homelab.tail6b8f01.ts.net/d35773788f0de379e3d2.png' is forbidden to user 'admin'" method=GET path=/api/authz/forward-auth remote_ip=100.117.183.123
+$ sed -n '/https:\/\/{/,/^}/p' /home/homelab/homelab/config/caddy/Caddyfile
+                uri /api/authz/forward-auth?authelia_url=https://{$TAILSCALE_DOMAIN}/authelia
+                copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+        }
+}
+https://{$TAILSCALE_DOMAIN} {
+        import common_proxy
+        tls /certs/{$TAILSCALE_DOMAIN}.crt /certs/{$TAILSCALE_DOMAIN}.key
 
+        @health path /healthz
+        handle @health {
+                respond "ok" 200
+        }
 
-$ sudo grep -A 20 'access_control' /home/homelab/homelab/config/authelia/configuration.yml
-[sudo] contraseña para homelab:
-access_control:
-  default_policy: deny
-  rules:
-    - domain: 'pi-homelab.tail6b8f01.ts.net'
-      resources:
-        - '^/authelia(/.*)?$'
-      policy: bypass
-    - domain: 'pi-homelab.tail6b8f01.ts.net'
-      resources:
-        - '^/portainer(/.*)?$'
-      policy: two_factor
-    - domain: 'pi-homelab.tail6b8f01.ts.net'
-      resources:
-        - '^/grafana(/.*)?$'
-      policy: two_factor
-    - domain: 'pi-homelab.tail6b8f01.ts.net'
-      resources:
-        - '^/$'
-        - '^/homepage(/.*)?$'
-      policy: two_factor
+        @authelia path /authelia /authelia/*
+        handle @authelia {
+                reverse_proxy 127.0.0.1:9091
+        }
+
+        @portainer path /portainer /portainer/*
+        route @portainer {
+                import authelia_forward_auth
+                uri strip_prefix /portainer
+                reverse_proxy 127.0.0.1:9000
+        }
+
+        @grafana path /grafana /grafana/*
+        handle @grafana {
+                import authelia_forward_auth
+                reverse_proxy 127.0.0.1:11100
+        }
+
+        handle_path /homepage/* {
+                import authelia_forward_auth
+                reverse_proxy 127.0.0.1:3000
+        }
+
+        # Las rutas o hostnames HTTPS de cada servicio se añaden de forma
+        # incremental desde sus documentos específicos.
+        #
+        # No uses aqui ejemplos genericos con `handle_path` para servicios que
+        # necesiten conservar el prefijo completo o una base URL explicita.
+        # Ejemplos ya documentados en este repositorio:
+        # - Vaultwarden: conservar `/vaultwarden` completo, sin `handle_path`
+        # - Audiobookshelf: conservar `/audiobookshelf` completo, sin recortar prefijo
+        # - Authelia: publicar antes `/authelia` y aplicar despues `forward_auth`
+        # TODO: verificar cada ruta HTTPS remota contra el documento del servicio antes de activarla en produccion.
+
+        handle {
+                respond "Caddy activo. Revisa los documentos de cada servicio antes de anadir rutas HTTPS remotas." 200
+        }
+}
