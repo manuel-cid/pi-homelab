@@ -1,52 +1,22 @@
-$ sed -n '/https:\/\/{/,/^}/p' /home/homelab/homelab/config/caddy/Caddyfile
-                uri /api/authz/forward-auth?authelia_url=https://{$TAILSCALE_DOMAIN}/authelia
-                copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
-        }
-}
-https://{$TAILSCALE_DOMAIN} {
-        import common_proxy
-        tls /certs/{$TAILSCALE_DOMAIN}.crt /certs/{$TAILSCALE_DOMAIN}.key
+$ dig @192.168.1.194 portainer.lan
 
-        @health path /healthz
-        handle @health {
-                respond "ok" 200
-        }
+; <<>> DiG 9.20.23-1~deb13u1-Debian <<>> @192.168.1.194 portainer.lan
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 52507
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
 
-        @authelia path /authelia /authelia/*
-        handle @authelia {
-                reverse_proxy 127.0.0.1:9091
-        }
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;portainer.lan.                 IN      A
 
-        @portainer path /portainer /portainer/*
-        route @portainer {
-                import authelia_forward_auth
-                uri strip_prefix /portainer
-                reverse_proxy 127.0.0.1:9000
-        }
+;; ANSWER SECTION:
+portainer.lan.          0       IN      A       192.168.1.132
 
-        @grafana path /grafana /grafana/*
-        handle @grafana {
-                import authelia_forward_auth
-                reverse_proxy 127.0.0.1:11100
-        }
+;; Query time: 0 msec
+;; SERVER: 192.168.1.194#53(192.168.1.194) (UDP)
+;; WHEN: Fri Jun 12 19:30:58 CEST 2026
+;; MSG SIZE  rcvd: 58
 
-        handle_path /homepage/* {
-                import authelia_forward_auth
-                reverse_proxy 127.0.0.1:3000
-        }
-
-        # Las rutas o hostnames HTTPS de cada servicio se añaden de forma
-        # incremental desde sus documentos específicos.
-        #
-        # No uses aqui ejemplos genericos con `handle_path` para servicios que
-        # necesiten conservar el prefijo completo o una base URL explicita.
-        # Ejemplos ya documentados en este repositorio:
-        # - Vaultwarden: conservar `/vaultwarden` completo, sin `handle_path`
-        # - Audiobookshelf: conservar `/audiobookshelf` completo, sin recortar prefijo
-        # - Authelia: publicar antes `/authelia` y aplicar despues `forward_auth`
-        # TODO: verificar cada ruta HTTPS remota contra el documento del servicio antes de activarla en produccion.
-
-        handle {
-                respond "Caddy activo. Revisa los documentos de cada servicio antes de anadir rutas HTTPS remotas." 200
-        }
-}
