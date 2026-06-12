@@ -1,13 +1,6 @@
-$ curl -I http://127.0.0.1:9000/runtime.2be226186de831a07eac.js
-HTTP/1.1 200 OK
-Accept-Ranges: bytes
-Cache-Control: max-age=31536000
-Content-Length: 4335
-Content-Security-Policy: script-src 'self' https://js.hsforms.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; object-src 'none'; frame-ancestors 'none'; frame-src https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/
-Content-Type: text/javascript; charset=utf-8
-Last-Modified: Wed, 03 Jun 2026 22:13:33 GMT
-Vary: Accept-Encoding
-X-Content-Type-Options: nosniff
-X-Csrf-Token:
-Date: Fri, 12 Jun 2026 15:54:37 GMT
-
+ $ curl -I -k https://100.103.230.72/portainer/runtime.2be226186de831a07eac.js
+curl: (35) TLS connect error: error:0A000438:SSL routines::tlsv1 alert internal error
+homelab@homelab:~/homelab/compose/infra-caddy $ curl -I -k https://100.103.230.72/portainer/runtime.2be226186de831a07eac.js -H "Host: pi-homelab.tail6b8f01.ts.net"
+curl: (35) TLS connect error: error:0A000438:SSL routines::tlsv1 alert internal error
+homelab@homelab:~/homelab/compose/infra-caddy $ tailscale ip -4
+100.103.230.72
