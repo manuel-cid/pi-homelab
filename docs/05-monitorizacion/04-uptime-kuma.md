@@ -169,7 +169,7 @@ Configuración inicial recomendada para esta fase:
 | Grafana | HTTP(s) | `http://grafana:3000/api/health` | Debe devolver `200 OK`; si quieres más precisión, usa `HTTP(s) Keyword` con `ok` |
 | Node Exporter | HTTP(s) Keyword | `http://node-exporter:9100/metrics` | Comprueba que existe `node_exporter_build_info` en el cuerpo |
 | Docker Engine `/metrics` | HTTP(s) Keyword | `http://host.docker.internal:9323/metrics` | Opcional; útil si ya habilitaste el endpoint en [01-prometheus.md](01-prometheus.md) |
-| SSH del host | TCP Port | `<IP-LAN-RASPBERRY>:22` | Confirma acceso administrativo básico al host |
+| SSH del host | TCP Port | `host.docker.internal:22` | Confirma acceso administrativo básico al host; usa `host.docker.internal` porque el contenedor ya lo resuelve vía `extra_hosts` y evita problemas de firewall con la IP LAN |
 
 Para el resto del homelab, la plantilla práctica es esta:
 

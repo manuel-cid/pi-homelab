@@ -21,11 +21,11 @@ Ejemplos razonables para proteger con Authelia:
 
 - `Grafana`
 - `Uptime Kuma`
+- `Portainer`, validado en subruta `/portainer/` con `--base-url /portainer` y `forward_auth` (→ ver [../02-docker/03-portainer.md](../02-docker/03-portainer.md))
 - dashboards y paneles administrativos similares
 
 Ejemplos que conviene evaluar con cuidado antes de poner detrás de Authelia:
 
-- `Portainer`, porque en este repositorio hoy se documenta con acceso directo a `:9443` y no queda validado aquí su funcionamiento correcto bajo una subruta como `/portainer/`
 - `Vaultwarden`, porque los clientes Bitwarden y extensiones no esperan una pantalla SSO intermedia
 - servicios con aplicaciones móviles o clientes nativos que no funcionen bien en subruta o tras `forward_auth`
 
@@ -305,7 +305,7 @@ Notas importantes sobre este patrón:
 - esta guía protege la entrada **HTTPS de Tailscale**, no los bloques `http://servicio.lan`
 - los servicios protegidos deben funcionar correctamente en **subruta** o estar configurados para ello
 - el ejemplo se limita a `Homepage` porque su publicación remota por subruta ya queda alineada con la documentación del repositorio; añade otros servicios solo cuando su documento confirme ese patrón
-- `Portainer` no se incluye en este ejemplo porque su documento actual lo deja publicado en `:9443` y aquí no queda demostrada una adaptación correcta a `/portainer/`
+- `Portainer` se documenta con su propio patrón `handle` + `route` en [../02-docker/03-portainer.md](../02-docker/03-portainer.md); no se incluye en el ejemplo de abajo porque requiere `uri strip_prefix` dentro de `route` para que `forward_auth` vea la URI original
 - si un servicio no soporta bien subrutas, no lo metas aquí sin revisar primero su configuración
 - con `network_mode: host` en Caddy, la cabecera `X-Forwarded-For` que Caddy envía a Authelia contiene la IP real del cliente (LAN o Tailscale), necesario para que [02-fail2ban.md](02-fail2ban.md) funcione correctamente; ya no se necesita `header_up X-Real-IP` porque Caddy ve directamente al cliente
 - este patrón no necesita unir Authelia a `homelab_proxy`, porque la comunicación con Caddy se hace por `127.0.0.1:9091` en el host
