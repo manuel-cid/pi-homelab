@@ -94,7 +94,7 @@ Plan maestro para redactar toda la documentación necesaria para montar el homel
 
 | Doc | Contenido |
 |-----|-----------|
-| `docs/07-backups/01-estrategia-backup.md` | Estrategia 3-2-1: partición de backups en hd2t como destino local, nube como destino offsite, programación, retención, verificación de restauración |
+| `docs/07-backups/01-estrategia-backup.md` | Estrategia 3-2-1: subdirectorio `/media/hd2t/backups/` como destino local (sin partición exclusiva), nube como destino offsite, programación, retención, verificación de restauración |
 | `docs/07-backups/02-borgmatic.md` | Despliegue de Borgmatic, configuración YAML, repos en hd2t, programación, hooks pre/post-backup (dumps de BD), notificaciones. Estrategia general → ver `docs/07-backups/01-estrategia-backup.md`. Procedimiento de volúmenes → ver `docs/07-backups/03-backup-docker-volumes.md` |
 | `docs/07-backups/03-backup-docker-volumes.md` | Procedimiento para backup/restore de volúmenes Docker y bases de datos (dumps de MariaDB/PostgreSQL) |
 

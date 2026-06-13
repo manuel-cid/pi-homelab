@@ -7,7 +7,7 @@ Este documento define la estrategia de copias de seguridad del homelab siguiendo
 La política de este proyecto se mantiene:
 
 - el **SSD NVMe** es la fuente principal de verdad para sistema, `compose`, configuraciones, volúmenes persistentes y bases de datos
-- una **partición o área dedicada de backups en `hd2t`**, montada y usada desde **`/media/hd2t/backups/`**, es el destino local
+- el **subdirectorio `/media/hd2t/backups/`** dentro del mismo sistema de ficheros de `hd2t` es el destino local
 - **`hd5t`** sigue reservado a la biblioteca multimedia dedicada
 
 Esta fase documenta la **estrategia general**. El despliegue concreto de la herramienta se cubre en [02-borgmatic.md](02-borgmatic.md) y el procedimiento detallado para volúmenes y bases de datos en [03-backup-docker-volumes.md](03-backup-docker-volumes.md).
@@ -124,7 +124,7 @@ Uso de cada ruta:
 - `exports/`: dumps temporales o persistidos de bases de datos si decides conservarlos aparte del repositorio
 - `restore-test/`: restauraciones de validación para comprobar que las copias realmente sirven
 
-<!-- TODO: verificar si `hd2t` tendrá una partición exclusiva para backups o si se reservará solo el subdirectorio `/media/hd2t/backups/` dentro del mismo sistema de ficheros -->
+El disco `hd2t` no dispone de una partición exclusiva para backups; se utiliza el subdirectorio `/media/hd2t/backups/` dentro del mismo sistema de ficheros. Es importante no mezclar este árbol con media ni descargas para evitar que un crecimiento inesperado de otra carpeta comprometa el espacio disponible para las copias.
 
 Para la copia offsite, usa un repositorio remoto distinto del local y con credenciales separadas. El detalle técnico del proveedor no se fija aquí; la condición importante es que soporte una **copia cifrada y automatizable** desde la Raspberry Pi usando solo conexiones salientes, sin abrir puertos entrantes y sin exponer servicios del homelab a internet.
 
