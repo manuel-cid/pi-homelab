@@ -557,28 +557,38 @@ Alternativas razonables si en el futuro cambia el criterio del homelab:
 
 ### 3. Añadir programación desde el host
 
-En este despliegue, **Borgmatic** corre como contenedor sin exponer puertos y sin programador embebido documentado en el stack. La forma más simple y coherente con el resto del homelab es planificar la ejecución desde el **host** mediante `cron` o un temporizador `systemd`, invocando el contenedor `borgmatic`.
+**Borgmatic** corre como contenedor sin programador embebido. La programación se gestiona desde el **host** mediante un archivo en `/etc/cron.d/`, que es la opción preferida por ser declarativa, auditable y reproducible: el archivo queda documentado con ruta exacta, se puede versionar en el repo del homelab y al inspeccionar `/etc/cron.d/` se ven de un vistazo todos los cron del sistema.
 
-Ejemplo con `cron` en el host (`sudo crontab -e` o `/etc/cron.d/homelab-borgmatic`):
+> **Importante:** las líneas siguientes son sintaxis de crontab, **no comandos bash**.
+> No las pegues directamente en la terminal.
 
-```cron
+Crea el archivo `/etc/cron.d/homelab-borgmatic`:
+
+```bash
+sudo tee /etc/cron.d/homelab-borgmatic > /dev/null << 'EOF'
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-30 2 * * * cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --stats --list --verbosity 1 create
-30 4 * * 0 cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --stats --list --verbosity 1 prune
-45 4 * * 0 cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --verbosity 1 compact
-0 5 1 * * cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --verbosity 1 check --only repository --only archives
+# backup diario a las 02:30
+30 2 * * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --stats --list --verbosity 1 create
+# prune semanal (domingo 04:30)
+30 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --stats --list --verbosity 1 prune
+# compact después del prune (domingo 04:45)
+45 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --verbosity 1 compact
+# check mensual de repositorio y archivos (día 1, 05:00)
+0 5 1 * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --verbosity 1 check --only repository --only archives
+EOF
 ```
 
-Esta programación sigue la política de la fase:
+Verifica que se ha creado correctamente:
 
-- backup diario a las `02:30`
-- `prune` semanal el domingo
-- `compact` después del `prune`
-- `check` mensual de repositorio y archivos
+```bash
+cat /etc/cron.d/homelab-borgmatic
+```
 
-Si prefieres versionar esa programación, guarda el contenido anterior como **`/home/<user>/homelab/config/borgmatic/host-cron.example`** y aplícalo luego en el host. Si necesitas separar retención o ventana de ejecución entre **local** y **offsite**, usa un segundo fichero de configuración de Borgmatic en vez de mezclar políticas incompatibles en la misma rutina.
+> **Nota sobre el formato `/etc/cron.d/`:** a diferencia de `crontab -e`, los archivos en `/etc/cron.d/` requieren un campo extra con el **usuario** (`root`) entre el schedule y el comando. El archivo debe terminar con una línea en blanco o un salto de línea final para que `cron` lo procese correctamente.
+
+Si necesitas separar retención o ventana de ejecución entre **local** y **offsite**, usa un segundo fichero de configuración de Borgmatic en vez de mezclar políticas incompatibles en la misma rutina.
 
 ### 4. Preparar los hooks
 
