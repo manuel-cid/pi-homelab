@@ -135,6 +135,59 @@ Permisos recomendados:
 - `repository-passphrase` con `chmod 600`
 - scripts de `hooks/` con `chmod 750`
 
+Comandos para crear la estructura:
+
+```bash
+# Directorios del compose
+mkdir -p /home/<user>/homelab/compose/infra-borgmatic
+
+# Directorios de configuración
+mkdir -p /home/<user>/homelab/config/borgmatic/keys
+mkdir -p /home/<user>/homelab/config/borgmatic/hooks
+mkdir -p /home/<user>/homelab/config/borgmatic/ssh
+
+# Directorios de datos
+mkdir -p /home/<user>/homelab/data/borgmatic/cache
+mkdir -p /home/<user>/homelab/data/borgmatic/runtime
+mkdir -p /home/<user>/homelab/data/borgmatic/state
+
+# Directorios de destino en hd2t
+sudo mkdir -p /media/hd2t/backups/borg
+sudo mkdir -p /media/hd2t/backups/exports
+sudo mkdir -p /media/hd2t/backups/restore-test
+
+# Ficheros placeholder del compose
+touch /home/<user>/homelab/compose/infra-borgmatic/docker-compose.yml
+touch /home/<user>/homelab/compose/infra-borgmatic/.env
+
+# Ficheros de configuración
+touch /home/<user>/homelab/config/borgmatic/config.yaml
+touch /home/<user>/homelab/config/borgmatic/config-offsite.yaml.disabled
+
+# Ficheros de secretos
+touch /home/<user>/homelab/config/borgmatic/keys/repository-passphrase
+touch /home/<user>/homelab/config/borgmatic/keys/postgres-backup-password
+touch /home/<user>/homelab/config/borgmatic/keys/mariadb-backup-password
+touch /home/<user>/homelab/config/borgmatic/keys/telegram-apprise-url
+
+# Hooks
+touch /home/<user>/homelab/config/borgmatic/hooks/pre-backup.sh
+touch /home/<user>/homelab/config/borgmatic/hooks/post-backup.sh
+touch /home/<user>/homelab/config/borgmatic/hooks/on-error.sh
+
+# SSH (config placeholder; la clave se genera aparte)
+touch /home/<user>/homelab/config/borgmatic/ssh/config
+
+# Permisos restrictivos para keys y ssh
+chmod 700 /home/<user>/homelab/config/borgmatic/keys
+chmod 600 /home/<user>/homelab/config/borgmatic/keys/*
+chmod 700 /home/<user>/homelab/config/borgmatic/ssh
+chmod 600 /home/<user>/homelab/config/borgmatic/ssh/*
+
+# Permisos ejecutables para hooks
+chmod 750 /home/<user>/homelab/config/borgmatic/hooks/*.sh
+```
+
 ### 2. Crear `config.yaml`
 
 Archivo: `/home/<user>/homelab/config/borgmatic/config.yaml`
