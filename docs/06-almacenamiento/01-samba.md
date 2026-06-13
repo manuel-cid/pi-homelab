@@ -62,7 +62,6 @@ services:
       TZ: ${TZ}
       ACCOUNT_media: ${SAMBA_ACCOUNT_MEDIA}
       UID_media: ${PUID}
-      GROUP_media: ${PGID}
       SAMBA_CONF_WORKGROUP: ${SAMBA_WORKGROUP}
       SAMBA_CONF_SERVER_STRING: ${SAMBA_SERVER_STRING}
       SAMBA_CONF_MAP_TO_GUEST: Never
@@ -233,27 +232,25 @@ Archivo: `/home/<user>/homelab/compose/files-samba/.env`
 Sustituye los valores de ejemplo antes de desplegar:
 
 - `<user>` por el usuario real del host
-- `PUID` y `PGID` por los IDs reales de ese usuario
+- `PUID` por el UID real de ese usuario
 - `cambiar-esta-clave` por una contraseña robusta
 - `SAMBA_BIND_IP` por la IP LAN fija de la Raspberry Pi si no quieres exponer SMB en todas las interfaces del host
 
 ```dotenv
 TZ=Europe/Madrid
 PUID=1000
-PGID=1000
 SAMBA_BIND_IP=0.0.0.0
 SAMBA_WORKGROUP=WORKGROUP
 SAMBA_SERVER_STRING=Homelab Samba
-SAMBA_ACCOUNT_MEDIA=media;cambiar-esta-clave
+SAMBA_ACCOUNT_MEDIA=cambiar-esta-clave
 ```
 
 Notas importantes:
 
-- `SAMBA_ACCOUNT_MEDIA` usa el formato `usuario;password`.
-- `PUID` y `PGID` deben coincidir con el usuario real del host que posee las carpetas.
+- `SAMBA_ACCOUNT_MEDIA` contiene solo la contraseña. El nombre de usuario lo toma la imagen del sufijo de la variable `ACCOUNT_media` definida en el Compose.
+- `PUID` debe coincidir con el UID real del usuario del host que posee las carpetas. El GID se crea automáticamente dentro del contenedor al crear la cuenta.
 - `SAMBA_BIND_IP=0.0.0.0` expone SMB en todas las interfaces del host, incluida `tailscale0` si existe y el firewall lo permite.
 - Si prefieres limitar Samba solo a la LAN principal del host, publica en la IP LAN fija de la Raspberry Pi en lugar de `0.0.0.0`.
-- <!-- TODO: verificar la IP LAN fija que usa la Raspberry Pi para sustituir el ejemplo genérico si se quiere restringir `SAMBA_BIND_IP`. -->
 
 Protege el fichero:
 
@@ -291,8 +288,6 @@ sudo ufw allow from 192.168.1.0/24 to any port 139 proto tcp comment 'Samba sess
 sudo ufw allow from 192.168.1.0/24 to any port 445 proto tcp comment 'Samba SMB LAN'
 sudo ufw status verbose
 ```
-
-<!-- TODO: verificar la subred LAN real del homelab y sustituir `192.168.1.0/24` si no coincide. -->
 
 Si también quieres usar Samba por **Tailscale**, añade además:
 
