@@ -1205,7 +1205,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Docker images stored locally",
+      "description": "Total image pull operations tracked by Docker Engine",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -1213,9 +1213,7 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 50 },
-              { "color": "red", "value": 100 }
+              { "color": "blue", "value": null }
             ]
           },
           "unit": "short"
@@ -1237,13 +1235,13 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "engine_daemon_images",
-          "legendFormat": "Images",
+          "expr": "engine_daemon_image_actions_seconds_count{action=\"pull\"}",
+          "legendFormat": "Image Pulls",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Docker Images",
+      "title": "Image Pulls (total)",
       "type": "stat"
     },
     {
