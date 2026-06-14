@@ -59,6 +59,9 @@ services:
       - /home/<user>/homelab/data/stash/cache:/cache
       - /home/<user>/homelab/data/stash/blobs:/blobs
       - /home/<user>/homelab/data/stash/generated:/generated
+    networks:
+      - default
+      - proxy
     logging:
       driver: json-file
       options:
@@ -66,6 +69,11 @@ services:
         max-size: "2m"
     labels:
       - wud.watch=true
+
+networks:
+  proxy:
+    external: true
+    name: homelab_proxy
 ```
 
 Notas sobre este Compose:
@@ -76,6 +84,7 @@ Notas sobre este Compose:
 - la biblioteca se monta en modo lectura para un despliegue base más seguro
 - el servicio publica `14004/tcp` en el host y **Caddy**, al usar `network_mode: host`, debe alcanzarlo por `127.0.0.1:14004`
 - el Compose sigue el esquema oficial de Stash para `config`, `metadata`, `cache`, `blobs` y `generated`
+- el stack se une a `homelab_proxy` para que otros servicios Docker (como Uptime Kuma) puedan alcanzar Stash por nombre de contenedor en el puerto interno `9999`
 
 Si más adelante quieres usar funciones de **organización, renombrado o movimiento de archivos desde Stash**, tendrás que quitar `:ro` del bind mount `/media/hd5t/media:/data:ro` y validar muy bien esa política antes de activarla en producción.
 
