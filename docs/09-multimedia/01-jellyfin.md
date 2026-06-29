@@ -155,7 +155,7 @@ Si todo ha arrancado bien, la interfaz quedará disponible en:
 
 - `http://jellyfin.lan` en la LAN
 - `http://127.0.0.1:8096` solo desde la propia Raspberry Pi o por túnel SSH, útil para bootstrap y diagnóstico
-- acceso remoto por Tailscale una vez valides en Caddy un patrón compatible para Jellyfin
+- `https://pi-homelab.<tailnet>.ts.net/jellyfin` para acceso remoto por Tailscale, una vez configurada la Base URL y el bloque en Caddy
 
 ### 5. Asistente inicial de Jellyfin
 
@@ -190,14 +190,55 @@ En **Dashboard -> Libraries**:
 En **Dashboard -> Networking**:
 
 - si accedes por nombre LAN detrás de Caddy, puedes mantener el acceso normal sin cambios especiales
-- [05-caddy.md](../03-red/05-caddy.md) deja explícito que no debes asumir que Jellyfin soporte bien una subruta remota por defecto
-- <!-- TODO: verificar si Jellyfin se publicará por subruta bajo `https://pi-homelab.<tailnet>.ts.net/...` o por hostname dedicado antes de activarlo en producción -->
+- para publicar Jellyfin por subruta en Tailscale, configura **Base URL** a `/jellyfin`; con ese ajuste, Jellyfin adapta todos sus paths internos y funciona correctamente detrás de Caddy sin reescrituras de ruta
 
 Recomendación operativa:
 
 - para la **LAN**, usa `http://jellyfin.lan`
-- para acceso remoto, usa Tailscale solo después de validar en Caddy un patrón compatible para Jellyfin
+- para acceso remoto, usa `https://pi-homelab.<tailnet>.ts.net/jellyfin` a través de Caddy y Tailscale
 - mantén `127.0.0.1:8096` como upstream interno y punto de diagnóstico local; no lo conviertas en publicación LAN directa
+
+### Publicación remota por Caddy y Tailscale
+
+Jellyfin se publica en subruta `/jellyfin` dentro del hostname HTTPS común de Tailscale, **sin `forward_auth`**. Jellyfin tiene su propio sistema de autenticación con usuario y contraseña, y pasar las peticiones por Authelia provoca conflictos con las cabeceras SSO (`Remote-User`, etc.) que interfieren con el login nativo de Jellyfin.
+
+Requisitos previos:
+
+- haber configurado **Base URL** a `/jellyfin` en **Dashboard → Networking**
+- haber reiniciado el contenedor de Jellyfin tras el cambio de Base URL
+- tener Caddy operativo según [05-caddy.md](../03-red/05-caddy.md)
+
+Bloque en el `Caddyfile`, dentro de `https://{$TAILSCALE_DOMAIN}`, antes del `handle` catch-all:
+
+```caddyfile
+@jellyfin path /jellyfin /jellyfin/*
+handle @jellyfin {
+    reverse_proxy 127.0.0.1:8096
+}
+```
+
+Notas sobre este patrón:
+
+- se conserva el prefijo `/jellyfin` completo al reenviar al upstream porque Jellyfin con Base URL activa espera recibirlo
+- no se usa `handle_path` ni `uri strip_prefix`
+- no se usa `forward_auth` ni `authelia_forward_auth`; la seguridad de acceso queda cubierta por **Tailscale** (red privada) y el **login nativo de Jellyfin**
+- el acceso LAN por `http://jellyfin.lan` sigue funcionando sin cambios; ese bloque no necesita Base URL porque Caddy reenvía a `/` directamente
+
+Tras modificar el `Caddyfile`:
+
+```bash
+cd /home/<user>/homelab/compose/infra-caddy
+docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile
+docker compose restart caddy
+```
+
+Validaciones desde un cliente unido a la tailnet:
+
+```bash
+curl -I https://pi-homelab.<tailnet>.ts.net/jellyfin
+```
+
+El resultado esperado es un **200** o un **302** hacia el login de Jellyfin (no un 403 de Authelia).
 
 ### 7. Transcodificación por hardware en Raspberry Pi 5
 

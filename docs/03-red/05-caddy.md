@@ -154,6 +154,7 @@ https://{$TAILSCALE_DOMAIN} {
 	# - Vaultwarden: conservar `/vaultwarden` completo, sin `handle_path`
 	# - Audiobookshelf: conservar `/audiobookshelf` completo, sin recortar prefijo
 	# - Authelia: publicar antes `/authelia` y aplicar despues `forward_auth`
+	# - Jellyfin: conservar `/jellyfin` completo, sin `forward_auth` (usa su propio login)
 	# TODO: verificar cada ruta HTTPS remota contra el documento del servicio antes de activarla en produccion.
 
 	handle {
