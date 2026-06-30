@@ -18,8 +18,8 @@ Para este homelab, esa combinación da un resultado razonable: un panel central 
 
 - Haber completado [02-estructura-compose.md](../02-docker/02-estructura-compose.md).
 - Haber completado [04-tailscale.md](../03-red/04-tailscale.md) si quieres usar Homepage también desde la tailnet.
-- Haber completado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Homepage como `http://homepage.lan` o bajo `https://pi-homelab.<tailnet>.ts.net/homepage/`.
-- Haber completado [01-authelia.md](../04-seguridad/01-authelia.md) si quieres exigir autenticación en la ruta remota `/homepage/`.
+- Haber completado [05-caddy.md](../03-red/05-caddy.md) si quieres publicar Homepage como `http://homepage.lan`.
+- Haber completado [01-authelia.md](../04-seguridad/01-authelia.md) si quieres exigir autenticación en la ruta remota.
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para mantener documentado el puerto `17000/tcp`.
 - Tener ya definidos los servicios que quieras mostrar y sus URLs canónicas.
 - Tener a mano las claves de API solo de los widgets que realmente vayas a usar; no hace falta preparar tokens para todos desde el primer día.
@@ -329,22 +329,19 @@ Mantén el fondo discreto. En una pantalla de operaciones importa más la legibi
 
 ### 5. Publicar Homepage con Caddy y opcionalmente protegerlo con Authelia
 
-Si quieres una URL más limpia dentro de la LAN y una ruta protegida en Tailscale, integra Homepage con Caddy.
+**IMPORTANTE**: Homepage (construido con Next.js) **NO soporta subrutas** sin recompilar el frontend. El maintener confirmó en [GitHub discussion #3102](https://github.com/gethomepage/homepage/discussions/3102) que no hay forma de hacer funcionar Homepage detrás de una subruta (ej: `/homepage/`) sin recompilar la aplicación. Las soluciones parciales que usan `base:` en `settings.yaml` todavía sirven `/api` y `/_next` en la ruta raíz, lo que causa conflictos.
 
-Bloque LAN recomendado para `/home/<user>/homelab/config/caddy/Caddyfile`:
+Por esta razón, este proyecto documenta el acceso a Homepage **sin subrutas**:
+- Acceso LAN: `http://homepage.lan` (subdominio LAN)
+- Acceso Tailscale: `http://pi-homelab.<tailnet>.ts.net:17000` (puerto directo)
+
+Si necesitas acceso HTTPS por Tailscale, considera usar un subdominio dedicado (ej: `homepage.<tailnet>.ts.net`) en lugar de una subruta.
+
+Bloque recomendado para `/home/<user>/homelab/config/caddy/Caddyfile`:
 
 ```caddyfile
 http://homepage.lan {
 	import common_proxy
-	reverse_proxy 127.0.0.1:17000
-}
-```
-
-Si ya sigues el patrón descrito en [01-authelia.md](../04-seguridad/01-authelia.md), añade o conserva dentro del bloque HTTPS:
-
-```caddyfile
-handle_path /homepage/* {
-	import authelia_forward_auth
 	reverse_proxy 127.0.0.1:17000
 }
 ```
@@ -361,14 +358,12 @@ docker compose logs --tail=100 caddy
 Con esta topología puedes usar estas rutas:
 
 - `http://homepage.lan` dentro de la LAN
-- `https://pi-homelab.<tailnet>.ts.net/homepage/` desde Tailscale si lo publicas por Caddy
-- `http://<ip-lan-de-la-pi>:17000` como acceso directo o de emergencia
+- `http://<ip-lan-de-la-pi>:17000` como acceso directo desde LAN y Tailscale
+- `http://pi-homelab.<tailnet>.ts.net:17000` desde Tailscale
 
-No cambies las tarjetas de `services.yaml` para que apunten automaticamente a la subruta remota `/homepage/`: las tarjetas deben seguir apuntando a la URL canonica de cada servicio documentada en su propio fichero.
+No cambies las tarjetas de `services.yaml` para que apunten automaticamente a rutas remotas: las tarjetas deben seguir apuntando a la URL canonica de cada servicio documentada en su propio fichero.
 
 Si decides usar solo Caddy, puedes endurecer el servicio cambiando `HOMEPAGE_BIND_IP=127.0.0.1` y recreando el stack.
-
-<!-- TODO: verificar si en tu versión concreta de Homepage basta con `base:` en `settings.yaml` para servir correctamente bajo `/homepage/`; si aparecen rutas rotas de assets, revisar la documentación oficial antes de fijar la subruta como patrón definitivo. -->
 
 ### 6. Operación básica y mantenimiento
 
