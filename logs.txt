@@ -1,0 +1,51 @@
+$ docker compose logs --tail=50 homepage
+homepage-1  | ]
+homepage-1  | [2026-06-30T21:03:11.089Z] error: <jellyfinProxyHandler> HTTP Error 500 calling http://jellyfin.lan/Sessions
+homepage-1  | [2026-06-30T21:03:11.093Z] error: <httpProxy> Error calling http://jellyfin.lan/Items/Counts...
+homepage-1  | [2026-06-30T21:03:11.094Z] error: <httpProxy> [
+homepage-1  |   500,
+homepage-1  |   Error: queryAaaa ENOTFOUND jellyfin.lan
+homepage-1  |       at ignore-listed frames {
+homepage-1  |     errno: undefined,
+homepage-1  |     code: 'ENOTFOUND',
+homepage-1  |     syscall: 'queryAaaa',
+homepage-1  |     hostname: 'jellyfin.lan'
+homepage-1  |   }
+homepage-1  | ]
+homepage-1  | [2026-06-30T21:03:11.096Z] error: <jellyfinProxyHandler> HTTP Error 500 calling http://jellyfin.lan/Items/Counts
+homepage-1  | [2026-06-30T21:03:11.945Z] error: <httpProxy> Error calling http://jellyfin.lan/Sessions...
+homepage-1  | [2026-06-30T21:03:11.946Z] error: <httpProxy> [
+homepage-1  |   500,
+homepage-1  |   Error: queryAaaa ENOTFOUND jellyfin.lan
+homepage-1  |       at ignore-listed frames {
+homepage-1  |     errno: undefined,
+homepage-1  |     code: 'ENOTFOUND',
+homepage-1  |     syscall: 'queryAaaa',
+homepage-1  |     hostname: 'jellyfin.lan'
+homepage-1  |   }
+homepage-1  | ]
+homepage-1  | [2026-06-30T21:03:11.947Z] error: <jellyfinProxyHandler> HTTP Error 500 calling http://jellyfin.lan/Sessions
+homepage-1  | [2026-06-30T21:03:11.948Z] error: <httpProxy> Error calling http://jellyfin.lan/Items/Counts...
+homepage-1  | [2026-06-30T21:03:11.949Z] error: <httpProxy> [
+homepage-1  |   500,
+homepage-1  |   Error: queryAaaa ENOTFOUND jellyfin.lan
+homepage-1  |       at ignore-listed frames {
+homepage-1  |     errno: undefined,
+homepage-1  |     code: 'ENOTFOUND',
+homepage-1  |     syscall: 'queryAaaa',
+homepage-1  |     hostname: 'jellyfin.lan'
+homepage-1  |   }
+homepage-1  | ]
+homepage-1  | [2026-06-30T21:03:11.950Z] error: <jellyfinProxyHandler> HTTP Error 500 calling http://jellyfin.lan/Items/Counts
+homepage-1  | [2026-06-30T21:03:16.872Z] error: <httpProxy> Error calling http://jellyfin.lan/Sessions...
+homepage-1  | [2026-06-30T21:03:16.874Z] error: <httpProxy> [
+homepage-1  |   500,
+homepage-1  |   Error: queryAaaa ENOTFOUND jellyfin.lan
+homepage-1  |       at ignore-listed frames {
+homepage-1  |     errno: undefined,
+homepage-1  |     code: 'ENOTFOUND',
+homepage-1  |     syscall: 'queryAaaa',
+homepage-1  |     hostname: 'jellyfin.lan'
+homepage-1  |   }
+homepage-1  | ]
+homepage-1  | [2026-06-30T21:03:16.874Z] error: <jellyfinProxyHandler> HTTP Error 500 calling http://jellyfin.lan/Sessions
