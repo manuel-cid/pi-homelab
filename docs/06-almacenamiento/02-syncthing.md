@@ -46,7 +46,7 @@ name: files-syncthing
 
 services:
   syncthing:
-    image: lscr.io/linuxserver/syncthing:latest
+    image: linuxserver/syncthing:latest
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -82,6 +82,7 @@ Notas de diseño:
 
 - `8384/tcp` es el puerto interno por defecto de la GUI de Syncthing, pero en el host se publica como **`12000/tcp`** para respetar la convención de rangos del proyecto.
 - Solo **`/config`** es estado interno del servicio. Las rutas bajo `/data/...` son carpetas de usuario sincronizadas, no configuración de Syncthing.
+- Se usa la imagen de **Docker Hub** (`linuxserver/syncthing`) en lugar de `lscr.io` para compatibilidad con WUD, ya que WUD soporta Docker Hub por defecto sin configuración adicional. Las imágenes son idénticas en ambos registros.
 
 Si no quieres crear alguna de las carpetas de ejemplo, elimina su volumen del Compose y luego define en la UI solo las rutas que realmente vayas a usar.
 
