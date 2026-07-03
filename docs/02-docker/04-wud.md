@@ -261,6 +261,27 @@ WUD_TRIGGER_SMTP_GMAIL_FROM=tu_correo@gmail.com
 WUD_TRIGGER_SMTP_GMAIL_TO=destino@correo.com
 ```
 
+Ejemplo de variables adicionales en `.env` para notificación por Telegram:
+
+```dotenv
+WUD_TRIGGER_TELEGRAM_1_BOTTOKEN=tu_token_del_bot
+WUD_TRIGGER_TELEGRAM_1_CHATID=tu_chat_id
+```
+
+Para obtener el token del bot y el chat ID:
+
+1. Crea un bot en Telegram hablando con [@BotFather](https://t.me/BotFather):
+   - Envía `/newbot`
+   - Sigue las instrucciones para elegir nombre y usuario
+   - BotFather te devolverá el token (formato: `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
+
+2. Obtén tu chat ID:
+   - Envía un mensaje al bot que acabas de crear
+   - Accede a `https://api.telegram.org/bot<TU_TOKEN>/getUpdates` en el navegador
+   - Busca el campo `chat.id` en la respuesta JSON (es un número, normalmente de 9-10 dígitos)
+
+El formato de las variables sigue el patrón `WUD_TRIGGER_TELEGRAM_<ID>_BOTTOKEN` y `WUD_TRIGGER_TELEGRAM_<ID>_CHATID`, donde `<ID>` es un identificador que tú eliges (por ejemplo `1`, `homelab`, etc.). Esto permite configurar múltiples bots de Telegram si fuera necesario.
+
 Y añade estas variables al bloque `environment:` del servicio en el `docker-compose.yml`.
 
 Recomendaciones prácticas:
