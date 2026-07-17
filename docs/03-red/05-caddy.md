@@ -59,6 +59,7 @@ services:
       - /home/<user>/homelab/data/caddy/certs:/certs:ro
     labels:
       - wud.watch=true
+      - "wud.tag.include=^\\d+\\.\\d+\\.\\d+-alpine$$"
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/infra-caddy/.env`
