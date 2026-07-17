@@ -226,6 +226,8 @@ sudo ufw allow in on eth0 proto tcp from 192.168.1.0/24 to any port 80 comment '
 sudo ufw allow in on tailscale0 to any port 443 proto tcp comment 'Caddy HTTPS Tailscale'
 sudo ufw allow in on eth0 to any port 41641 proto udp comment 'Tailscale direct UDP'
 
+sudo ufw allow from 172.16.0.0/12 to any port 80 proto tcp comment 'Docker -> Caddy healthz (Uptime Kuma)'
+
 sudo ufw enable
 sudo ufw status verbose
 ```
@@ -233,9 +235,11 @@ sudo ufw status verbose
 Qué deja abierto esta política:
 
 - `22/tcp` en la IP del host para administración desde la LAN y desde Tailscale
-- `80/tcp` en la IP del host solo para la red local
+- `80/tcp` en la IP del host para la red local y para las redes bridge de Docker
 - `443/tcp` solo en la interfaz `tailscale0`
 - `41641/udp` en `eth0` para que Tailscale pueda establecer conectividad directa cuando sea posible
+
+La regla `from 172.16.0.0/12 to any port 80` es necesaria para que **Uptime Kuma** (y cualquier contenedor en un bridge Docker) pueda monitorizar Caddy a través de `host.docker.internal:80/healthz`. Sin ella, el tráfico del bridge Docker (`172.x`) hacia el puerto 80 del host cae en la política `default deny incoming` y el monitor falla con timeout. Es tráfico interno del host, sin exposición a la LAN ni a la WAN. Si prefieres una regla más estrecha, sustituye `172.16.0.0/12` por la subred real de `homelab_proxy` (`docker network inspect homelab_proxy -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}'`), teniendo en cuenta que Uptime Kuma puede salir por otra red bridge si está unida a varias.
 
 Qué deja cerrado:
 
@@ -279,6 +283,8 @@ table inet filter {
 
     iifname "eth0" ip saddr 192.168.1.0/24 tcp dport 22 accept
     iifname "eth0" ip saddr 192.168.1.0/24 tcp dport 80 accept
+
+    ip saddr 172.16.0.0/12 tcp dport 80 accept
 
     iifname "tailscale0" tcp dport 22 accept
     iifname "tailscale0" tcp dport 443 accept
