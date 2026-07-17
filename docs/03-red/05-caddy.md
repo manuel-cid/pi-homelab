@@ -45,7 +45,7 @@ name: infra-caddy
 
 services:
   caddy:
-    image: caddy:2.10-alpine
+    image: caddy:2.11.4-alpine
     restart: unless-stopped
     network_mode: host
     env_file:
