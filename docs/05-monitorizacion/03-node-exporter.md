@@ -41,7 +41,7 @@ name: monitoring-node-exporter
 
 services:
   node-exporter:
-    image: quay.io/prometheus/node-exporter:v1.11.1
+    image: quay.io/prometheus/node-exporter:v1.12.1
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -80,7 +80,7 @@ Archivo recomendado: `/home/<user>/homelab/compose/monitoring-node-exporter/.env
 PROXY_NETWORK=homelab_proxy
 ```
 
-La etiqueta `v1.11.1` es una opción conservadora para este homelab: fija una versión concreta de Node Exporter, evita la deriva de `latest` y mantiene manifiesto multi-arquitectura con variante `linux/arm64`. Si más adelante quieres máxima inmutabilidad, la alternativa razonable es fijar además el digest exacto del manifiesto tras validar la actualización manualmente.
+La etiqueta `v1.12.1` es una opción conservadora para este homelab: fija una versión concreta de Node Exporter, evita la deriva de `latest` y mantiene manifiesto multi-arquitectura con variante `linux/arm64`. Si más adelante quieres máxima inmutabilidad, la alternativa razonable es fijar además el digest exacto del manifiesto tras validar la actualización manualmente.
 
 Puntos importantes de este Compose:
 
