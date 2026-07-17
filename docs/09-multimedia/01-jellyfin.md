@@ -38,7 +38,7 @@ name: media-jellyfin
 
 services:
   jellyfin:
-    image: jellyfin/jellyfin:latest
+    image: jellyfin/jellyfin:10.11.11
     restart: unless-stopped
     user: "${PUID}:${PGID}"
     env_file:

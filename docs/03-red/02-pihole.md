@@ -43,7 +43,7 @@ name: infra-pihole-unbound
 
 services:
   pihole:
-    image: pihole/pihole:latest
+    image: pihole/pihole:2026.07.2
     hostname: pihole
     restart: unless-stopped
     env_file:
@@ -64,6 +64,8 @@ services:
         true,192.168.1.0/24,192.168.1.1,lan
     volumes:
       - /home/<user>/homelab/data/pihole:/etc/pihole
+    labels:
+      - "wud.tag.include=^\\d{4}\\.\\d{2}\\.\\d+$$"
 
 networks:
   dns_lan:
@@ -79,6 +81,7 @@ Notas sobre este Compose:
 - el upstream inicial usa resolutores públicos solo para bootstrap
 - cuando completes [03-unbound.md](03-unbound.md), cambia `FTLCONF_dns_upstreams` para apuntar a `192.168.1.195#5335`
 - en Pi-hole v6 basta con persistir `/etc/pihole` para un despliegue nuevo; no montes `/etc/dnsmasq.d` salvo que hayas verificado que necesitas configuración `dnsmasq` personalizada o una migración heredada
+- la etiqueta `wud.tag.include` hace que **WUD** compare contra tags con versión (`2025.08.0`, etc.) en lugar de vigilar `latest` por digest, alineando su detección con la que muestra la propia UI de Pi-hole (ver [04-wud.md](../02-docker/04-wud.md))
 
 Archivo recomendado: `/home/<user>/homelab/compose/infra-pihole-unbound/.env`
 

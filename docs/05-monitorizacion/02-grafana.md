@@ -38,7 +38,7 @@ name: monitoring-grafana
 
 services:
   grafana:
-    image: grafana/grafana:11.6.15
+    image: grafana/grafana:12.4.5
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -85,7 +85,7 @@ GRAFANA_SERVE_FROM_SUB_PATH=false
 PROXY_NETWORK=homelab_proxy
 ```
 
-La etiqueta `11.6.15` es una opción conservadora para este homelab: fija una release anual madura de Grafana 11 y evita la deriva de `latest`, manteniendo además manifiesto multi-arquitectura con variante `linux/arm64`.
+La etiqueta `12.4.5` fija una release estable de la rama Grafana 12 y evita la deriva de `latest`, manteniendo además manifiesto multi-arquitectura con variante `linux/arm64`. Al ser un salto de major desde Grafana 11, conviene revisar las notas de migración y validar los dashboards y plugins existentes tras recrear el contenedor.
 
 Puntos importantes de este Compose:
 
@@ -94,7 +94,7 @@ Puntos importantes de este Compose:
 - los datos persistentes viven en `/home/<user>/homelab/data/grafana/` sobre el **SSD NVMe**
 - el aprovisionamiento de datasource y dashboards vive fuera del contenedor, bajo `/home/<user>/homelab/config/grafana/`
 - `GF_SERVER_ROOT_URL` y `GF_SERVER_SERVE_FROM_SUB_PATH` permiten dejar preparado el acceso remoto en `https://pi-homelab.<tailnet>.ts.net/grafana/` cuando lo publiques detrás de Caddy
-- la imagen queda fijada a `grafana/grafana:11.6.15` para evitar cambios inesperados al recrear el contenedor
+- la imagen queda fijada a `grafana/grafana:12.4.5` para evitar cambios inesperados al recrear el contenedor
 - se recomienda **no** configurar triggers de actualización automática de WUD para Grafana
 
 En el `.env` anterior, el valor por defecto mantiene Grafana con acceso local directo en `http://127.0.0.1:11100/`. Cuando actives la publicación remota por Caddy en `/grafana/`, cambia estos dos valores:

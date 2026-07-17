@@ -49,7 +49,7 @@ name: monitoring-prometheus
 
 services:
   prometheus:
-    image: prom/prometheus:v3.12.0
+    image: prom/prometheus:v3.13.1
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

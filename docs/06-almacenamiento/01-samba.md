@@ -47,7 +47,7 @@ name: files-samba
 
 services:
   samba:
-    image: ghcr.io/servercontainers/samba:latest
+    image: ghcr.io/servercontainers/samba:a3.24.1-s4.23.8-r0
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -158,6 +158,7 @@ services:
       - /media/hd5t/media:/shares/library
     labels:
       - wud.watch=true
+      - "wud.tag.include=^a\\d+\\.\\d+\\.\\d+-s\\d+\\.\\d+\\.\\d+-r\\d+$$"
 ```
 
 Este Compose sigue la política general del proyecto:
