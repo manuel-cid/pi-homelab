@@ -51,7 +51,7 @@ name: infra-pihole-unbound
 
 services:
   pihole:
-    image: pihole/pihole:2026.05.0
+    image: pihole/pihole:2026.07.2
     hostname: pihole
     restart: unless-stopped
     env_file:
