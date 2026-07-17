@@ -38,7 +38,7 @@ name: media-stash
 
 services:
   stash:
-    image: stashapp/stash:latest
+    image: stashapp/stash:v0.31.1
     restart: unless-stopped
     env_file:
       - .env

@@ -51,7 +51,7 @@ name: infra-pihole-unbound
 
 services:
   pihole:
-    image: pihole/pihole:latest
+    image: pihole/pihole:2026.05.0
     hostname: pihole
     restart: unless-stopped
     env_file:
@@ -74,7 +74,7 @@ services:
       - /home/<user>/homelab/data/pihole:/etc/pihole
 
   unbound:
-    image: klutchell/unbound:latest
+    image: klutchell/unbound:1.25.1
     hostname: unbound
     restart: unless-stopped
     env_file:

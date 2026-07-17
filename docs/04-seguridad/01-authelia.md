@@ -51,7 +51,7 @@ name: auth-authelia
 
 services:
   authelia:
-    image: authelia/authelia:latest
+    image: authelia/authelia:4.39.20
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

@@ -39,7 +39,7 @@ name: infra-borgmatic
 
 services:
   borgmatic:
-    image: modem7/borgmatic-docker:latest
+    image: modem7/borgmatic-docker:2.1.6-1.4.4
     restart: unless-stopped
     env_file:
       - .env
@@ -377,7 +377,7 @@ name: infra-borgmatic
 
 services:
   borgmatic:
-    image: modem7/borgmatic-docker:latest
+    image: modem7/borgmatic-docker:2.1.6-1.4.4
     restart: unless-stopped
     env_file:
       - .env
@@ -438,7 +438,7 @@ Ejemplo alternativo en `/home/<user>/homelab/compose/infra-borgmatic/docker-comp
 ```yaml
 services:
   borgmatic:
-    image: modem7/borgmatic-docker:latest
+    image: modem7/borgmatic-docker:2.1.6-1.4.4
     restart: unless-stopped
     env_file:
       - .env

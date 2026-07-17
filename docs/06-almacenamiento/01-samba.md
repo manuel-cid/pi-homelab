@@ -47,7 +47,7 @@ name: files-samba
 
 services:
   samba:
-    image: ghcr.io/servercontainers/samba:latest
+    image: ghcr.io/servercontainers/samba:a3.22.1-s4.21.4-r4
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
