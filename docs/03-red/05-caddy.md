@@ -45,7 +45,7 @@ name: infra-caddy
 
 services:
   caddy:
-    image: caddy:2.10-alpine
+    image: caddy:2.11.4-alpine
     restart: unless-stopped
     network_mode: host
     env_file:
@@ -59,6 +59,7 @@ services:
       - /home/<user>/homelab/data/caddy/certs:/certs:ro
     labels:
       - wud.watch=true
+      - "wud.tag.include=^\\d+\\.\\d+\\.\\d+-alpine$$"
 ```
 
 Archivo recomendado: `/home/<user>/homelab/compose/infra-caddy/.env`
