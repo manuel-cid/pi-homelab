@@ -79,6 +79,7 @@ Notas sobre este Compose:
 - no se necesitan `ports:` en el bloque de Caddy porque el contenedor comparte directamente los puertos del host
 - la configuración editable queda fuera del contenedor y puede versionarse en git
 - los certificados emitidos con `tailscale cert` se montan en modo lectura desde `/home/<user>/homelab/data/caddy/certs/`
+- el bloque `http://` con `/healthz` expone un endpoint de salud que responde `200` en cualquier `Host` del puerto 80; sirve para monitorizar Caddy desde Uptime Kuma sin depender de ningún backend ni de cabeceras `Host` personalizadas
 
 ## Configuración
 
@@ -114,6 +115,18 @@ Archivo: `/home/<user>/homelab/config/caddy/Caddyfile`
 		-Server
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
+
+# Endpoint de salud para monitorizacion (Uptime Kuma).
+# Responde en cualquier Host del puerto 80 sin depender de ningun backend.
+# Los vhosts con nombre (jellyfin.lan, etc.) tienen prioridad sobre este bloque.
+http:// {
+	handle /healthz {
+		respond "ok" 200
+	}
+	handle {
+		respond "Not Found" 404
 	}
 }
 
@@ -220,6 +233,7 @@ Validaciones iniciales:
 docker compose logs --tail 50 caddy
 ss -ltnp | grep -E ':80|:443'
 curl -I -H 'Host: jellyfin.lan' http://127.0.0.1
+curl -i http://127.0.0.1/healthz
 ```
 
 El resultado esperado es:
