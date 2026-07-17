@@ -53,8 +53,6 @@ services:
       - no-new-privileges:true
     env_file:
       - .env
-    labels:
-      - "wud.tag.include=^a\\d+\\.\\d+\\.\\d+-s\\d+\\.\\d+\\.\\d+-r\\d+$$"
     ports:
       - "${SAMBA_BIND_IP}:137:137/udp"
       - "${SAMBA_BIND_IP}:138:138/udp"
@@ -160,6 +158,7 @@ services:
       - /media/hd5t/media:/shares/library
     labels:
       - wud.watch=true
+      - "wud.tag.include=^a\\d+\\.\\d+\\.\\d+-s\\d+\\.\\d+\\.\\d+-r\\d+$$"
 ```
 
 Este Compose sigue la política general del proyecto:

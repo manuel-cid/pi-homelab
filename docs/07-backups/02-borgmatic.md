@@ -66,6 +66,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
       - wud.watch=true
+      - "wud.tag.include=^\\d+\\.\\d+\\.\\d+-\\d+\\.\\d+\\.\\d+$$"
 
 secrets:
   postgres_backup_password:
