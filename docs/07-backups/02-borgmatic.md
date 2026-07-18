@@ -60,6 +60,7 @@ services:
       - ${ROOT_DIR}/.env:/source/homelab/.env:ro
       - /media/hd2t/backups/borg:/mnt/borg-repository
       - /media/hd2t/backups/exports:/mnt/borg-exports
+      - /media/hd2t/backups/restore-test:/mnt/restore-test
       - ${DATA_ROOT}/borgmatic/cache:/root/.cache/borg
       - ${DATA_ROOT}/borgmatic/state:/var/lib/borgmatic
       - ${DATA_ROOT}/borgmatic/runtime:/run/borgmatic
@@ -93,6 +94,7 @@ Puntos importantes del stack:
 - los orígenes a respaldar se montan en modo **solo lectura**
 - el repositorio local Borg vive en **`/media/hd2t/backups/borg/`**
 - el directorio `exports/` sirve como área de trabajo para dumps y exportaciones auxiliares que luego también quedan incorporados al backup lógico
+- el directorio `restore-test/` se monta en **`/mnt/restore-test`** para que `borgmatic extract` pueda escribir restauraciones de prueba desde dentro del contenedor sin tocar producción; es el destino recomendado por [03-backup-docker-volumes.md](03-backup-docker-volumes.md) y **no** debe estar en `source_directories` para no respaldar restauraciones sobre sí mismas
 - se monta el **socket Docker** para que los hooks o los data sources puedan ejecutar dumps en contenedores de PostgreSQL/MariaDB
 - este Compose base no publica puertos ni incorpora un programador propio; la ejecución periódica se dispara desde el host
 - se fija **`hostname: homelab`** (el hostname real del host) para que `{hostname}` en la ruta del repositorio sea estable; sin esto Docker asigna el ID del contenedor como hostname y la ruta del repo cambia en cada recreación del contenedor, provocando errores `Repository does not exist`
@@ -229,6 +231,7 @@ exclude_patterns:
   - /source/homelab/data/*/logs/*.log
   - /source/homelab/data/*/www/admin/api/sessions/*
   - /source/homelab/data/*/Library/Application Support/*/Cache
+  - /source/homelab/data/borgmatic
 
 keep_daily: 14
 keep_weekly: 8
@@ -312,6 +315,7 @@ Notas operativas sobre este ejemplo:
 - el repositorio local se crea bajo **`/media/hd2t/backups/borg/<hostname>/`**
 - `{hostname}` se resuelve al hostname del contenedor; por eso el stack fija **`hostname: homelab`** en el Compose para que la ruta del repositorio no cambie al recrear el contenedor
 - dentro del contenedor, los dumps previos se escriben en **`/mnt/borg-exports/`**, que corresponde a **`/media/hd2t/backups/exports/`** en el host
+- se excluye **`/source/homelab/data/borgmatic`** porque el propio estado, caché y runtime de Borgmatic viven bajo `data/` y no deben respaldarse a sí mismos; son recreables y el `runtime/` es efímero durante `create`. Lo crítico de Borgmatic (config, hooks, keys, passphrase) ya se respalda vía `config/`
 - los bloques `postgresql_databases`, `mariadb_databases` y `sqlite_databases` son una plantilla base; elimina lo que no uses
 - los nombres de `container:` deben coincidir con los nombres reales que ve Docker en tu despliegue; en este proyecto eso significa normalmente el nombre generado por Compose, no un alias genérico como `postgres` o `mariadb`
 - `paperless-ngx-db-1` y `productivity-app-mariadb-1` son ejemplos coherentes con la convención de nombres del repositorio, no valores universales
@@ -724,6 +728,8 @@ Distribución recomendada de este servicio:
   - `/media/hd2t/backups/borg/`
 - **Exports auxiliares**
   - `/media/hd2t/backups/exports/`
+- **Restauraciones de prueba**
+  - `/media/hd2t/backups/restore-test/` montado en el contenedor como `/mnt/restore-test`
 
 Regla importante:
 
