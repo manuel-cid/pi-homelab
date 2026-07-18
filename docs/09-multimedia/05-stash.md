@@ -377,6 +377,72 @@ Secuencia práctica recomendada:
 2. ejecutar el backup desde **Settings -> Tasks**
 3. respaldar además `config/`, `metadata/` y, si no los incluyes en el backup UI, también `blobs/`
 
+### Backup automático de la base de datos con cron
+
+Stash no incluye un programador propio para la tarea de backup, así que la copia consistente de la base SQLite se automatiza desde el **host** llamando a la API GraphQL de Stash justo **antes** de la ventana de Borgmatic, que corre a las 02:30 según [02-borgmatic.md](../07-backups/02-borgmatic.md). Así el `.sqlite` consistente ya existe cuando Borgmatic lee los ficheros del SSD.
+
+Este enfoque respeta el aviso de que **no se debe copiar la base SQLite en caliente**: es el propio Stash quien genera una copia consistente en modo `WAL`, y Borgmatic solo la incorpora como un fichero más del backup de `metadata/`.
+
+Requisitos previos:
+
+- tener configurado en la UI **Settings -> System -> Backup Directory Path** como `/metadata/backups`
+- tener creado el directorio de backup en el host
+
+```bash
+mkdir -p /home/<user>/homelab/data/stash/metadata/backups
+```
+
+Prueba manual de la mutación antes de automatizar:
+
+```bash
+curl -s -X POST http://127.0.0.1:14004/graphql \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"mutation{backupDatabase(input:{download:false})}"}'
+```
+
+Si Stash tiene autenticación activada, añade tu API key:
+
+```bash
+curl -s -X POST http://127.0.0.1:14004/graphql \
+  -H 'Content-Type: application/json' \
+  -H 'ApiKey: <STASH_API_KEY>' \
+  -d '{"query":"mutation{backupDatabase(input:{download:false})}"}'
+```
+
+Verifica que se genera el fichero:
+
+```bash
+ls -lh /home/<user>/homelab/data/stash/metadata/backups
+```
+
+Crea el archivo `/etc/cron.d/homelab-stash-backup`:
+
+```bash
+sudo tee /etc/cron.d/homelab-stash-backup > /dev/null << 'EOF'
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# backup consistente de la base SQLite de Stash antes de Borgmatic (02:30)
+15 2 * * * root curl -s -X POST http://127.0.0.1:14004/graphql -H 'Content-Type: application/json' -d '{"query":"mutation{backupDatabase(input:{download:false})}"}' > /dev/null
+# limpieza de backups de Stash con mas de 14 dias
+20 2 * * * root find /home/<user>/homelab/data/stash/metadata/backups -type f -name '*.sqlite' -mtime +14 -delete
+EOF
+```
+
+Verifica que se ha creado correctamente:
+
+```bash
+cat /etc/cron.d/homelab-stash-backup
+```
+
+Notas importantes:
+
+- igual que en Borgmatic, los ficheros de `/etc/cron.d/` requieren el campo extra de usuario (`root`) entre el schedule y el comando, y el archivo debe terminar con una línea en blanco final para que `cron` lo procese
+- programa el backup de Stash **antes** de las 02:30 para que la copia consistente exista cuando Borgmatic empiece a leer los datos
+- Borgmatic incorpora automáticamente el `.sqlite` resultante porque `metadata/` entra en el backup de ficheros; con este enfoque **no** hace falta añadir Stash al bloque `sqlite_databases` de Borgmatic
+- si usas `STASH_BIND_IP=0.0.0.0`, ajusta la URL del cron al valor accesible; con `127.0.0.1` el cron del host llega bien porque se ejecuta en la propia Raspberry Pi
+- ajusta la retención `-mtime +14` a tu política de espacio en el SSD NVMe
+
 ## Referencias
 
 - Documentación oficial de Stash: https://docs.stashapp.cc
