@@ -41,6 +41,7 @@ services:
   borgmatic:
     image: modem7/borgmatic-docker:2.1.6-1.4.4
     restart: unless-stopped
+    hostname: homelab
     env_file:
       - .env
     environment:
@@ -94,6 +95,7 @@ Puntos importantes del stack:
 - el directorio `exports/` sirve como área de trabajo para dumps y exportaciones auxiliares que luego también quedan incorporados al backup lógico
 - se monta el **socket Docker** para que los hooks o los data sources puedan ejecutar dumps en contenedores de PostgreSQL/MariaDB
 - este Compose base no publica puertos ni incorpora un programador propio; la ejecución periódica se dispara desde el host
+- se fija **`hostname: homelab`** (el hostname real del host) para que `{hostname}` en la ruta del repositorio sea estable; sin esto Docker asigna el ID del contenedor como hostname y la ruta del repo cambia en cada recreación del contenedor, provocando errores `Repository does not exist`
 
 ## Configuración
 
@@ -308,6 +310,7 @@ apprise:
 Notas operativas sobre este ejemplo:
 
 - el repositorio local se crea bajo **`/media/hd2t/backups/borg/<hostname>/`**
+- `{hostname}` se resuelve al hostname del contenedor; por eso el stack fija **`hostname: homelab`** en el Compose para que la ruta del repositorio no cambie al recrear el contenedor
 - dentro del contenedor, los dumps previos se escriben en **`/mnt/borg-exports/`**, que corresponde a **`/media/hd2t/backups/exports/`** en el host
 - los bloques `postgresql_databases`, `mariadb_databases` y `sqlite_databases` son una plantilla base; elimina lo que no uses
 - los nombres de `container:` deben coincidir con los nombres reales que ve Docker en tu despliegue; en este proyecto eso significa normalmente el nombre generado por Compose, no un alias genérico como `postgres` o `mariadb`
@@ -380,6 +383,7 @@ services:
   borgmatic:
     image: modem7/borgmatic-docker:2.1.6-1.4.4
     restart: unless-stopped
+    hostname: homelab
     env_file:
       - .env
     environment:
@@ -441,6 +445,7 @@ services:
   borgmatic:
     image: modem7/borgmatic-docker:2.1.6-1.4.4
     restart: unless-stopped
+    hostname: homelab
     env_file:
       - .env
       - .env.secrets
@@ -673,7 +678,7 @@ Ejemplo mínimo de segundo fichero de configuración para el destino remoto:
 
 ```yaml
 repositories:
-  - path: ssh://borg@backup-remoto/./rpi5-homelab
+  - path: ssh://borg@backup-remoto/./homelab
     label: offsite
     encryption: repokey-blake2
 
