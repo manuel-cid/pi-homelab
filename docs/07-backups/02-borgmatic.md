@@ -712,7 +712,32 @@ Objetivo de esta secuencia:
 - ejecutar una primera copia manual
 - confirmar que aparecen archivos y archivos de control en el repositorio
 
-### 6. Añadir destino offsite sin romper la operativa local
+#### Exportar y custodiar la clave del repositorio
+
+Al ejecutar `repo-create`, Borg muestra el aviso `IMPORTANT: you will need both KEY AND PASSPHRASE to access this repo!`. Es un mensaje **genérico** para todos los modos de cifrado.
+
+En modo `repokey-blake2` la **clave se guarda dentro del propio repositorio**, así que para el uso diario **basta con la passphrase**: la clave viaja siempre con el repo. El riesgo real aparece en recuperación ante desastres: si el repositorio se pierde o su cabecera se corrompe, la passphrase por sí sola **no reconstruye la clave** y perderías el acceso a los backups.
+
+Por eso, guarda **por separado y fuera del homelab** dos cosas: la passphrase y una exportación de la clave.
+
+```bash
+# Exportar la clave a un fichero
+docker compose exec borgmatic borg key export /mnt/borg-repository/homelab /root/borg-key-export.txt
+
+# Sacar el fichero del contenedor al host
+docker compose cp borgmatic:/root/borg-key-export.txt ./borg-key-export.txt
+
+# (opcional) versión imprimible en papel
+docker compose exec borgmatic borg key export --paper /mnt/borg-repository/homelab
+```
+
+Reglas de custodia:
+
+- guarda `borg-key-export.txt` en un gestor de contraseñas, USB offline o en papel; **nunca** dentro del propio repositorio ni junto al disco `hd2t`
+- elimina la copia temporal del host tras trasladarla a su ubicación segura
+- vuelve a exportar la clave si en algún momento la cambias con `borg key change-passphrase`
+
+### 7. Añadir destino offsite sin romper la operativa local
 
 La estrategia offsite pertenece al criterio 3-2-1 descrito en [01-estrategia-backup.md](01-estrategia-backup.md). La recomendación práctica aquí es:
 
