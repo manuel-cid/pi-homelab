@@ -211,7 +211,7 @@ repositories:
     label: local
     encryption: repokey-blake2
 
-archive_name_format: "{hostname}-homelab-{now:%Y-%m-%dT%H:%M:%S}"
+archive_name_format: "{hostname}-{now:%Y-%m-%dT%H:%M:%S}"
 compression: zstd,6
 one_file_system: true
 numeric_ids: true
