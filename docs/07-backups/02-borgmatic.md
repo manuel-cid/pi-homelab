@@ -676,7 +676,24 @@ Qué no debe hacer:
 - detener todo el stack Docker sin necesidad
 - borrar dumps recientes antes de validar el backup
 
-### 5. Inicializar y validar el repositorio local
+### 5. Definir la passphrase del repositorio
+
+El repositorio se crea cifrado (`encryption: repokey-blake2`), por lo que Borg necesita una passphrase que proteja la clave del repositorio. Borgmatic la obtiene ejecutando `encryption_passcommand: cat /etc/borgmatic.d/keys/repository-passphrase`, es decir, lee el contenido del fichero `keys/repository-passphrase`.
+
+En el paso 1 ese fichero se crea **vacío** con `touch`. Debes rellenarlo con una passphrase fuerte **antes** de ejecutar `repo-create`; si lo dejas vacío, crearías un repositorio sin protección real.
+
+```bash
+# Generar una passphrase fuerte y guardarla en el fichero de secreto
+openssl rand -base64 48 > /home/<user>/homelab/config/borgmatic/keys/repository-passphrase
+chmod 600 /home/<user>/homelab/config/borgmatic/keys/repository-passphrase
+```
+
+Regla crítica:
+
+- **guarda además una copia de la passphrase fuera del homelab** (gestor de contraseñas o copia offline); si la pierdes, pierdes el acceso a **todos** los backups y no hay forma de recuperarlos
+- no cambies la passphrase después de crear el repositorio sin usar el procedimiento propio de Borg (`borg key change-passphrase`); el fichero por sí solo no re-cifra la clave existente
+
+### 6. Inicializar y validar el repositorio local
 
 Desde `/home/<user>/homelab/compose/infra-borgmatic/`:
 
@@ -729,7 +746,7 @@ Regla operativa importante:
 
 <!-- TODO: verificar un ejemplo cerrado de `include:` compatible con la versión concreta de Borgmatic que se fije finalmente en el stack. -->
 
-### 7. Verificar que la automatización funciona
+### 8. Verificar que la automatización funciona
 
 Comprobaciones mínimas después del despliegue:
 
