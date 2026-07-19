@@ -600,6 +600,36 @@ cat /etc/cron.d/homelab-borgmatic
 
 Si necesitas separar retención o ventana de ejecución entre **local** y **offsite**, usa un segundo fichero de configuración de Borgmatic en vez de mezclar políticas incompatibles en la misma rutina.
 
+#### Indicar en el mensaje de Telegram qué tarea se ha ejecutado
+
+El bloque `apprise` de `config.yaml` usa textos **estáticos** (`start.body`, `finish.body`, `fail.body`) y **no soporta interpolar el nombre de la acción** (`create`, `prune`, `compact`, `check`) dentro del mensaje. Las variables de interpolación (`{repository}`, `{configuration_filename}`, etc.) solo existen en los *command hooks*, no en el hook de Apprise.
+
+Como cada línea de `/etc/cron.d/homelab-borgmatic` ejecuta **una sola acción**, la vía más limpia es sobreescribir el texto de la notificación por tarea con el flag global **`--override`** de Borgmatic. Así cada cron envía su propio mensaje identificable a Telegram sin tocar `config.yaml`.
+
+```bash
+sudo tee /etc/cron.d/homelab-borgmatic > /dev/null << 'EOF'
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# backup diario a las 02:30
+30 2 * * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.title="borgmatic · create" apprise.finish.title="borgmatic · create" apprise.fail.title="borgmatic · create" --stats --list --verbosity 1 create
+# prune semanal (domingo 04:30)
+30 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.title="borgmatic · prune" apprise.finish.title="borgmatic · prune" apprise.fail.title="borgmatic · prune" --stats --list --verbosity 1 prune
+# compact después del prune (domingo 04:45)
+45 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.title="borgmatic · compact" apprise.finish.title="borgmatic · compact" apprise.fail.title="borgmatic · compact" --verbosity 1 compact
+# check mensual de repositorio y archivos (día 1, 05:00)
+0 5 1 * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.title="borgmatic · check" apprise.finish.title="borgmatic · check" apprise.fail.title="borgmatic · check" --verbosity 1 check --only repository --only archives
+EOF
+```
+
+Notas sobre este enfoque:
+
+- `--override` es un flag **global**, así que debe ir **antes** del nombre de la acción (`create`, `prune`, etc.)
+- un único `--override` admite **varios pares** `clave=valor` separados por espacios; aquí se sobreescriben los tres estados (`start`, `finish`, `fail`) para que el mensaje sea identificable pase lo que pase
+- se sobreescribe `title` en lugar de `body` porque en Telegram el título encabeza el mensaje y así se conserva el `body` con el detalle y los logs (`send_logs: true`)
+- si prefieres diferenciar por `body`, cambia las claves a `apprise.start.body`, `apprise.finish.body` y `apprise.fail.body`
+- alternativa más flexible pero más compleja: usar *command hooks* (`commands:` con `after: action` y `when: [create]`, `when: [prune]`, etc.) que ejecuten un script propio de notificación; permite interpolar `{repository}` y `{configuration_filename}`, a costa de duplicar la lógica de envío fuera de Apprise
+
 ### 4. Preparar los hooks
 
 Archivo: `/home/<user>/homelab/config/borgmatic/hooks/pre-backup.sh`
