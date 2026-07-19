@@ -612,21 +612,21 @@ SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # backup diario a las 02:30
-30 2 * * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.title="borgmatic · create" --override apprise.finish.title="borgmatic · create" --override apprise.fail.title="borgmatic · create" --stats --list --verbosity 1 create
+30 2 * * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.body="create · iniciado" --override apprise.finish.body="create · completado" --override apprise.fail.body="create · fallido" --stats --list --verbosity 1 create
 # prune semanal (domingo 04:30)
-30 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.title="borgmatic · prune" --override apprise.finish.title="borgmatic · prune" --override apprise.fail.title="borgmatic · prune" --stats --list --verbosity 1 prune
+30 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.body="prune · iniciado" --override apprise.finish.body="prune · completado" --override apprise.fail.body="prune · fallido" --stats --list --verbosity 1 prune
 # compact después del prune (domingo 04:45)
-45 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.title="borgmatic · compact" --override apprise.finish.title="borgmatic · compact" --override apprise.fail.title="borgmatic · compact" --verbosity 1 compact
+45 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.body="compact · iniciado" --override apprise.finish.body="compact · completado" --override apprise.fail.body="compact · fallido" --verbosity 1 compact
 # check mensual de repositorio y archivos (día 1, 05:00)
-0 5 1 * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.title="borgmatic · check" --override apprise.finish.title="borgmatic · check" --override apprise.fail.title="borgmatic · check" --verbosity 1 check --only repository --only archives
+0 5 1 * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.body="check · iniciado" --override apprise.finish.body="check · completado" --override apprise.fail.body="check · fallido" --verbosity 1 check --only repository --only archives
 EOF
 ```
 
 Notas sobre este enfoque:
 
 - `--override` es un flag **global**, así que debe ir **antes** del nombre de la acción (`create`, `prune`, etc.)
-- se sobreescribe `title` en lugar de `body` porque en Telegram el título encabeza el mensaje y así se conserva el `body` con el detalle y los logs (`send_logs: true`)
-- si prefieres diferenciar por `body`, cambia las claves a `apprise.start.body`, `apprise.finish.body` y `apprise.fail.body`
+- se sobreescribe **`body`** (no `title`) porque es el texto que Telegram muestra siempre; con `format=text` el `title` puede no aparecer de forma evidente
+- los logs (`send_logs: true`) se siguen añadiendo **después** del `body`, así que no se pierde el detalle
 - alternativa más flexible pero más compleja: usar *command hooks* (`commands:` con `after: action` y `when: [create]`, `when: [prune]`, etc.) que ejecuten un script propio de notificación; permite interpolar `{repository}` y `{configuration_filename}`, a costa de duplicar la lógica de envío fuera de Apprise
 
 ### 4. Preparar los hooks
