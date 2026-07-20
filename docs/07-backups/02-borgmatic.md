@@ -385,7 +385,7 @@ name: infra-borgmatic
 
 services:
   borgmatic:
-    image: modem7/borgmatic-docker:2.1.6-1.4.4
+    image: modem7/borgmatic-docker:2.1.6-1.4.5
     restart: unless-stopped
     hostname: homelab
     env_file:
@@ -447,7 +447,7 @@ Ejemplo alternativo en `/home/<user>/homelab/compose/infra-borgmatic/docker-comp
 ```yaml
 services:
   borgmatic:
-    image: modem7/borgmatic-docker:2.1.6-1.4.4
+    image: modem7/borgmatic-docker:2.1.6-1.4.5
     restart: unless-stopped
     hostname: homelab
     env_file:
