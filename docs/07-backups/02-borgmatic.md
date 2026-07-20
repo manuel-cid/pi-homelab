@@ -39,7 +39,7 @@ name: infra-borgmatic
 
 services:
   borgmatic:
-    image: modem7/borgmatic-docker:2.1.6-1.4.4
+    image: modem7/borgmatic-docker:2.1.6-1.4.5****
     restart: unless-stopped
     hostname: homelab
     env_file:
@@ -604,7 +604,7 @@ Si necesitas separar retención o ventana de ejecución entre **local** y **offs
 
 El bloque `apprise` de `config.yaml` usa textos **estáticos** (`start.body`, `finish.body`, `fail.body`) y **no soporta interpolar el nombre de la acción** (`create`, `prune`, `compact`, `check`) dentro del mensaje. Las variables de interpolación (`{repository}`, `{configuration_filename}`, etc.) solo existen en los *command hooks*, no en el hook de Apprise.
 
-Como cada línea de `/etc/cron.d/homelab-borgmatic` ejecuta **una sola acción**, la vía más limpia es sobreescribir el texto de la notificación por tarea con el flag global **`--override`** de Borgmatic. Así cada cron envía su propio mensaje identificable a Telegram sin tocar `config.yaml`.
+Como cada línea de `/etc/cron.d/homelab-borgmatic` ejecuta **una sola acción**, la vía más limpia es sobreescribir el texto de la notificación por tarea con el command-line flag correspondiente de Borgmatic. Así cada cron envía su propio mensaje identificable a Telegram sin tocar `config.yaml`.
 
 ```bash
 sudo tee /etc/cron.d/homelab-borgmatic > /dev/null << 'EOF'
@@ -612,13 +612,13 @@ SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # backup diario a las 02:30
-30 2 * * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.body="create · iniciado" --override apprise.finish.body="create · completado" --override apprise.fail.body="create · fallido" --stats --list --verbosity 1 create
+30 2 * * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.title "📦 Borgmatic create Started 📦" --apprise.finish.title "📦 Borgmatic create Finished 📦" --apprise.fail.title "📦 Borgmatic create Failed 📦" --stats --list --verbosity 1 create
 # prune semanal (domingo 04:30)
-30 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.body="prune · iniciado" --override apprise.finish.body="prune · completado" --override apprise.fail.body="prune · fallido" --stats --list --verbosity 1 prune
+30 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.title "📦 Borgmatic prune Started 📦" --apprise.finish.title "📦 Borgmatic prune Finished 📦" --apprise.fail.title "📦 Borgmatic prune Failed 📦" --stats --list --verbosity 1 prune
 # compact después del prune (domingo 04:45)
-45 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.body="compact · iniciado" --override apprise.finish.body="compact · completado" --override apprise.fail.body="compact · fallido" --verbosity 1 compact
+45 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.title "📦 Borgmatic compact Started 📦" --apprise.finish.title "📦 Borgmatic compact Finished 📦" --apprise.fail.title "📦 Borgmatic compact Failed 📦" --verbosity 1 compact
 # check mensual de repositorio y archivos (día 1, 05:00)
-0 5 1 * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --override apprise.start.body="check · iniciado" --override apprise.finish.body="check · completado" --override apprise.fail.body="check · fallido" --verbosity 1 check --only repository --only archives
+0 5 1 * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.title "📦 Borgmatic check Started 📦" --apprise.finish.title "📦 Borgmatic check Finished 📦" --apprise.fail.title "📦 Borgmatic check Failed 📦" --verbosity 1 check --only repository --only archives
 EOF
 ```
 
