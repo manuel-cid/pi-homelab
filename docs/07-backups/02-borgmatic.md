@@ -588,7 +588,6 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # check mensual de repositorio y archivos (día 1, 05:00)
 0 5 1 * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.body "Check started" --apprise.finish.body "Check finished " --apprise.fail.body "Check failed " --verbosity 1 check --only repository --only archives
 EOF
-
 ```
 
 Verifica que se ha creado correctamente:
