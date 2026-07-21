@@ -580,14 +580,15 @@ SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # backup diario a las 02:30
-30 2 * * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --stats --list --verbosity 1 create
+30 2 * * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.body "Create started" --apprise.finish.body "Create finished" --apprise.fail.body "Create failed" --stats --list --verbosity 1 create
 # prune semanal (domingo 04:30)
-30 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --stats --list --verbosity 1 prune
+30 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.body "Prune started" --apprise.finish.body "Prune finished" --apprise.fail.body "Prune failed " --stats --list --verbosity 1 prune
 # compact después del prune (domingo 04:45)
-45 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --verbosity 1 compact
+45 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.body "Compact started" --apprise.finish.body "Compact finished" --apprise.fail.body "Compact failed" --verbosity 1 compact
 # check mensual de repositorio y archivos (día 1, 05:00)
-0 5 1 * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --verbosity 1 check --only repository --only archives
+0 5 1 * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.body "Check started" --apprise.finish.body "Check finished " --apprise.fail.body "Check failed " --verbosity 1 check --only repository --only archives
 EOF
+
 ```
 
 Verifica que se ha creado correctamente:
