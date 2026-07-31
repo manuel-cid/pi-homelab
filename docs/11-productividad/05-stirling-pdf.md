@@ -48,7 +48,7 @@ services:
     ports:
       - "${STIRLING_BIND_IP}:${STIRLING_PORT}:8080"
     tmpfs:
-      - /tmp
+      - /tmp:exec,mode=1777
       - /configs
       - /logs
       - /pipeline
@@ -74,6 +74,7 @@ Notas sobre este Compose:
 - `SECURITY_ENABLELOGIN=false` deja la interfaz sin autenticación local ni usuarios persistentes, algo aceptable aquí solo porque el servicio queda limitado a **LAN + Tailscale**
 - `DISABLE_ADDITIONAL_FEATURES=false` mantiene disponibles las funciones extra de la imagen estándar aunque el login esté desactivado
 - `tmpfs` en `/tmp`, `/configs`, `/logs` y `/pipeline` fuerza el carácter **stateless** del servicio: nada de lo que se genere ahí sobrevive a una recreación o reinicio del contenedor
+- `/tmp` se monta con la opción `exec` de forma **deliberada**: desde la versión `2.12.0` Stirling PDF usa la librería nativa **JPDFium** (unir, dividir, etc.), que se extrae en runtime a `/tmp/stirling-pdf/jpdfium-*/` y se carga con `System.load()`; Docker monta los `tmpfs` con `noexec` por defecto, así que sin `exec` el kernel bloquea la carga y esas operaciones fallan (los demás `tmpfs` sí pueden quedarse con el `noexec` implícito)
 - no se usan bind mounts sobre el **SSD NVMe** porque este servicio no necesita persistencia
 - WUD puede monitorizar este servicio sin riesgo porque es fácil de recrear y no arrastra estado propio
 - se fija `stirlingtools/stirling-pdf:2.14.2` para evitar `latest` y mantener las actualizaciones bajo control
@@ -113,6 +114,8 @@ Validaciones rápidas:
 curl -I http://127.0.0.1:16004/
 docker compose exec stirling-pdf sh -c 'mount | grep -E "/configs|/logs|/tmp|/pipeline"'
 ```
+
+En la salida del `mount`, la línea de `/tmp` debe incluir `exec` (no `noexec`); si aparece `noexec`, las operaciones basadas en JPDFium (unir, dividir, etc.) fallarán.
 
 Si todo ha arrancado bien, la UI quedará accesible en una de estas URLs:
 
