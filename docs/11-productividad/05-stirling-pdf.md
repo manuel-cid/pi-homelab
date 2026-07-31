@@ -36,7 +36,7 @@ name: productivity-stirling-pdf
 
 services:
   stirling-pdf:
-    image: stirlingtools/stirling-pdf:2.10.1
+    image: stirlingtools/stirling-pdf:2.14.2
     restart: unless-stopped
     env_file:
       - .env
@@ -76,11 +76,10 @@ Notas sobre este Compose:
 - `tmpfs` en `/tmp`, `/configs`, `/logs` y `/pipeline` fuerza el carácter **stateless** del servicio: nada de lo que se genere ahí sobrevive a una recreación o reinicio del contenedor
 - no se usan bind mounts sobre el **SSD NVMe** porque este servicio no necesita persistencia
 - WUD puede monitorizar este servicio sin riesgo porque es fácil de recrear y no arrastra estado propio
-- se fija `stirlingtools/stirling-pdf:2.10.1` para evitar `latest` y mantener las actualizaciones bajo control
+- se fija `stirlingtools/stirling-pdf:2.14.2` para evitar `latest` y mantener las actualizaciones bajo control
 - antes de desplegar o actualizar, verifica en las referencias oficiales que la etiqueta elegida sigue disponible para `linux/arm64` y decide conscientemente si quieres mantenerla o moverla
 - alternativa razonable si priorizas ahorro de espacio y solo necesitas operaciones PDF básicas: usar una variante `ultra-lite` de la misma versión fijada
 - alternativa razonable si necesitas conversiones más completas, tipografías extra y un paquete más autosuficiente: usar una variante `fat` de la misma versión fijada
-<!-- TODO: verificar periódicamente qué etiqueta concreta de Stirling PDF queda validada para ARM64 en este homelab antes de cambiar la versión fijada. -->
 
 ## Configuración
 
