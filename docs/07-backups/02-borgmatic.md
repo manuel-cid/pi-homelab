@@ -39,7 +39,7 @@ name: infra-borgmatic
 
 services:
   borgmatic:
-    image: modem7/borgmatic-docker:2.1.6-1.4.4
+    image: modem7/borgmatic-docker:2.1.6-1.4.5
     restart: unless-stopped
     hostname: homelab
     env_file:
@@ -211,7 +211,7 @@ repositories:
     label: local
     encryption: repokey-blake2
 
-archive_name_format: "{hostname}-homelab-{now:%Y-%m-%dT%H:%M:%S}"
+archive_name_format: "{hostname}-{now:%Y-%m-%dT%H:%M:%S}"
 compression: zstd,6
 one_file_system: true
 numeric_ids: true
@@ -385,7 +385,7 @@ name: infra-borgmatic
 
 services:
   borgmatic:
-    image: modem7/borgmatic-docker:2.1.6-1.4.4
+    image: modem7/borgmatic-docker:2.1.6-1.4.5
     restart: unless-stopped
     hostname: homelab
     env_file:
@@ -447,7 +447,7 @@ Ejemplo alternativo en `/home/<user>/homelab/compose/infra-borgmatic/docker-comp
 ```yaml
 services:
   borgmatic:
-    image: modem7/borgmatic-docker:2.1.6-1.4.4
+    image: modem7/borgmatic-docker:2.1.6-1.4.5
     restart: unless-stopped
     hostname: homelab
     env_file:
@@ -580,13 +580,13 @@ SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # backup diario a las 02:30
-30 2 * * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --stats --list --verbosity 1 create
+30 2 * * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.body "Create started" --apprise.finish.body "Create finished" --apprise.fail.body "Create failed" --stats --list --verbosity 1 create
 # prune semanal (domingo 04:30)
-30 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --stats --list --verbosity 1 prune
+30 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.body "Prune started" --apprise.finish.body "Prune finished" --apprise.fail.body "Prune failed " --stats --list --verbosity 1 prune
 # compact después del prune (domingo 04:45)
-45 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --verbosity 1 compact
+45 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.body "Compact started" --apprise.finish.body "Compact finished" --apprise.fail.body "Compact failed" --verbosity 1 compact
 # check mensual de repositorio y archivos (día 1, 05:00)
-0 5 1 * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --verbosity 1 check --only repository --only archives
+0 5 1 * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.body "Check started" --apprise.finish.body "Check finished " --apprise.fail.body "Check failed " --verbosity 1 check --only repository --only archives
 EOF
 ```
 
@@ -599,6 +599,35 @@ cat /etc/cron.d/homelab-borgmatic
 > **Nota sobre el formato `/etc/cron.d/`:** a diferencia de `crontab -e`, los archivos en `/etc/cron.d/` requieren un campo extra con el **usuario** (`root`) entre el schedule y el comando. El archivo debe terminar con una línea en blanco o un salto de línea final para que `cron` lo procese correctamente.
 
 Si necesitas separar retención o ventana de ejecución entre **local** y **offsite**, usa un segundo fichero de configuración de Borgmatic en vez de mezclar políticas incompatibles en la misma rutina.
+
+#### Indicar en el mensaje de Telegram qué tarea se ha ejecutado
+
+El bloque `apprise` de `config.yaml` usa textos **estáticos** (`start.body`, `finish.body`, `fail.body`) y **no soporta interpolar el nombre de la acción** (`create`, `prune`, `compact`, `check`) dentro del mensaje. Las variables de interpolación (`{repository}`, `{configuration_filename}`, etc.) solo existen en los *command hooks*, no en el hook de Apprise.
+
+Como cada línea de `/etc/cron.d/homelab-borgmatic` ejecuta **una sola acción**, la vía más limpia es sobreescribir el texto de la notificación por tarea con el command-line flag correspondiente de Borgmatic. Así cada cron envía su propio mensaje identificable a Telegram sin tocar `config.yaml`.
+
+```bash
+sudo tee /etc/cron.d/homelab-borgmatic > /dev/null << 'EOF'
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# backup diario a las 02:30
+30 2 * * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.title "📦 Borgmatic create Started 📦" --apprise.finish.title "📦 Borgmatic create Finished 📦" --apprise.fail.title "📦 Borgmatic create Failed 📦" --stats --list --verbosity 1 create
+# prune semanal (domingo 04:30)
+30 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.title "📦 Borgmatic prune Started 📦" --apprise.finish.title "📦 Borgmatic prune Finished 📦" --apprise.fail.title "📦 Borgmatic prune Failed 📦" --stats --list --verbosity 1 prune
+# compact después del prune (domingo 04:45)
+45 4 * * 0 root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.title "📦 Borgmatic compact Started 📦" --apprise.finish.title "📦 Borgmatic compact Finished 📦" --apprise.fail.title "📦 Borgmatic compact Failed 📦" --verbosity 1 compact
+# check mensual de repositorio y archivos (día 1, 05:00)
+0 5 1 * * root cd /home/<user>/homelab/compose/infra-borgmatic && docker compose exec -T borgmatic borgmatic --apprise.start.title "📦 Borgmatic check Started 📦" --apprise.finish.title "📦 Borgmatic check Finished 📦" --apprise.fail.title "📦 Borgmatic check Failed 📦" --verbosity 1 check --only repository --only archives
+EOF
+```
+
+Notas sobre este enfoque:
+
+- `--override` es un flag **global**, así que debe ir **antes** del nombre de la acción (`create`, `prune`, etc.)
+- se sobreescribe **`body`** (no `title`) porque es el texto que Telegram muestra siempre; con `format=text` el `title` puede no aparecer de forma evidente
+- los logs (`send_logs: true`) se siguen añadiendo **después** del `body`, así que no se pierde el detalle
+- alternativa más flexible pero más compleja: usar *command hooks* (`commands:` con `after: action` y `when: [create]`, `when: [prune]`, etc.) que ejecuten un script propio de notificación; permite interpolar `{repository}` y `{configuration_filename}`, a costa de duplicar la lógica de envío fuera de Apprise
 
 ### 4. Preparar los hooks
 
@@ -646,7 +675,24 @@ Qué no debe hacer:
 - detener todo el stack Docker sin necesidad
 - borrar dumps recientes antes de validar el backup
 
-### 5. Inicializar y validar el repositorio local
+### 5. Definir la passphrase del repositorio
+
+El repositorio se crea cifrado (`encryption: repokey-blake2`), por lo que Borg necesita una passphrase que proteja la clave del repositorio. Borgmatic la obtiene ejecutando `encryption_passcommand: cat /etc/borgmatic.d/keys/repository-passphrase`, es decir, lee el contenido del fichero `keys/repository-passphrase`.
+
+En el paso 1 ese fichero se crea **vacío** con `touch`. Debes rellenarlo con una passphrase fuerte **antes** de ejecutar `repo-create`; si lo dejas vacío, crearías un repositorio sin protección real.
+
+```bash
+# Generar una passphrase fuerte y guardarla en el fichero de secreto
+openssl rand -base64 48 > /home/<user>/homelab/config/borgmatic/keys/repository-passphrase
+chmod 600 /home/<user>/homelab/config/borgmatic/keys/repository-passphrase
+```
+
+Regla crítica:
+
+- **guarda además una copia de la passphrase fuera del homelab** (gestor de contraseñas o copia offline); si la pierdes, pierdes el acceso a **todos** los backups y no hay forma de recuperarlos
+- no cambies la passphrase después de crear el repositorio sin usar el procedimiento propio de Borg (`borg key change-passphrase`); el fichero por sí solo no re-cifra la clave existente
+
+### 6. Inicializar y validar el repositorio local
 
 Desde `/home/<user>/homelab/compose/infra-borgmatic/`:
 
@@ -665,7 +711,32 @@ Objetivo de esta secuencia:
 - ejecutar una primera copia manual
 - confirmar que aparecen archivos y archivos de control en el repositorio
 
-### 6. Añadir destino offsite sin romper la operativa local
+#### Exportar y custodiar la clave del repositorio
+
+Al ejecutar `repo-create`, Borg muestra el aviso `IMPORTANT: you will need both KEY AND PASSPHRASE to access this repo!`. Es un mensaje **genérico** para todos los modos de cifrado.
+
+En modo `repokey-blake2` la **clave se guarda dentro del propio repositorio**, así que para el uso diario **basta con la passphrase**: la clave viaja siempre con el repo. El riesgo real aparece en recuperación ante desastres: si el repositorio se pierde o su cabecera se corrompe, la passphrase por sí sola **no reconstruye la clave** y perderías el acceso a los backups.
+
+Por eso, guarda **por separado y fuera del homelab** dos cosas: la passphrase y una exportación de la clave.
+
+```bash
+# Exportar la clave a un fichero
+docker compose exec borgmatic borg key export /mnt/borg-repository/homelab /root/borg-key-export.txt
+
+# Sacar el fichero del contenedor al host
+docker compose cp borgmatic:/root/borg-key-export.txt ./borg-key-export.txt
+
+# (opcional) versión imprimible en papel
+docker compose exec borgmatic borg key export --paper /mnt/borg-repository/homelab
+```
+
+Reglas de custodia:
+
+- guarda `borg-key-export.txt` en un gestor de contraseñas, USB offline o en papel; **nunca** dentro del propio repositorio ni junto al disco `hd2t`
+- elimina la copia temporal del host tras trasladarla a su ubicación segura
+- vuelve a exportar la clave si en algún momento la cambias con `borg key change-passphrase`
+
+### 7. Añadir destino offsite sin romper la operativa local
 
 La estrategia offsite pertenece al criterio 3-2-1 descrito en [01-estrategia-backup.md](01-estrategia-backup.md). La recomendación práctica aquí es:
 
@@ -699,7 +770,7 @@ Regla operativa importante:
 
 <!-- TODO: verificar un ejemplo cerrado de `include:` compatible con la versión concreta de Borgmatic que se fije finalmente en el stack. -->
 
-### 7. Verificar que la automatización funciona
+### 8. Verificar que la automatización funciona
 
 Comprobaciones mínimas después del despliegue:
 
