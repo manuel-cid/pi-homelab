@@ -47,6 +47,7 @@ services:
     environment:
       TZ: ${TZ}
       DOCKERCLI: "true"
+      CRON: "false"
     secrets:
       - postgres_backup_password
       - mariadb_backup_password
@@ -96,7 +97,8 @@ Puntos importantes del stack:
 - el directorio `exports/` sirve como área de trabajo para dumps y exportaciones auxiliares que luego también quedan incorporados al backup lógico
 - el directorio `restore-test/` se monta en **`/mnt/restore-test`** para que `borgmatic extract` pueda escribir restauraciones de prueba desde dentro del contenedor sin tocar producción; es el destino recomendado por [03-backup-docker-volumes.md](03-backup-docker-volumes.md) y **no** debe estar en `source_directories` para no respaldar restauraciones sobre sí mismas
 - se monta el **socket Docker** para que los hooks o los data sources puedan ejecutar dumps en contenedores de PostgreSQL/MariaDB
-- este Compose base no publica puertos ni incorpora un programador propio; la ejecución periódica se dispara desde el host
+- se fija **`CRON: "false"`** para **desactivar el cron interno de la imagen**: `modem7/borgmatic-docker` ejecuta borgmatic por su cuenta a las **01:00** si no se define `CRON`; en este proyecto la programación la lleva el host (`/etc/cron.d/`), así que hay que apagar el interno para no duplicar backups y notificaciones
+- este Compose base no publica puertos; la ejecución periódica se dispara desde el host
 - se fija **`hostname: homelab`** (el hostname real del host) para que `{hostname}` en la ruta del repositorio sea estable; sin esto Docker asigna el ID del contenedor como hostname y la ruta del repo cambia en cada recreación del contenedor, provocando errores `Repository does not exist`
 
 ## Configuración
@@ -393,6 +395,7 @@ services:
     environment:
       TZ: ${TZ}
       DOCKERCLI: "true"
+      CRON: "false"
     secrets:
       - postgres_backup_password
       - mariadb_backup_password
@@ -567,7 +570,9 @@ Alternativas razonables si en el futuro cambia el criterio del homelab:
 
 ### 3. Añadir programación desde el host
 
-**Borgmatic** corre como contenedor sin programador embebido. La programación se gestiona desde el **host** mediante un archivo en `/etc/cron.d/`, que es la opción preferida por ser declarativa, auditable y reproducible: el archivo queda documentado con ruta exacta, se puede versionar en el repo del homelab y al inspeccionar `/etc/cron.d/` se ven de un vistazo todos los cron del sistema.
+La programación se gestiona desde el **host** mediante un archivo en `/etc/cron.d/`, que es la opción preferida por ser declarativa, auditable y reproducible: el archivo queda documentado con ruta exacta, se puede versionar en el repo del homelab y al inspeccionar `/etc/cron.d/` se ven de un vistazo todos los cron del sistema.
+
+> **Importante — desactiva el cron interno de la imagen:** `modem7/borgmatic-docker` incluye su **propio programador**. Si no defines la variable `CRON`, ejecuta borgmatic **por defecto a las 01:00** con los mensajes de `config.yaml`. Al usar el cron del host debes fijar **`CRON: "false"`** en el `environment` del contenedor (ya incluido en el Compose de este documento); si no, tendrás **backups y notificaciones duplicados** (uno a las 01:00 del cron interno y otro a la hora que definas en el host).
 
 > **Importante:** las líneas siguientes son sintaxis de crontab, **no comandos bash**.
 > No las pegues directamente en la terminal.
