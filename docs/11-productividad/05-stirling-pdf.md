@@ -36,7 +36,7 @@ name: productivity-stirling-pdf
 
 services:
   stirling-pdf:
-    image: stirlingtools/stirling-pdf:2.14.2
+    image: stirlingtools/stirling-pdf:2.14.3
     restart: unless-stopped
     env_file:
       - .env
@@ -77,7 +77,7 @@ Notas sobre este Compose:
 - `/tmp` se monta con la opción `exec` de forma **deliberada**: desde la versión `2.12.0` Stirling PDF usa la librería nativa **JPDFium** (unir, dividir, etc.), que se extrae en runtime a `/tmp/stirling-pdf/jpdfium-*/` y se carga con `System.load()`; Docker monta los `tmpfs` con `noexec` por defecto, así que sin `exec` el kernel bloquea la carga y esas operaciones fallan (los demás `tmpfs` sí pueden quedarse con el `noexec` implícito)
 - no se usan bind mounts sobre el **SSD NVMe** porque este servicio no necesita persistencia
 - WUD puede monitorizar este servicio sin riesgo porque es fácil de recrear y no arrastra estado propio
-- se fija `stirlingtools/stirling-pdf:2.14.2` para evitar `latest` y mantener las actualizaciones bajo control
+- se fija `stirlingtools/stirling-pdf:2.14.3` para evitar `latest` y mantener las actualizaciones bajo control
 - antes de desplegar o actualizar, verifica en las referencias oficiales que la etiqueta elegida sigue disponible para `linux/arm64` y decide conscientemente si quieres mantenerla o moverla
 - alternativa razonable si priorizas ahorro de espacio y solo necesitas operaciones PDF básicas: usar una variante `ultra-lite` de la misma versión fijada
 - alternativa razonable si necesitas conversiones más completas, tipografías extra y un paquete más autosuficiente: usar una variante `fat` de la misma versión fijada
