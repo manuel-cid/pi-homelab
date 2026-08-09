@@ -215,7 +215,112 @@ Regla operativa:
 - usa `*.lan` dentro de casa para servicios internos
 - usa el nombre MagicDNS del nodo cuando estés fuera de la LAN y conectado por Tailscale
 
-### 6. Acceso remoto a servicios sin abrir puertos
+Si además quieres que **todos** los equipos de la tailnet usen Pi-hole como DNS con filtrado estés donde estés, sigue el apartado [6. Usar Pi-hole como DNS de toda la tailnet](#6-usar-pi-hole-como-dns-de-toda-la-tailnet). MagicDNS y Pi-hole conviven mediante Split DNS: MagicDNS resuelve `*.ts.net` y Pi-hole resuelve el resto.
+
+### 6. Usar Pi-hole como DNS de toda la tailnet
+
+Objetivo: que cualquier equipo unido a la tailnet (portátil, móvil, otro servidor) use **Pi-hole** (`192.168.1.194`) como DNS, con filtrado de anuncios, esté dentro o fuera de la LAN.
+
+Reto técnico de este homelab:
+
+- Pi-hole vive en la macvlan `dns_lan` con IP `192.168.1.194`, **no** en el host
+- un cliente remoto de Tailscale no puede alcanzar esa IP LAN salvo que el nodo `pi-homelab` actúe como **subnet router** y anuncie la ruta de la LAN
+
+Requisitos que **ya cumple** la configuración actual:
+
+- Pi-hole escucha en `192.168.1.194` (ver [02-pihole.md](02-pihole.md))
+- el host alcanza esa IP macvlan gracias a `macvlan-shim` (ver [01-macvlan.md](01-macvlan.md))
+- `FTLCONF_dns_listeningMode: 'LOCAL'` acepta consultas de la subred local
+
+Lo que hay que añadir:
+
+Paso 1. Habilitar el reenvío de paquetes en el host, necesario para el subnet router:
+
+```bash
+echo 'net.ipv4.ip_forward = 1' | sudo tee /etc/sysctl.d/99-tailscale.conf
+echo 'net.ipv6.conf.all.forwarding = 1' | sudo tee -a /etc/sysctl.d/99-tailscale.conf
+sudo sysctl -p /etc/sysctl.d/99-tailscale.conf
+```
+
+Paso 2. Anunciar la ruta hacia Pi-hole desde el nodo `pi-homelab`.
+
+Opción recomendada, exponer **solo** la IP de Pi-hole:
+
+```bash
+sudo tailscale up --accept-dns=false --advertise-routes=192.168.1.194/32
+```
+
+Con `/32` la tailnet solo alcanza Pi-hole, no el resto de la LAN. Es la opción más segura si tu único objetivo es el DNS filtrado.
+
+Opción ampliada, exponer toda la subred (solo si además quieres alcanzar otros servicios LAN por Tailscale):
+
+```bash
+sudo tailscale up --accept-dns=false --advertise-routes=192.168.1.0/24
+```
+
+Advertencia: con `/24` cualquier dispositivo de la tailnet que acepte rutas puede alcanzar **toda** tu red doméstica, no solo Pi-hole. Si un nodo de la tailnet se ve comprometido, tendría una ruta hacia la LAN completa. Prefiere `/32` salvo que necesites explícitamente el resto de la subred.
+
+Paso 3. Aprobar la ruta en la consola de Tailscale:
+
+- Machines -> `pi-homelab` -> Subnets -> aprobar la ruta anunciada
+
+Paso 4. Fijar el DNS global de la tailnet en la consola:
+
+- DNS -> Nameservers -> Add nameserver -> Custom -> `192.168.1.194`
+- activar **Override local DNS** para forzar que todos los clientes usen Pi-hole
+
+Paso 5. En cada cliente remoto, aceptar las rutas del subnet router:
+
+```bash
+sudo tailscale up --accept-routes
+```
+
+En clientes móviles, activa la opción equivalente **Use Tailscale subnet routes**.
+
+Si tienes `ufw` activo, permite el reenvío del tráfico enrutado por la tailnet:
+
+```bash
+sudo ufw route allow in on tailscale0 out on macvlan-shim to 192.168.1.194 port 53 comment 'DNS tailnet -> Pi-hole'
+```
+
+Tailscale suele gestionar sus propias reglas de reenvío, pero esta regla deja explícito el camino hacia Pi-hole si el firewall bloquea el `FORWARD`.
+
+Por qué funciona con `listeningMode: LOCAL`:
+
+- Tailscale aplica **SNAT** al tráfico enrutado por defecto (`--snat-subnet-routes=true`)
+- por eso Pi-hole ve la consulta con origen `192.168.1.222` (el `macvlan-shim`), una IP de la subred local
+- así no hace falta relajar el modo de escucha de Pi-hole ni exponer nada más
+
+Convivencia con MagicDNS (Split DNS):
+
+- MagicDNS sigue resolviendo `*.ts.net`, es decir, los nombres de los nodos
+- `192.168.1.194` resuelve el resto, incluidos los `*.lan` y el filtrado de anuncios
+- ambos coexisten; **no desactives MagicDNS** para conseguir esto
+
+Nota sobre el propio nodo `pi-homelab`:
+
+- el host mantiene `--accept-dns=false`; no necesita el DNS de la tailnet porque ya usa su fallback local (ver [02-pihole.md](02-pihole.md))
+- solo los **clientes remotos** deben aceptar el DNS de la tailnet
+
+Consideraciones de seguridad:
+
+- **anuncia lo mínimo**: usa `/32` para exponer solo Pi-hole y evita convertir la Raspberry Pi en un puente hacia toda la LAN
+- **restringe con ACLs de Tailscale**: por defecto cualquier nodo de la tailnet puede usar la ruta anunciada; limita con ACLs qué usuarios o dispositivos pueden alcanzarla
+- **cuida las claves de enrolado**: prefiere claves de un solo uso o efímeras y con caducidad; no dejes `TS_AUTHKEY` reutilizables sin expiración
+- **disponibilidad del DNS**: con `Override local DNS`, si Pi-hole cae los clientes se quedan sin resolución mientras estén en la tailnet; si te preocupa, valora usar **Split DNS** (dominios concretos hacia `192.168.1.194`) en lugar de forzar todo el tráfico
+- **sin exposición WAN**: este diseño no abre puertos en el router; todo el tráfico va cifrado por WireGuard entre nodos autenticados
+
+Validación desde un cliente remoto conectado por Tailscale (fuera de la LAN):
+
+```bash
+tailscale status
+dig @192.168.1.194 pi-hole.net
+dig @192.168.1.194 jellyfin.lan
+```
+
+Si ambas consultas resuelven y aparecen en el Query Log de Pi-hole, el filtrado ya se aplica a toda la tailnet.
+
+### 7. Acceso remoto a servicios sin abrir puertos
 
 Con Tailscale activo, el acceso remoto no pasa por la IP pública del router ni requiere NAT manual.
 
@@ -238,7 +343,7 @@ Ventajas operativas de este enfoque:
 - no hace falta exponer paneles de administración a internet
 - el acceso remoto queda limitado a dispositivos autenticados dentro de la tailnet
 
-### 7. Validaciones que conviene dejar hechas
+### 8. Validaciones que conviene dejar hechas
 
 Desde la Raspberry Pi:
 
@@ -304,6 +409,8 @@ En ambos casos, también conviene documentar:
 - el nombre final del nodo en la tailnet
 - si `MagicDNS` está activo
 - si el nodo acepta o no DNS anunciado por Tailscale
+- las rutas anunciadas como subnet router, por ejemplo `192.168.1.0/24` o `192.168.1.194/32`
+- si la tailnet usa Pi-hole (`192.168.1.194`) como nameserver global y si está activo `Override local DNS`
 - cualquier excepción de firewall añadida para `tailscale0` o `udp/41641`
 
 Orden de restauración recomendado:
