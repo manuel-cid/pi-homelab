@@ -38,7 +38,7 @@ name: productivity-mealie
 
 services:
   mealie:
-    image: ghcr.io/mealie-recipes/mealie:v3.19.2
+    image: ghcr.io/mealie-recipes/mealie:v3.22.0
     container_name: mealie
     restart: unless-stopped
     env_file:
@@ -91,7 +91,7 @@ Notas sobre este Compose:
 - `MEALIE_DEFAULT_EMAIL` conviene dejarlo definido desde el primer arranque para no depender de valores implícitos durante el bootstrap inicial
 - `MEALIE_ALLOW_SIGNUP=true` solo es recomendable para el **bootstrap inicial**; después conviene dejarlo en `false`
 - se excluye de WUD porque el propio proyecto recomienda usar una **versión fijada** y actualizar deliberadamente
-- antes de una instalación nueva conviene comprobar si existe una versión más reciente de `v3.19.2` y sustituirla conscientemente en el Compose
+- antes de una instalación nueva conviene comprobar si existe una versión más reciente de `v3.22.0` y sustituirla conscientemente en el Compose
 
 ## Configuración
 
