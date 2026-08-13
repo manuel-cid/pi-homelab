@@ -74,7 +74,7 @@ services:
       - /home/<user>/homelab/data/pihole:/etc/pihole
 
   unbound:
-    image: klutchell/unbound:1.25.1
+    image: klutchell/unbound:1.26.0
     hostname: unbound
     restart: unless-stopped
     env_file:
