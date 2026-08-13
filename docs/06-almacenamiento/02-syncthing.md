@@ -46,7 +46,7 @@ name: files-syncthing
 
 services:
   syncthing:
-    image: linuxserver/syncthing:2.1.2
+    image: linuxserver/syncthing:2.1.3
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
