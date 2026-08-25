@@ -37,7 +37,7 @@ name: dashboards-homepage
 
 services:
   homepage:
-    image: ghcr.io/gethomepage/homepage:v2.0.0
+    image: ghcr.io/gethomepage/homepage:v2.1.2
     restart: unless-stopped
     env_file:
       - .env
