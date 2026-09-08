@@ -218,6 +218,31 @@ Reglas prácticas:
 - el nombre debe coincidir exactamente con el MagicDNS del nodo
 - si renuevas el certificado, reinicia o recrea Caddy para que recargue los nuevos ficheros
 
+#### Renovación automática del certificado
+
+Los certificados de `tailscale cert` son válidos **90 días**. Si expiran y no se renuevan, ocurre un fallo silencioso muy engañoso: los **navegadores** dejan pasar el aviso y siguen cargando, pero los **clientes TLS estrictos** (por ejemplo la app de Jellyfin para Android) rechazan un certificado caducado y dejan de conectar. El acceso por `.lan` (HTTP, sin TLS) sigue funcionando, lo que hace pensar erróneamente que el problema está en el servicio y no en el certificado.
+
+Para evitarlo, automatiza la renovación con un cron en el host. `tailscale cert` solo re-emite cuando el certificado está cerca de expirar, así que ejecutarlo semanalmente es seguro:
+
+```bash
+sudo crontab -e
+```
+
+```cron
+0 4 * * 1 TAILSCALE_DOMAIN=pi-homelab.<tailnet>.ts.net; tailscale cert --cert-file /home/<user>/homelab/data/caddy/certs/$TAILSCALE_DOMAIN.crt --key-file /home/<user>/homelab/data/caddy/certs/$TAILSCALE_DOMAIN.key $TAILSCALE_DOMAIN && docker compose -f /home/<user>/homelab/compose/infra-caddy/docker-compose.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+```
+
+Este cron re-emite el certificado y recarga Caddy sin reiniciar el contenedor.
+
+Para diagnosticar si un certificado ha caducado:
+
+```bash
+openssl x509 -in /home/<user>/homelab/data/caddy/certs/pi-homelab.<tailnet>.ts.net.crt -noout -dates
+echo | openssl s_client -connect 127.0.0.1:443 -servername pi-homelab.<tailnet>.ts.net 2>/dev/null | grep "Verify return code"
+```
+
+El estado correcto es un `notAfter` futuro y `Verify return code: 0 (ok)`. Un `Verify return code: 10 (certificate has expired)` indica que hay que re-emitir el certificado y recargar Caddy.
+
 ### 4. Desplegar el stack
 
 ```bash
