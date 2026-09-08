@@ -38,7 +38,7 @@ name: media-jellyfin
 
 services:
   jellyfin:
-    image: jellyfin/jellyfin:10.11.11
+    image: jellyfin/jellyfin:12.0
     restart: unless-stopped
     user: "${PUID}:${PGID}"
     env_file:
@@ -156,6 +156,16 @@ Si todo ha arrancado bien, la interfaz quedará disponible en:
 - `http://jellyfin.lan` en la LAN
 - `http://127.0.0.1:8096` solo desde la propia Raspberry Pi o por túnel SSH, útil para bootstrap y diagnóstico
 - `https://pi-homelab.<tailnet>.ts.net/jellyfin` para acceso remoto por Tailscale, una vez configurada la Base URL y el bloque en Caddy
+
+> **Actualización a 12.0 desde 10.11.x**
+>
+> La serie **12.0** es un *major release* con cambios de base de datos **irreversibles** sin restauración completa. Antes de subir de `10.11.x` a `12.0`:
+>
+> - haz un **backup completo** de `/home/<user>/homelab/data/jellyfin/config` con el contenedor parado
+> - las actualizaciones directas desde `10.10.7` y `10.11.x` están soportadas; no hacen falta pasos intermedios
+> - retira los plugins de repositorio antes de migrar y vuelve a añadirlos después desde el repositorio **estable** de plugins
+> - el primer arranque ejecuta migraciones y puede tardar varios minutos; no interrumpas el proceso
+> - tras migrar, lanza un **escaneo completo de bibliotecas** (obligatorio para recomponer versiones alternativas de medios)
 
 ### 5. Asistente inicial de Jellyfin
 
