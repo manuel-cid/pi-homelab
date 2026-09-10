@@ -430,6 +430,44 @@ Tras el reinicio, comprueba que los discos ya aparecen:
 lsblk -o NAME,SIZE,TYPE,FSTYPE,LABEL,UUID,MOUNTPOINT,MODEL
 ```
 
+### Un disco NTFS no monta tras reiniciar (`wrong fs type, bad option, bad superblock`)
+
+Si tras un reinicio el montaje falla con:
+
+```
+mount: /media/hd2t: wrong fs type, bad option, bad superblock on /dev/sda1, missing codepage or helper program, or other error
+```
+
+y al revisar `dmesg` aparece:
+
+```
+ntfs3: /dev/sda1: volume is dirty and "force" flag is not set!
+```
+
+el sistema de archivos NTFS quedó marcado como **sucio (dirty)**. El driver `ntfs3` se niega a montarlo para no corromperlo. Las causas habituales son un **apagado no limpio** de la Raspberry Pi o un Windows previo con **Fast Startup** activado.
+
+No es un fallo de hardware. La solución correcta es **limpiar el flag**, no forzar el montaje.
+
+```bash
+sudo umount /dev/sda1 2>/dev/null || true
+sudo ntfsfix -d /dev/sda1
+sudo mount -a
+```
+
+`ntfsfix -d` limpia explícitamente el bit "dirty". Después del `ntfsfix`, puede hacer falta ejecutar `sudo mount -a` de nuevo para que el punto de montaje quede activo.
+
+Comprueba el resultado:
+
+```bash
+findmnt /media/hd2t
+```
+
+Consideraciones:
+
+- `ntfsfix` **no sustituye** a `chkdsk`. Si el volumen se vuelve a marcar sucio de forma recurrente, conéctalo a un Windows y ejecuta `chkdsk X: /f`, y desactiva **Fast Startup**.
+- Como medida preventiva, apaga siempre con `sudo poweroff` o `sudo reboot`, nunca cortando la alimentación.
+- Solo como último recurso puntual, puedes montar ignorando el flag con la opción `force` (`sudo mount -t ntfs3 -o force,... /dev/sda1 /media/hd2t`), asumiendo el riesgo si hay inconsistencias reales.
+
 ## Siguiente Paso
 
 Con los discos reutilizados ya validados y montados, el siguiente documento a completar o seguir depende del estado real del host:
