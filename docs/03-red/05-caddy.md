@@ -222,15 +222,29 @@ Reglas prácticas:
 
 Los certificados de `tailscale cert` son válidos **90 días**. Si expiran y no se renuevan, ocurre un fallo silencioso muy engañoso: los **navegadores** dejan pasar el aviso y siguen cargando, pero los **clientes TLS estrictos** (por ejemplo la app de Jellyfin para Android) rechazan un certificado caducado y dejan de conectar. El acceso por `.lan` (HTTP, sin TLS) sigue funcionando, lo que hace pensar erróneamente que el problema está en el servicio y no en el certificado.
 
-Para evitarlo, automatiza la renovación con un cron en el host. `tailscale cert` solo re-emite cuando el certificado está cerca de expirar, así que ejecutarlo semanalmente es seguro:
+Para evitarlo, automatiza la renovación con un cron en el host. `tailscale cert` solo re-emite cuando el certificado está cerca de expirar, así que ejecutarlo semanalmente es seguro.
+
+Igual que en Borgmatic y Stash, se usa un fichero declarativo en `/etc/cron.d/` en vez de `crontab -e`, por ser auditable, reproducible y versionable en el repo.
+
+Crea el archivo `/etc/cron.d/homelab-caddy-cert`:
 
 ```bash
-sudo crontab -e
+sudo tee /etc/cron.d/homelab-caddy-cert > /dev/null << 'EOF'
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# renovacion del certificado tailscale y recarga de Caddy (lunes 04:00)
+0 4 * * 1 root TAILSCALE_DOMAIN=pi-homelab.<tailnet>.ts.net; cd /home/<user>/homelab/compose/infra-caddy && tailscale cert --cert-file /home/<user>/homelab/data/caddy/certs/$TAILSCALE_DOMAIN.crt --key-file /home/<user>/homelab/data/caddy/certs/$TAILSCALE_DOMAIN.key $TAILSCALE_DOMAIN && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+EOF
 ```
 
-```cron
-0 4 * * 1 TAILSCALE_DOMAIN=pi-homelab.<tailnet>.ts.net; tailscale cert --cert-file /home/<user>/homelab/data/caddy/certs/$TAILSCALE_DOMAIN.crt --key-file /home/<user>/homelab/data/caddy/certs/$TAILSCALE_DOMAIN.key $TAILSCALE_DOMAIN && docker compose -f /home/<user>/homelab/compose/infra-caddy/docker-compose.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+Verifica que se ha creado correctamente:
+
+```bash
+cat /etc/cron.d/homelab-caddy-cert
 ```
+
+> **Nota sobre el formato `/etc/cron.d/`:** a diferencia de `crontab -e`, los archivos en `/etc/cron.d/` requieren un campo extra con el **usuario** (`root`) entre el schedule y el comando. El archivo debe terminar con una línea en blanco o un salto de línea final para que `cron` lo procese correctamente.
 
 Este cron re-emite el certificado y recarga Caddy sin reiniciar el contenedor.
 
