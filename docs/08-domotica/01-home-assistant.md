@@ -15,6 +15,7 @@ Esta modalidad encaja bien con el resto del homelab porque mantiene el mismo pat
 - Revisar [06-puertos-y-firewall.md](../03-red/06-puertos-y-firewall.md) para registrar el puerto del servicio.
 - Puerto principal: `8123/tcp`.
 - Recomendado usar `network_mode: host` para que Home Assistant detecte correctamente dispositivos y protocolos de descubrimiento en la red local.
+- Si usas `ufw` en el host, el puerto `8123/tcp` no queda accesible por defecto: la política base es `deny incoming`, así que hace falta una regla explícita (ver más abajo, apartado de despliegue) antes de poder acceder a la interfaz desde la LAN o desde Tailscale.
 - Si se publica con Caddy, el upstream debe apuntar a `127.0.0.1:8123`, porque con `network_mode: host` Home Assistant expone el servicio directamente en la pila de red del host y no por nombre de contenedor en `homelab_proxy`.
 
 ## Docker Compose
@@ -51,6 +52,16 @@ docker compose config
 docker compose up -d
 docker compose logs -f
 ```
+
+Con `network_mode: host`, Home Assistant queda escuchando en `8123/tcp` sobre la IP del host, pero **no será accesible desde otros equipos hasta abrir el puerto en el firewall**. Añade estas reglas antes de intentar acceder desde la LAN o desde Tailscale:
+
+```bash
+sudo ufw allow in on eth0 proto tcp from 192.168.1.0/24 to any port 8123 comment 'Home Assistant desde LAN'
+sudo ufw allow in on tailscale0 to any port 8123 proto tcp comment 'Home Assistant desde Tailscale'
+sudo ufw status verbose
+```
+
+Sustituye `192.168.1.0/24` por tu subred LAN real si es distinta. Sin esta regla, el contenedor puede estar sano y escuchando (`ss -ltnp | grep 8123` lo confirmaría) pero la conexión desde el navegador quedará bloqueada silenciosamente por el firewall, sin ningún error visible en los logs de Home Assistant.
 
 Tras arrancar, la interfaz queda disponible en:
 
