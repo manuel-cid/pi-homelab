@@ -218,6 +218,45 @@ Reglas prácticas:
 - el nombre debe coincidir exactamente con el MagicDNS del nodo
 - si renuevas el certificado, reinicia o recrea Caddy para que recargue los nuevos ficheros
 
+#### Renovación automática del certificado
+
+Los certificados de `tailscale cert` son válidos **90 días**. Si expiran y no se renuevan, ocurre un fallo silencioso muy engañoso: los **navegadores** dejan pasar el aviso y siguen cargando, pero los **clientes TLS estrictos** (por ejemplo la app de Jellyfin para Android) rechazan un certificado caducado y dejan de conectar. El acceso por `.lan` (HTTP, sin TLS) sigue funcionando, lo que hace pensar erróneamente que el problema está en el servicio y no en el certificado.
+
+Para evitarlo, automatiza la renovación con un cron en el host. `tailscale cert` solo re-emite cuando el certificado está cerca de expirar, así que ejecutarlo semanalmente es seguro.
+
+Igual que en Borgmatic y Stash, se usa un fichero declarativo en `/etc/cron.d/` en vez de `crontab -e`, por ser auditable, reproducible y versionable en el repo.
+
+Crea el archivo `/etc/cron.d/homelab-caddy-cert`:
+
+```bash
+sudo tee /etc/cron.d/homelab-caddy-cert > /dev/null << 'EOF'
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# renovacion del certificado tailscale y recarga de Caddy (lunes 04:00)
+0 4 * * 1 root TAILSCALE_DOMAIN=pi-homelab.<tailnet>.ts.net; cd /home/<user>/homelab/compose/infra-caddy && tailscale cert --cert-file /home/<user>/homelab/data/caddy/certs/$TAILSCALE_DOMAIN.crt --key-file /home/<user>/homelab/data/caddy/certs/$TAILSCALE_DOMAIN.key $TAILSCALE_DOMAIN && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+EOF
+```
+
+Verifica que se ha creado correctamente:
+
+```bash
+cat /etc/cron.d/homelab-caddy-cert
+```
+
+> **Nota sobre el formato `/etc/cron.d/`:** a diferencia de `crontab -e`, los archivos en `/etc/cron.d/` requieren un campo extra con el **usuario** (`root`) entre el schedule y el comando. El archivo debe terminar con una línea en blanco o un salto de línea final para que `cron` lo procese correctamente.
+
+Este cron re-emite el certificado y recarga Caddy sin reiniciar el contenedor.
+
+Para diagnosticar si un certificado ha caducado:
+
+```bash
+openssl x509 -in /home/<user>/homelab/data/caddy/certs/pi-homelab.<tailnet>.ts.net.crt -noout -dates
+echo | openssl s_client -connect 127.0.0.1:443 -servername pi-homelab.<tailnet>.ts.net 2>/dev/null | grep "Verify return code"
+```
+
+El estado correcto es un `notAfter` futuro y `Verify return code: 0 (ok)`. Un `Verify return code: 10 (certificate has expired)` indica que hay que re-emitir el certificado y recargar Caddy.
+
 ### 4. Desplegar el stack
 
 ```bash
