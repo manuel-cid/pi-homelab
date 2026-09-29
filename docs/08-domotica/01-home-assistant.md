@@ -154,6 +154,37 @@ ss -ltnp | grep 8123
 
 Si Home Assistant deja de escuchar en loopback o el proxy pasa a otra red, actualiza el `reverse_proxy` y `trusted_proxies` a la topología real. Si no se configura correctamente, Home Assistant rechazará la cabecera `X-Forwarded-For`.
 
+### Nota sobre `trusted_proxies` y Home Assistant 2026.8+
+
+Desde Home Assistant 2026.8, la configuración de `trusted_proxies` se movió de
+`configuration.yaml` a `Settings → System → Network` en la UI, guardándose en
+`.storage/http`. Existe un bug conocido (home-assistant/core#181961) donde ese
+valor se persiste en disco pero **no se aplica realmente** al servidor HTTP en
+tiempo de ejecución, incluso tras reiniciar el contenedor. El síntoma es un
+`400: Bad Request` únicamente al acceder a través de Caddy, mientras que el
+acceso directo a `127.0.0.1:8123` funciona con normalidad.
+
+Mientras ese bug siga abierto, la solución aplicada en este proyecto es evitar
+que Caddy envíe cabeceras `X-Forwarded-*` a Home Assistant, para que nunca
+dispare la validación de proxy de confianza:
+
+\```caddyfile
+http://homeassistant.lan {
+	import common_proxy
+	reverse_proxy 127.0.0.1:8123 {
+		header_up -X-Forwarded-For
+		header_up -X-Forwarded-Proto
+		header_up -X-Forwarded-Host
+	}
+}
+\```
+
+Contrapartida: Home Assistant verá siempre `127.0.0.1` como IP de origen de
+todas las peticiones que lleguen vía Caddy, en vez de la IP real del cliente
+(LAN o Tailscale). Aceptable en este homelab porque no hay exposición pública,
+pero revisar y quitar este workaround cuando el bug quede resuelto en una
+versión futura de Home Assistant.
+
 ### Reinicio tras cambios de configuración
 
 Después de editar `configuration.yaml`, valida la sintaxis desde **Developer Tools → YAML** o reinicia el contenedor:
