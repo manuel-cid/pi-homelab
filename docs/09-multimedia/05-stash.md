@@ -38,7 +38,7 @@ name: media-stash
 
 services:
   stash:
-    image: stashapp/stash:v0.31.1
+    image: stashapp/stash:v0.32.0
     restart: unless-stopped
     env_file:
       - .env
@@ -79,12 +79,14 @@ networks:
 Notas sobre este Compose:
 
 - el stack queda aislado bajo `media-stash`
+- la imagen queda fijada a `stashapp/stash:v0.32.0` (última versión estable a fecha 22/11/2026) para que las actualizaciones sean deliberadas; consulta la sección [Actualizar a una versión nueva](#actualizar-a-una-versión-nueva) antes de cambiar el tag
 - la biblioteca vive en `hd5t`
 - la configuración, la base de datos, blobs, caché, scrapers, plugins y contenido generado viven en el **SSD NVMe**
 - la biblioteca se monta en modo lectura para un despliegue base más seguro
 - el servicio publica `14004/tcp` en el host y **Caddy**, al usar `network_mode: host`, debe alcanzarlo por `127.0.0.1:14004`
 - el Compose sigue el esquema oficial de Stash para `config`, `metadata`, `cache`, `blobs` y `generated`
 - el stack se une a `homelab_proxy` para que otros servicios Docker (como Uptime Kuma) puedan alcanzar Stash por nombre de contenedor en el puerto interno `9999`
+- desde v0.32.0 Stash respeta la variable de entorno `TZ` para configurar la zona horaria; se mantiene además el montaje de `/etc/localtime`
 
 Si más adelante quieres usar funciones de **organización, renombrado o movimiento de archivos desde Stash**, tendrás que quitar `:ro` del bind mount `/media/hd5t/media:/data:ro` y validar muy bien esa política antes de activarla en producción.
 
@@ -225,15 +227,16 @@ Notas sobre `external_host` en acceso dual:
 
 El acceso directo por puerto es válido para administración o pruebas, pero no sustituye la política general del proyecto: **sin exposición WAN y sin abrir puertos en el router**.
 
-### 5. Primer arranque y rutas de trabajo
+### 5. Primer arranque, credenciales y rutas de trabajo
 
 En el primer arranque:
 
 1. Abre la interfaz web.
-2. Revisa en la configuración que la biblioteca principal apunta a `/data`.
-3. Define una ruta de backup dentro del SSD, por ejemplo `/metadata/backups`.
-4. Si vas a usar almacenamiento binario en sistema de ficheros, configura la ruta de blobs en `/blobs`.
-5. Lanza un primer escaneo de biblioteca para que Stash indexe el contenido.
+2. Completa el asistente inicial. Desde v0.32.0 incluye un paso para definir **usuario y contraseña**; defínelos (ver el apartado siguiente sobre el control de acceso).
+3. Revisa en la configuración que la biblioteca principal apunta a `/data`.
+4. Define una ruta de backup dentro del SSD, por ejemplo `/metadata/backups`.
+5. Si vas a usar almacenamiento binario en sistema de ficheros, configura la ruta de blobs en `/blobs`.
+6. Lanza un primer escaneo de biblioteca para que Stash indexe el contenido.
 
 Rutas relevantes dentro del contenedor:
 
@@ -255,7 +258,25 @@ Ruta recomendada para este homelab:
 
 Como la base de datos y el estado del servicio viven en el SSD NVMe, no conviene mezclar `metadata`, `cache`, `blobs` o `generated` con el disco USB.
 
-### 6. Scraping de metadatos: orden recomendado
+### 6. Control de acceso: credenciales y proxies (v0.32.0)
+
+Desde v0.32.0 el antiguo "security tripwire" (que apagaba Stash si detectaba acceso desde una IP pública sin credenciales) se ha sustituido por un comportamiento más simple:
+
+- si **no hay credenciales configuradas**, las peticiones desde **IPs públicas** se rechazan con **403**
+- los rangos públicos que quieras permitir se declaran con `public_whitelist` (formato CIDR, por ejemplo `192.168.1.0/24`)
+- los proxies que no sean locales se declaran con `trusted_proxies`
+- los campos `dangerous_allow_public_without_auth` y `security_tripwire_accessed_from_public_internet` **se han eliminado** de la configuración
+
+Recomendación para este homelab:
+
+- **configura siempre usuario y contraseña** en **Settings -> Security**; es la solución más robusta y evita depender de las listas de IP
+- el tráfico llega a Stash desde **Caddy en el propio host** (`127.0.0.1`, o la IP de la red bridge de Docker si publicas el puerto), que es un origen local y no debería provocar 403
+- si tras actualizar ves 403 al acceder por Tailscale (`https://pi-homelab.<tailnet>.ts.net/stash`) y no tienes credenciales, define primero las credenciales; solo si persiste, revisa `trusted_proxies` y `public_whitelist` en `/home/<user>/homelab/data/stash/config/config.yml`
+- si tu `config.yml` contenía alguno de los campos eliminados, bórralo al actualizar
+
+<!-- TODO: verificar en una instancia real con Caddy delante si las IPs de Tailscale (100.64.0.0/10) hacen falta en `public_whitelist` o `trusted_proxies` cuando no hay credenciales configuradas. -->
+
+### 7. Scraping de metadatos: orden recomendado
 
 En Stash conviene seguir este orden de trabajo:
 
@@ -271,7 +292,7 @@ Buenas prácticas:
 - usa primero el **Scene Tagger** antes de tirar de scrapers manuales o por URL
 - en Raspberry Pi 5 conviene ejecutar tareas pesadas por lotes y evitar lanzar a la vez escaneo, generación de previews y scraping masivo
 
-### 7. Configurar proveedores de metadatos
+### 8. Configurar proveedores de metadatos
 
 En **Settings -> Metadata Providers** puedes configurar las fuentes principales.
 
@@ -288,7 +309,7 @@ Notas prácticas:
 - **ThePornDB** puede cubrir más catálogo, pero conviene revisar resultados antes de aceptarlos a ciegas
 - si trabajas con colecciones centradas en creadores de plataformas, **FansDB** puede ser útil como fuente adicional
 
-### 8. Scrapers comunitarios y scrapers manuales
+### 9. Scrapers comunitarios y scrapers manuales
 
 Stash permite instalar scrapers desde la propia interfaz en **Settings -> Metadata Providers**. La fuente comunitaria estable suele venir preparada por defecto.
 
@@ -299,6 +320,7 @@ Si necesitas scrapers manuales:
 - algunos scrapers son simples archivos YAML
 - otros requieren scripts adicionales, por ejemplo Python o Ruby
 - otros usan CDP y necesitan un navegador compatible para automatización
+- desde v0.32.0 los scrapers pueden usar suplantación TLS mediante la opción de driver `useSurf`
 
 Recomendación operativa:
 
@@ -306,7 +328,7 @@ Recomendación operativa:
 - añade scrapers manuales solo cuando tengas un caso concreto
 - evita acumular scrapers poco mantenidos si no los usas de verdad
 
-### 9. Ajustes recomendados para Raspberry Pi 5
+### 10. Ajustes recomendados para Raspberry Pi 5
 
 Stash puede generar bastante carga en CPU, disco y temperatura cuando produce contenido derivado.
 
@@ -323,6 +345,32 @@ Recomendación base para una Pi 5:
 - deja `generated/` en el SSD NVMe para reducir latencia
 - programa tareas largas cuando no estés usando el resto del homelab
 - si ves throttling o lentitud general, reduce la cantidad de tareas de generación simultáneas
+- desde v0.32.0 la generación de previews de marcadores respeta la duración del marcador; el límite fijo de 20 segundos pasa a ser el ajuste opcional `Max marker preview duration` (por defecto `0`, sin límite). En una Pi 5 conviene fijar un máximo razonable si tienes marcadores largos
+
+### 11. Actualizar a una versión nueva
+
+El tag de la imagen está fijado en el Compose, por lo que cada actualización es un cambio consciente. Procedimiento:
+
+1. Revisa las notas de la versión en <https://github.com/stashapp/stash/releases>, sobre todo los apartados **Notable Changes**.
+2. Genera un backup consistente de la base de datos (tarea de backup de la UI o mutación GraphQL descrita en la sección [Backup](#backup)) y comprueba que el fichero existe en `/home/<user>/homelab/data/stash/metadata/backups/`.
+3. Edita el tag de `image:` en el `docker-compose.yml`.
+4. Recrea el contenedor:
+
+```bash
+cd /home/<user>/homelab/compose/media-stash
+docker compose pull
+docker compose up -d
+docker compose logs --tail=50 stash
+```
+
+5. No interrumpas el primer arranque: Stash puede aplicar migraciones de base de datos.
+6. Valida login, navegación y reproducción desde `http://stash.lan` y desde la subruta de Tailscale.
+
+Notas específicas del salto **v0.31.1 → v0.32.0**:
+
+- revisa el apartado [Control de acceso](#6-control-de-acceso-credenciales-y-proxies-v0320): configura credenciales y elimina de `config.yml` los campos retirados
+- la UI pasa a **React 18**; si usas plugins de interfaz, comprueba que siguen funcionando
+- los cambios de base de datos hacia delante pueden no ser reversibles sin restaurar el backup previo; por eso el backup del paso 2 es obligatorio
 
 ## Almacenamiento
 
@@ -400,7 +448,7 @@ curl -s -X POST http://127.0.0.1:14004/graphql \
   -d '{"query":"mutation{backupDatabase(input:{download:false})}"}'
 ```
 
-Si Stash tiene autenticación activada, añade tu API key:
+Si Stash tiene autenticación activada (recomendado desde v0.32.0, ver [Control de acceso](#6-control-de-acceso-credenciales-y-proxies-v0320)), añade tu API key:
 
 ```bash
 curl -s -X POST http://127.0.0.1:14004/graphql \
@@ -423,7 +471,7 @@ SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # backup consistente de la base SQLite de Stash antes de Borgmatic (02:30)
-15 2 * * * root curl -s -X POST http://127.0.0.1:14004/graphql -H 'Content-Type: application/json' -d '{"query":"mutation{backupDatabase(input:{download:false})}"}' > /dev/null
+15 2 * * * root curl -s -X POST http://127.0.0.1:14004/graphql -H 'Content-Type: application/json' -H 'ApiKey: <STASH_API_KEY>' -d '{"query":"mutation{backupDatabase(input:{download:false})}"}' > /dev/null
 # limpieza de backups de Stash con mas de 14 dias
 20 2 * * * root find /home/<user>/homelab/data/stash/metadata/backups -type f -name '*.sqlite' -mtime +14 -delete
 EOF
@@ -440,6 +488,7 @@ Notas importantes:
 - igual que en Borgmatic, los ficheros de `/etc/cron.d/` requieren el campo extra de usuario (`root`) entre el schedule y el comando, y el archivo debe terminar con una línea en blanco final para que `cron` lo procese
 - programa el backup de Stash **antes** de las 02:30 para que la copia consistente exista cuando Borgmatic empiece a leer los datos
 - Borgmatic incorpora automáticamente el `.sqlite` resultante porque `metadata/` entra en el backup de ficheros; con este enfoque **no** hace falta añadir Stash al bloque `sqlite_databases` de Borgmatic
+- si no has activado autenticación en Stash, elimina la cabecera `-H 'ApiKey: <STASH_API_KEY>'` del cron; con autenticación activada es obligatoria, y el fichero `/etc/cron.d/` debe tener permisos `600` por contener la clave
 - si usas `STASH_BIND_IP=0.0.0.0`, ajusta la URL del cron al valor accesible; con `127.0.0.1` el cron del host llega bien porque se ejecuta en la propia Raspberry Pi
 - ajusta la retención `-mtime +14` a tu política de espacio en el SSD NVMe
 
@@ -448,6 +497,7 @@ Notas importantes:
 - Documentación oficial de Stash: https://docs.stashapp.cc
 - Instalación oficial con Docker: https://docs.stashapp.cc/installation/docker/
 - `docker-compose.yml` oficial de producción: https://github.com/stashapp/stash/blob/master/docker/production/docker-compose.yml
+- Notas de la versión v0.32.0: https://github.com/stashapp/stash/releases/tag/v0.32.0
 - Guía oficial de scraping: https://docs.stashapp.cc/beginner-guides/guide-to-scraping/
 - Fuentes `stash-box` oficiales: https://docs.stashapp.cc/metadata-sources/stash-box-instances/
 - Documentación oficial de scrapers: https://docs.stashapp.cc/metadata-sources/scrapers/
